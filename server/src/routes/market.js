@@ -1,6 +1,8 @@
 const express = require('express');
 const auth = require('../services/auth');
+const actionCards = require('../services/actionCards');
 const store = require('../services/store');
+const socketHub = require('../services/socketHub');
 const { ok, fail } = require('../response');
 
 const router = express.Router();
@@ -84,6 +86,36 @@ router.post('/goods/:id/favorite', auth.requireAuth, (req, res) => {
   else goods.favorites.push(req.user.id);
   store.save(req.data);
   return ok(res, store.publicGoods(req.data, goods));
+});
+
+router.post('/goods/:id/request', auth.requireAuth, (req, res) => {
+  const goods = req.data.goods.find((item) => item.id === req.params.id);
+  if (!goods) return fail(res, 404, '商品不存在');
+  if (goods.sellerId === req.user.id) return fail(res, 400, '不能求购自己发布的商品');
+  if (goods.auditStatus !== '通过' || goods.status !== '在售') return fail(res, 400, '商品当前不可交易');
+  goods.consults = Number(goods.consults || 0) + 1;
+  const { conversation, message } = actionCards.createActionCardMessage(req.data, {
+    type: 'goodsPurchase',
+    targetType: 'goods',
+    targetId: goods.id,
+    title: goods.name,
+    summary: `${req.user.nickname} 想购买该商品`,
+    requesterId: req.user.id,
+    ownerId: goods.sellerId,
+    source: '二手市场',
+    content: req.body.message || `我想购买「${goods.name}」，等待你确认。`
+  });
+  store.addNotification(req.data, {
+    userId: goods.sellerId,
+    type: '交易提醒',
+    title: `${req.user.nickname} 想购买你的商品`,
+    content: goods.name,
+    relatedType: 'goods',
+    relatedId: goods.id
+  });
+  store.save(req.data);
+  socketHub.broadcastToUser(goods.sellerId, { type: 'message', data: { conversationId: conversation.id, message } });
+  return ok(res, { goods: store.publicGoods(req.data, goods), conversation, message }, '已发送求购卡片');
 });
 
 router.post('/goods/:id/orders', auth.requireAuth, (req, res) => {

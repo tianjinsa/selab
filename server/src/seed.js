@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
 
 const now = new Date().toISOString();
+const tomorrow = new Date(new Date(now).getTime() + 24 * 60 * 60 * 1000).toISOString();
 const passwordHash = bcrypt.hashSync('123456Aa', 10);
 
 function makeId(prefix) {
@@ -275,7 +276,20 @@ const messages = [
     fromUserId: 'u_1002',
     type: 'card',
     content: '我想报名这个任务，预计 30 分钟送达。',
-    card: { type: 'taskApply', targetId: 'task_1001', title: '任务报名卡片' },
+    card: {
+      type: 'taskApply',
+      targetType: 'task',
+      targetId: 'task_1001',
+      title: '南门快递代取',
+      summary: '陈一鸣 想接取该任务',
+      requesterId: 'u_1002',
+      ownerId: 'u_1001',
+      status: 'pending',
+      createdAt: now,
+      expiresAt: tomorrow,
+      actedAt: '',
+      actionMessage: ''
+    },
     readBy: ['u_1002'],
     createdAt: '2026-06-29T12:28:00.000Z'
   },

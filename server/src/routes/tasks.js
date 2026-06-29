@@ -1,5 +1,6 @@
 const express = require('express');
 const auth = require('../services/auth');
+const actionCards = require('../services/actionCards');
 const store = require('../services/store');
 const socketHub = require('../services/socketHub');
 const { ok, fail } = require('../response');
@@ -21,24 +22,6 @@ function filterTasks(data, query) {
 
 function ensureTask(data, id) {
   return data.tasks.find((item) => item.id === id);
-}
-
-function findOrCreateConversation(data, currentUserId, targetUserId, card) {
-  let conversation = data.conversations.find((item) => {
-    return item.participantIds.includes(currentUserId) && item.participantIds.includes(targetUserId);
-  });
-  if (!conversation) {
-    conversation = {
-      id: store.id('conv'),
-      participantIds: [currentUserId, targetUserId],
-      mutedBy: [],
-      source: '任务互助',
-      relatedCard: card,
-      updatedAt: store.now()
-    };
-    data.conversations.unshift(conversation);
-  }
-  return conversation;
 }
 
 router.get('/', (req, res) => {
@@ -125,22 +108,20 @@ router.post('/', auth.requireAuth, (req, res) => {
 router.post('/:id/apply', auth.requireAuth, (req, res) => {
   const task = ensureTask(req.data, req.params.id);
   if (!task) return fail(res, 404, '任务不存在');
+  if (task.publisherId === req.user.id) return fail(res, 400, '不能报名自己发布的任务');
+  if (task.status !== '报名中') return fail(res, 400, '该任务当前不可报名');
   if (!task.applicants.includes(req.user.id)) task.applicants.push(req.user.id);
-  const card = { type: 'taskApply', targetId: task.id, title: task.title, action: '报名接单' };
-  const conversation = findOrCreateConversation(req.data, req.user.id, task.publisherId, card);
-  const message = {
-    id: store.id('msg'),
-    conversationId: conversation.id,
-    fromUserId: req.user.id,
-    type: 'card',
-    content: req.body.message || `我报名了「${task.title}」，可以私信沟通细节。`,
-    card,
-    readBy: [req.user.id],
-    createdAt: store.now()
-  };
-  conversation.relatedCard = card;
-  conversation.updatedAt = message.createdAt;
-  req.data.messages.push(message);
+  const { conversation, message } = actionCards.createActionCardMessage(req.data, {
+    type: 'taskApply',
+    targetType: 'task',
+    targetId: task.id,
+    title: task.title,
+    summary: `${req.user.nickname} 想接取该任务`,
+    requesterId: req.user.id,
+    ownerId: task.publisherId,
+    source: '任务互助',
+    content: req.body.message || `我想接取「${task.title}」，等待你确认。`
+  });
   store.addNotification(req.data, {
     userId: task.publisherId,
     type: '任务报名',
@@ -151,7 +132,7 @@ router.post('/:id/apply', auth.requireAuth, (req, res) => {
   });
   store.save(req.data);
   socketHub.broadcastToUser(task.publisherId, { type: 'message', data: { conversationId: conversation.id, message } });
-  return ok(res, { task: store.publicTask(req.data, task), conversation, message }, '报名成功');
+  return ok(res, { task: store.publicTask(req.data, task), conversation, message }, '已发送报名卡片');
 });
 
 router.post('/:id/assign', auth.requireAuth, (req, res) => {
