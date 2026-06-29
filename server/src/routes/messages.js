@@ -59,6 +59,27 @@ router.get('/conversations/:id/messages', auth.requireAuth, (req, res) => {
   return ok(res, { list: paged, total: all.length, page, pageSize });
 });
 
+router.get('/search', auth.requireAuth, (req, res) => {
+  const keyword = String(req.query.keyword || '').trim().toLowerCase();
+  if (!keyword) return ok(res, []);
+  const joinedConversationIds = req.data.conversations
+    .filter((item) => item.participantIds.includes(req.user.id))
+    .map((item) => item.id);
+  const list = req.data.messages
+    .filter((item) => joinedConversationIds.includes(item.conversationId))
+    .filter((item) => `${item.content || ''} ${item.card?.title || ''}`.toLowerCase().includes(keyword))
+    .slice(-50)
+    .map((message) => ({
+      ...message,
+      conversation: conversationDto(
+        req.data,
+        req.data.conversations.find((item) => item.id === message.conversationId),
+        req.user.id,
+      ),
+    }));
+  return ok(res, list);
+});
+
 router.post('/conversations/:id/messages', auth.requireAuth, (req, res) => {
   const conversation = req.data.conversations.find((item) => item.id === req.params.id);
   if (!conversation || !conversation.participantIds.includes(req.user.id)) return fail(res, 404, '会话不存在');
@@ -93,6 +114,17 @@ router.put('/conversations/:id/read', auth.requireAuth, (req, res) => {
     });
   store.save(req.data);
   return ok(res, null, '已标记为已读');
+});
+
+router.put('/conversations/:id/mute', auth.requireAuth, (req, res) => {
+  const conversation = req.data.conversations.find((item) => item.id === req.params.id);
+  if (!conversation || !conversation.participantIds.includes(req.user.id)) return fail(res, 404, '会话不存在');
+  const muted = Boolean(req.body.muted);
+  const index = conversation.mutedBy.indexOf(req.user.id);
+  if (muted && index < 0) conversation.mutedBy.push(req.user.id);
+  if (!muted && index >= 0) conversation.mutedBy.splice(index, 1);
+  store.save(req.data);
+  return ok(res, conversationDto(req.data, conversation, req.user.id), muted ? '已开启免打扰' : '已关闭免打扰');
 });
 
 router.delete('/conversations/:id/messages/:messageId', auth.requireAuth, (req, res) => {
