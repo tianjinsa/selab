@@ -1,0 +1,92 @@
+<nav title-text="任务互助" />
+<view class="task-page">
+  <view class="market-hero">
+    <view>
+      <text class="eyebrow">校园任务互助</text>
+      <view class="hero-title">从发布到结算的互助闭环</view>
+      <view class="hero-desc">代取快递、学业互助、技能服务都走统一身份、私信沟通、托管支付和验收结算。</view>
+    </view>
+    <t-button theme="primary" icon="add" shape="round" bindtap="publishTask">发布任务</t-button>
+  </view>
+
+  <view class="flow-strip">
+    <view wx:for="{{flow}}" wx:key="index" class="flow-node">
+      <text>{{index + 1}}</text>
+      <view>{{item}}</view>
+    </view>
+  </view>
+
+  <view class="search-panel">
+    <t-search placeholder="搜索任务类型、地点或关键词" value="{{keyword}}" bind:change="onSearch" />
+    <scroll-view scroll-x class="category-strip" show-scrollbar="{{false}}">
+      <t-tag
+        wx:for="{{categories}}"
+        wx:key="index"
+        class="category"
+        size="large"
+        theme="{{activeCategory === item ? 'primary' : 'default'}}"
+        variant="{{activeCategory === item ? 'dark' : 'light'}}"
+        data-name="{{item}}"
+        bindtap="selectCategory"
+      >
+        {{item}}
+      </t-tag>
+    </scroll-view>
+  </view>
+
+  <view class="section-title">
+    <text>任务市场</text>
+    <text>{{filteredTasks.length}} 个可浏览任务</text>
+  </view>
+
+  <view class="task-list">
+    <view wx:for="{{filteredTasks}}" wx:key="id" class="task-card">
+      <view class="task-head">
+        <view>
+          <view class="task-title">{{item.title}}</view>
+          <view class="task-meta">{{item.type}} · {{item.distance}} · {{item.deadline}}</view>
+        </view>
+        <view class="reward">¥{{item.reward}}</view>
+      </view>
+      <view class="task-detail">{{item.detail}}</view>
+      <view class="task-location">
+        <t-icon name="location" size="30rpx" />
+        <text>{{item.location}}</text>
+      </view>
+      <view class="tag-row">
+        <t-tag wx:for="{{item.tags}}" wx:for-item="tag" wx:key="index" size="small" variant="light">{{tag}}</t-tag>
+        <t-tag size="small" theme="success" variant="light">{{item.status}}</t-tag>
+      </view>
+      <view class="task-actions">
+        <text>{{item.applicants}} 人已报名</text>
+        <view>
+          <t-button size="small" theme="light" icon="chat" bindtap="openChat">私信</t-button>
+          <t-button size="small" theme="primary" data-id="{{item.id}}" bindtap="applyTask">报名</t-button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-title">
+    <text>接单者排行榜</text>
+    <text>周榜 / 月榜</text>
+  </view>
+  <view class="leaderboard">
+    <view wx:for="{{leaderboard}}" wx:key="name" class="rank-row">
+      <view class="rank-no">{{index + 1}}</view>
+      <view class="rank-info">
+        <view>{{item.name}}</view>
+        <text>信用 {{item.level}} · 完成率 {{item.completeRate}}</text>
+      </view>
+      <view class="rank-count">{{item.count}} 单</view>
+    </view>
+  </view>
+
+  <view class="settle-panel">
+    <view>
+      <view class="settle-title">任务结束卡片</view>
+      <view class="settle-desc">任意一方可在私信里发起验收与结算，系统记录状态流转与资金流水。</view>
+    </view>
+    <t-button theme="primary" variant="outline" bindtap="requestSettle">发起结算</t-button>
+  </view>
+</view>
