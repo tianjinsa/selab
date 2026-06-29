@@ -1,2 +1,7 @@
 UI Component Library Template/
 miniprogram_npm/
+node_modules/
+**/node_modules/
+*.log
+.env
+server/data/db.json
