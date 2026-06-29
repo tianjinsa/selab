@@ -1,7 +1,13 @@
 import config from '~/config';
 
-const { baseUrl } = config;
+const baseUrl = config.isMock ? config.mockBaseUrl : config.apiBaseUrl;
 const delay = config.isMock ? 500 : 0;
+
+function isSuccessResponse(res) {
+  const body = res.data || res;
+  return res.statusCode === 200 || res.code === 200 || body.code === 200 || body.success === true;
+}
+
 function request(url, method = 'GET', data = {}) {
   const header = {
     'content-type': 'application/json',
@@ -21,8 +27,7 @@ function request(url, method = 'GET', data = {}) {
       header,
       success(res) {
         setTimeout(() => {
-          // HTTP状态码为200才视为成功
-          if (res.code === 200) {
+          if (isSuccessResponse(res)) {
             resolve(res);
           } else {
             // wx.request的特性，只要有响应就会走success回调，所以在这里判断状态，非200的均视为请求失败
