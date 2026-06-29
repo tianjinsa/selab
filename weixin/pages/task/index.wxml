@@ -40,7 +40,7 @@
   </view>
 
   <view class="task-list">
-    <view wx:for="{{filteredTasks}}" wx:key="id" class="task-card">
+    <view wx:for="{{filteredTasks}}" wx:key="id" class="task-card" data-id="{{item.id}}" bindtap="openDetail">
       <view class="task-head">
         <view>
           <view class="task-title">{{item.title}}</view>
@@ -58,10 +58,18 @@
         <t-tag size="small" theme="success" variant="light">{{item.status}}</t-tag>
       </view>
       <view class="task-actions">
-        <text>{{item.applicants}} 人已报名</text>
+        <text>{{item.applicantCount}} 人已报名</text>
         <view>
-          <t-button size="small" theme="light" icon="chat" bindtap="openChat">私信</t-button>
-          <t-button size="small" theme="primary" data-id="{{item.id}}" bindtap="applyTask">报名</t-button>
+          <t-button
+            size="small"
+            theme="light"
+            icon="chat"
+            catchtap="openChat"
+            data-user-id="{{item.publisher.id}}"
+            data-task-id="{{item.id}}"
+            data-title="{{item.title}}"
+          >私信</t-button>
+          <t-button size="small" theme="primary" data-id="{{item.id}}" catchtap="applyTask">报名</t-button>
         </view>
       </view>
     </view>

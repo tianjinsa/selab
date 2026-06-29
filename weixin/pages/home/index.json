@@ -6,6 +6,8 @@
     "t-button": "tdesign-miniprogram/button/button",
     "t-tag": "tdesign-miniprogram/tag/tag",
     "t-avatar": "tdesign-miniprogram/avatar/avatar",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-empty": "tdesign-miniprogram/empty/empty",
     "nav": "/components/nav",
     "card": "/components/card"
   }

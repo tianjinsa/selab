@@ -1,13 +1,14 @@
 import request from '~/api/request';
+import { unwrap } from '~/utils/api';
 import { areaList } from './areaData.js';
 
 Page({
   data: {
     personInfo: {
       name: '',
-      gender: 0,
+      gender: 2,
       birth: '',
-      address: [],
+      address: ['110000', '110100'],
       introduction: '',
       photos: [],
     },
@@ -27,7 +28,7 @@ Page({
     ],
     birthVisible: false,
     birthStart: '1970-01-01',
-    birthEnd: '2025-03-01',
+    birthEnd: '2026-12-31',
     birthTime: 0,
     birthFilter: (type, options) => (type === 'year' ? options.sort((a, b) => b.value - a.value) : options),
     addressText: '',
@@ -48,18 +49,30 @@ Page({
   },
 
   getPersonalInfo() {
-    request('/api/genPersonalInfo').then((res) => {
+    request('/auth/me').then((res) => {
+      const user = unwrap(res);
+      const profile = user.profile || {};
+      const address = profile.address || this.data.personInfo.address;
       this.setData(
         {
-          personInfo: res.data.data,
+          personInfo: {
+            name: user.nickname || '',
+            gender: profile.gender === undefined ? 2 : profile.gender,
+            birth: profile.birth || '',
+            address,
+            introduction: profile.introduction || '',
+            photos: profile.photos || [],
+          },
         },
-        () => {
-          const { personInfo } = this.data;
-          this.setData({
-            addressText: `${areaList.provinces[personInfo.address[0]]} ${areaList.cities[personInfo.address[1]]}`,
-          });
-        },
+        () => this.updateAddressText(),
       );
+    });
+  },
+
+  updateAddressText() {
+    const { address } = this.data.personInfo;
+    this.setData({
+      addressText: `${areaList.provinces[address[0]] || ''} ${areaList.cities[address[1]] || ''}`.trim(),
     });
   },
 
@@ -85,7 +98,6 @@ Page({
     const { column, index } = e.detail;
     const { provinces } = this.data;
 
-    // 更改省份则更新城市列表
     if (column === 0) {
       const cities = this.getCities(provinces[index].value);
       this.setData({ cities });
@@ -145,7 +157,7 @@ Page({
 
   onPhotosRemove(e) {
     const { index } = e.detail;
-    const { photos } = this.data.personInfo;
+    const photos = this.data.personInfo.photos.slice();
 
     photos.splice(index, 1);
     this.setData({
@@ -168,6 +180,18 @@ Page({
   },
 
   onSaveInfo() {
-    // console.log(this.data.personInfo);
+    const { personInfo } = this.data;
+    request('/auth/me', 'PUT', {
+      nickname: personInfo.name,
+      profile: {
+        gender: personInfo.gender,
+        birth: personInfo.birth,
+        address: personInfo.address,
+        introduction: personInfo.introduction,
+        photos: personInfo.photos,
+      },
+    })
+      .then(() => wx.showToast({ title: '已保存', icon: 'success' }))
+      .catch(() => wx.showToast({ title: '保存失败', icon: 'none' }));
   },
 });

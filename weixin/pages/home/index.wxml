@@ -14,40 +14,47 @@
     </view>
   </view>
 
-  <scroll-view scroll-x class="topic-strip" show-scrollbar="{{false}}">
+  <scroll-view wx:if="{{hotTopics.length}}" scroll-x class="topic-strip" show-scrollbar="{{false}}">
     <t-tag wx:for="{{hotTopics}}" wx:key="index" class="topic" size="large" theme="primary" variant="light">#{{item}}</t-tag>
   </scroll-view>
 
   <t-tabs value="{{activeTab}}" bind:change="onTabChange">
-    <t-tab-panel wx:for="{{tabs}}" wx:key="item" label="{{item}}" value="{{item}}">
-      <view class="post-list">
-        <view wx:for="{{posts}}" wx:key="id" class="post-card">
-          <image class="post-cover" src="{{item.image}}" mode="aspectFill" />
-          <view class="post-body">
-            <view class="post-author">
-              <t-avatar image="{{item.avatar}}" size="72rpx" />
-              <view>
-                <view class="author-name">{{item.author}}</view>
-                <view class="post-type">{{item.type}} · {{item.views}} 浏览</view>
-              </view>
-              <t-button class="follow-btn" size="small" theme="light" shape="round">关注</t-button>
+    <t-tab-panel wx:for="{{tabs}}" wx:key="item" label="{{item}}" value="{{item}}"></t-tab-panel>
+  </t-tabs>
+
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="48rpx" text="加载帖子中" />
+  </view>
+
+  <t-empty wx:elif="{{!filteredPosts.length}}" description="暂无帖子" />
+
+  <view wx:else class="waterfall">
+    <view wx:for="{{columns}}" wx:for-item="column" wx:key="index" class="waterfall-column">
+      <view wx:for="{{column}}" wx:key="id" class="post-card" data-id="{{item.id}}" bindtap="openDetail">
+        <image class="post-cover" style="height: {{item.coverHeight}}rpx;" src="{{item.cover}}" mode="aspectFill" />
+        <view class="post-body">
+          <view class="post-title">{{item.title}}</view>
+          <view class="post-content">{{item.content}}</view>
+          <view class="tag-row">
+            <t-tag wx:for="{{item.topics}}" wx:for-item="topic" wx:key="index" size="small" variant="outline">#{{topic}}</t-tag>
+          </view>
+          <view class="post-author">
+            <t-avatar image="{{item.avatar}}" size="48rpx" />
+            <view class="author-info">
+              <view class="author-name">{{item.authorName}}</view>
+              <view class="post-type">{{item.type}} · {{item.publishTime}}</view>
             </view>
-            <view class="post-title">{{item.title}}</view>
-            <view class="post-content">{{item.content}}</view>
-            <view class="tag-row">
-              <t-tag wx:for="{{item.topics}}" wx:for-item="topic" wx:key="index" size="small" variant="outline">#{{topic}}</t-tag>
-            </view>
-            <view class="post-actions">
-              <t-button size="small" variant="text" icon="thumb-up" data-id="{{item.id}}" bindtap="likePost">{{item.likes}}</t-button>
-              <t-button size="small" variant="text" icon="chat" bindtap="sharePost">{{item.comments}}</t-button>
-              <t-button size="small" variant="text" icon="star" bindtap="favoritePost">收藏</t-button>
-              <t-button size="small" variant="text" icon="share" bindtap="sharePost">分享</t-button>
-            </view>
+          </view>
+          <view class="post-actions">
+            <t-button size="small" variant="text" icon="thumb-up" data-id="{{item.id}}" catchtap="likePost">{{item.likeCount}}</t-button>
+            <t-button size="small" variant="text" icon="chat" data-id="{{item.id}}" catchtap="commentPost">{{item.commentCount}}</t-button>
+            <t-button size="small" variant="text" icon="star" data-id="{{item.id}}" catchtap="favoritePost"></t-button>
+            <t-button size="small" variant="text" icon="share" data-id="{{item.id}}" catchtap="sharePost"></t-button>
           </view>
         </view>
       </view>
-    </t-tab-panel>
-  </t-tabs>
+    </view>
+  </view>
 
   <view class="home-release">
     <t-button theme="primary" size="large" icon="add" shape="round" bindtap="goRelease">发布</t-button>

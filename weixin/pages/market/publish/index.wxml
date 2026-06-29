@@ -1,0 +1,40 @@
+<t-navbar title="发布闲置" left-arrow bind:go-back="goBack" />
+<view class="publish-page">
+  <view class="form-card">
+    <view class="field-label">商品名称</view>
+    <t-input value="{{form.name}}" placeholder="例如：九成新无线键盘" data-field="name" bind:change="updateField" />
+
+    <view class="field-label">分类</view>
+    <view class="chip-row">
+      <t-tag wx:for="{{categories}}" wx:key="index" size="large" theme="{{form.category === item ? 'primary' : 'default'}}" variant="{{form.category === item ? 'dark' : 'light'}}" data-value="{{item}}" bindtap="chooseCategory">{{item}}</t-tag>
+    </view>
+
+    <view class="field-label">价格</view>
+    <t-input value="{{form.price}}" type="digit" placeholder="请输入价格" data-field="price" bind:change="updateField" />
+
+    <view class="field-label">成色</view>
+    <view class="chip-row">
+      <t-tag wx:for="{{conditions}}" wx:key="index" size="large" theme="{{form.condition === item ? 'primary' : 'default'}}" variant="{{form.condition === item ? 'dark' : 'light'}}" data-value="{{item}}" bindtap="chooseCondition">{{item}}</t-tag>
+    </view>
+
+    <view class="field-label">交易方式</view>
+    <view class="chip-row">
+      <t-tag wx:for="{{tradeModes}}" wx:key="index" size="large" theme="{{form.tradeMode === item ? 'primary' : 'default'}}" variant="{{form.tradeMode === item ? 'dark' : 'light'}}" data-value="{{item}}" bindtap="chooseTradeMode">{{item}}</t-tag>
+    </view>
+
+    <view class="field-label">交易地点</view>
+    <t-input value="{{form.location}}" placeholder="例如：图书馆门口" data-field="location" bind:change="updateField" />
+
+    <view class="field-label">商品描述</view>
+    <t-textarea value="{{form.description}}" placeholder="描述使用情况、配件、瑕疵和交易说明" maxlength="300" indicator data-field="description" bind:change="updateField" />
+  </view>
+
+  <view class="audit-note">
+    <view class="note-title">发布后进入审核</view>
+    <view class="note-desc">商品会先进入“系统初筛 + 人工复审”流程，通过后展示在前台列表。</view>
+  </view>
+
+  <view class="bottom-actions">
+    <t-button theme="primary" size="large" block bindtap="submit">提交审核</t-button>
+  </view>
+</view>

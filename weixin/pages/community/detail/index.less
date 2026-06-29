@@ -1,0 +1,163 @@
+@import '/variable.less';
+
+page {
+  background: #eef2f7;
+}
+
+.detail-page {
+  min-height: 100vh;
+  padding: 20rpx 24rpx 144rpx;
+  box-sizing: border-box;
+}
+
+.state-box {
+  display: flex;
+  justify-content: center;
+  padding: 96rpx 0;
+}
+
+.post-panel,
+.comment-list {
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.post-panel {
+  padding: 26rpx;
+}
+
+.author-row,
+.comment-item,
+.comment-head,
+.post-actions {
+  display: flex;
+  align-items: center;
+}
+
+.author-row {
+  gap: 16rpx;
+}
+
+.author-main,
+.comment-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.author-name,
+.comment-author {
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.post-meta,
+.comment-time {
+  margin-top: 4rpx;
+  color: #64748b;
+  font-size: 22rpx;
+}
+
+.post-title {
+  margin-top: 24rpx;
+  color: #111827;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.28;
+}
+
+.post-content {
+  margin-top: 16rpx;
+  color: #263445;
+  font-size: 28rpx;
+  line-height: 1.68;
+}
+
+.post-cover {
+  width: 100%;
+  height: 360rpx;
+  display: block;
+  margin-top: 22rpx;
+  border-radius: 12rpx;
+  background: #dbe4ef;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 18rpx;
+}
+
+.post-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8rpx;
+  margin-top: 18rpx;
+}
+
+.section-title {
+  margin: 28rpx 4rpx 14rpx;
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.comment-list {
+  overflow: hidden;
+}
+
+.comment-item {
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #edf2f7;
+}
+
+.comment-item:last-child {
+  border-bottom: 0;
+}
+
+.comment-head {
+  justify-content: space-between;
+}
+
+.comment-content {
+  margin-top: 10rpx;
+  color: #334155;
+  font-size: 27rpx;
+  line-height: 1.56;
+}
+
+.reply-list {
+  margin-top: 14rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 12rpx;
+  background: #f6f8fb;
+}
+
+.reply-item {
+  color: #475569;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+
+.reply-author {
+  color: #176b87;
+  font-weight: 700;
+}
+
+.comment-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: 1fr 156rpx;
+  gap: 16rpx;
+  padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #dbe4ef;
+  background: #fff;
+  box-sizing: border-box;
+}

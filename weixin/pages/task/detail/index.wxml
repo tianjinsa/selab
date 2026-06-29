@@ -1,0 +1,43 @@
+<t-navbar title="任务详情" left-arrow bind:go-back="goBack" />
+<view wx:if="{{task}}" class="detail-page">
+  <view class="hero">
+    <view>
+      <t-tag theme="primary" variant="light">{{task.type}}</t-tag>
+      <view class="title">{{task.title}}</view>
+      <view class="meta">{{task.location}} · {{task.deadline}}</view>
+    </view>
+    <view class="reward">¥{{task.reward}}</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">任务要求</view>
+    <view class="content">{{task.detail}}</view>
+    <view class="content muted">交付要求：{{task.deliverable}}</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">发布者</view>
+    <view class="publisher">
+      <t-avatar image="{{task.publisher.avatar}}" size="88rpx" />
+      <view>
+        <view class="publisher-name">{{task.publisher.nickname}}</view>
+        <view class="muted">信用 {{task.publisher.creditLevel}} · {{task.publisher.creditScore}} 分</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">状态流转</view>
+    <view class="flow">
+      <view wx:for="{{flow}}" wx:key="index" class="flow-node {{task.status === item ? 'active' : ''}}">
+        <text>{{index + 1}}</text>
+        <view>{{item}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-actions">
+    <t-button theme="light" icon="chat" bindtap="openChat">私信发布者</t-button>
+    <t-button theme="primary" bindtap="applyTask">报名接单</t-button>
+  </view>
+</view>

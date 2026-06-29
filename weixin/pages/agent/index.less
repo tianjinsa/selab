@@ -1,111 +1,136 @@
 @import '/variable.less';
 
 page {
-  background: #edf2f7;
+  background: #eef2f7;
 }
 
-.agent-page {
+.agent-chat {
   min-height: calc(100vh - @tab-bar-height);
-  padding: 20rpx 24rpx calc(@tab-bar-height + 44rpx);
+  background: #eef2f7;
+  box-sizing: border-box;
 }
 
-.agent-hero {
-  padding: 30rpx;
-  border-radius: 16rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #182033 0%, #444b6e 48%, #f4d35e 100%);
-}
-
-.eyebrow {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 24rpx;
-}
-
-.hero-title {
-  margin-top: 8rpx;
-  font-size: 42rpx;
-  font-weight: 700;
-}
-
-.hero-desc {
-  margin-top: 12rpx;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 25rpx;
-  line-height: 1.55;
-}
-
-.tool-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
-  margin: 18rpx 0;
-}
-
-.tool-card {
+.chat-header {
   display: flex;
   align-items: center;
-  gap: 14rpx;
-  min-height: 132rpx;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 18rpx 20rpx;
+  border-bottom: 1rpx solid #dbe4ef;
+  background: rgba(255, 255, 255, 0.96);
+  box-sizing: border-box;
+}
+
+.title-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-title {
+  color: #111827;
+  font-size: 34rpx;
+  font-weight: 800;
+}
+
+.session-title {
+  overflow: hidden;
+  margin-top: 4rpx;
+  color: #64748b;
+  font-size: 22rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8rpx;
+}
+
+.message-list {
+  height: calc(100vh - @tab-bar-height - 220rpx);
+  padding: 20rpx 20rpx 150rpx;
+  box-sizing: border-box;
+}
+
+.agent-strip {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 22rpx;
   padding: 18rpx;
   border: 1rpx solid #dbe4ef;
-  border-radius: 16rpx;
+  border-radius: 14rpx;
   background: #fff;
 }
 
-.tool-title {
+.agent-badge,
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: #0052d9;
+  font-weight: 800;
+}
+
+.agent-badge {
+  width: 64rpx;
+  height: 64rpx;
+  font-size: 28rpx;
+}
+
+.agent-name {
   color: #111827;
   font-size: 28rpx;
   font-weight: 700;
 }
 
-.tool-desc {
+.agent-desc {
   margin-top: 4rpx;
   color: #64748b;
-  font-size: 22rpx;
-  line-height: 1.4;
+  font-size: 23rpx;
 }
 
-.quick-strip {
-  width: 100%;
-  margin-bottom: 18rpx;
-  white-space: nowrap;
-}
-
-.quick {
-  margin-right: 12rpx;
-}
-
-.chat-panel {
-  padding: 20rpx;
-  border: 1rpx solid #dbe4ef;
-  border-radius: 16rpx;
-  background: #fff;
-}
-
-.message {
+.message-row {
   display: flex;
-  margin-bottom: 18rpx;
+  align-items: flex-start;
+  gap: 14rpx;
+  margin-bottom: 20rpx;
 }
 
-.message.user {
+.message-row.user {
   justify-content: flex-end;
 }
 
-.bubble {
-  max-width: 600rpx;
-  padding: 18rpx;
-  border-radius: 16rpx;
-  background: #f1f5f9;
+.avatar {
+  width: 56rpx;
+  height: 56rpx;
+  margin-top: 2rpx;
+  font-size: 24rpx;
 }
 
-.message.user .bubble {
-  background: #176b87;
+.bubble {
+  max-width: 560rpx;
+  padding: 18rpx 20rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+  box-sizing: border-box;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.04);
+}
+
+.message-row.user .bubble {
+  border-color: #0052d9;
   color: #fff;
+  background: #0052d9;
 }
 
 .message-text {
-  font-size: 27rpx;
-  line-height: 1.55;
+  font-size: 28rpx;
+  line-height: 1.62;
+  word-break: break-word;
 }
 
 .source-row {
@@ -117,14 +142,47 @@ page {
   font-size: 22rpx;
 }
 
-.input-bar {
+.message-row.user .source-row {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.typing {
+  min-width: 92rpx;
+}
+
+.composer {
+  position: fixed;
+  right: 0;
+  bottom: @tab-bar-height;
+  left: 0;
   display: grid;
-  grid-template-columns: 1fr 160rpx;
-  gap: 12rpx;
-  align-items: center;
-  margin-top: 18rpx;
-  padding: 14rpx;
-  border: 1rpx solid #dbe4ef;
-  border-radius: 16rpx;
-  background: #fff;
+  grid-template-columns: 1fr 150rpx;
+  gap: 14rpx;
+  align-items: end;
+  padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #dbe4ef;
+  background: rgba(255, 255, 255, 0.98);
+  box-sizing: border-box;
+}
+
+.composer-input {
+  min-height: 48rpx;
+  max-height: 160rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 28rpx;
+  color: #111827;
+  background: #f1f5f9;
+  font-size: 27rpx;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+
+.send-btn {
+  height: 84rpx;
+}
+
+.drawer-empty {
+  padding: 28rpx;
+  color: #64748b;
+  font-size: 26rpx;
 }

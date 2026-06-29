@@ -1,84 +1,102 @@
-// pages/chat/index.js
+import request from '~/api/request';
+import { listFrom, unwrap } from '~/utils/api';
+
 const app = getApp();
-const { socket } = app.globalData; // 获取已连接的socketTask
 
 Page({
-  /** 页面的初始数据 */
   data: {
-    myAvatar: '/static/chat/avatar.png', // 自己的头像
-    userId: null, // 对方userId
-    avatar: '', // 对方头像
-    name: '', // 对方昵称
-    messages: [], // 消息列表 { messageId, from, content, time, read }
-    input: '', // 输入框内容
-    anchor: '', // 消息列表滚动到 id 与之相同的元素的位置
-    keyboardHeight: 0, // 键盘当前高度(px)
+    myAvatar: '/static/chat/avatar.png',
+    myUserId: '',
+    conversationId: '',
+    avatar: '',
+    name: '会话',
+    messages: [],
+    input: '',
+    anchor: '',
+    keyboardHeight: 0,
   },
 
-  /** 生命周期函数--监听页面加载 */
-  onLoad(options) {
-    this.getOpenerEventChannel().on('update', this.update);
+  async onLoad(options) {
+    await app.ensureLogin();
+    const user = app.globalData.userInfo || {};
+    this.socketMessageHandler = this.handleSocketMessage.bind(this);
+    this.setData({
+      myUserId: user.id,
+      myAvatar: user.avatar || '/static/chat/avatar.png',
+      conversationId: options.conversationId || '',
+      name: options.name ? decodeURIComponent(options.name) : '会话',
+      avatar: options.avatar ? decodeURIComponent(options.avatar) : '',
+    });
+    this.loadConversation();
+    app.eventBus.on('socket-message', this.socketMessageHandler);
   },
 
-  /** 生命周期函数--监听页面初次渲染完成 */
-  onReady() {},
-
-  /** 生命周期函数--监听页面显示 */
-  onShow() {},
-
-  /** 生命周期函数--监听页面隐藏 */
-  onHide() {},
-
-  /** 生命周期函数--监听页面卸载 */
   onUnload() {
-    app.eventBus.off('update', this.update);
+    app.eventBus.off('socket-message', this.socketMessageHandler);
   },
 
-  /** 页面相关事件处理函数--监听用户下拉动作 */
-  onPullDownRefresh() {},
-
-  /** 页面上拉触底事件的处理函数 */
-  onReachBottom() {},
-
-  /** 用户点击右上角分享 */
-  onShareAppMessage() {},
-
-  /** 更新数据 */
-  update({ userId, avatar, name, messages }) {
-    this.setData({ userId, avatar, name, messages: [...messages] });
-    wx.nextTick(this.scrollToBottom);
+  handleSocketMessage(data) {
+    if (data && data.data && data.data.conversationId === this.data.conversationId) this.loadMessages();
   },
 
-  /** 处理唤起键盘事件 */
+  goBack() {
+    if (getCurrentPages().length > 1) wx.navigateBack();
+    else wx.navigateTo({ url: '/pages/message/index' });
+  },
+
+  async loadConversation() {
+    const conversations = listFrom(await request('/messages/conversations'));
+    const conversation = conversations.find((item) => item.id === this.data.conversationId);
+    if (conversation) {
+      const peer = conversation.peer || {};
+      this.setData({
+        name: peer.nickname || this.data.name,
+        avatar: peer.avatar || this.data.avatar,
+      });
+    }
+    await this.loadMessages();
+    request(`/messages/conversations/${this.data.conversationId}/read`, 'PUT').then(() => app.getUnreadNum());
+  },
+
+  async loadMessages() {
+    const data = unwrap(await request(`/messages/conversations/${this.data.conversationId}/messages?pageSize=80`));
+    const messages = (data.list || []).map((item) => ({
+      id: item.id,
+      from: item.fromUserId === this.data.myUserId ? 0 : 1,
+      content: item.content,
+      card: item.card,
+      time: new Date(item.createdAt).getTime(),
+    }));
+    this.setData({ messages });
+    wx.nextTick(() => this.scrollToBottom());
+  },
+
   handleKeyboardHeightChange(event) {
     const { height } = event.detail;
     if (!height) return;
     this.setData({ keyboardHeight: height });
-    wx.nextTick(this.scrollToBottom);
+    wx.nextTick(() => this.scrollToBottom());
   },
 
-  /** 处理收起键盘事件 */
   handleBlur() {
     this.setData({ keyboardHeight: 0 });
   },
 
-  /** 处理输入事件 */
   handleInput(event) {
     this.setData({ input: event.detail.value });
   },
 
-  /** 发送消息 */
   sendMessage() {
-    const { userId, messages, input: content } = this.data;
+    const content = this.data.input.trim();
     if (!content) return;
-    const message = { messageId: null, from: 0, content, time: Date.now(), read: true };
-    messages.push(message);
-    this.setData({ input: '', messages });
-    socket.send(JSON.stringify({ type: 'message', data: { userId, content } }));
-    wx.nextTick(this.scrollToBottom);
+    request(`/messages/conversations/${this.data.conversationId}/messages`, 'POST', { content, type: 'text' })
+      .then(() => {
+        this.setData({ input: '' });
+        return this.loadMessages();
+      })
+      .catch(() => wx.showToast({ title: '发送失败', icon: 'none' }));
   },
 
-  /** 消息列表滚动到底部 */
   scrollToBottom() {
     this.setData({ anchor: 'bottom' });
   },
