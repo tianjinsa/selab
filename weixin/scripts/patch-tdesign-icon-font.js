@@ -26,6 +26,17 @@ const targets = [
   },
 ];
 
+const buttonTargets = [
+  {
+    propsPath: path.join(rootDir, 'miniprogram_npm', 'tdesign-miniprogram', 'button', 'props.js'),
+    wxmlPath: path.join(rootDir, 'miniprogram_npm', 'tdesign-miniprogram', 'button', 'button.wxml'),
+  },
+  {
+    propsPath: path.join(rootDir, 'node_modules', 'tdesign-miniprogram', 'miniprogram_dist', 'button', 'props.js'),
+    wxmlPath: path.join(rootDir, 'node_modules', 'tdesign-miniprogram', 'miniprogram_dist', 'button', 'button.wxml'),
+  },
+];
+
 function download(url, destination) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destination);
@@ -75,10 +86,39 @@ function patchWxss(target) {
   return true;
 }
 
+function replaceFile(filePath, replacer) {
+  if (!fs.existsSync(filePath)) return false;
+  const content = fs.readFileSync(filePath, 'utf8');
+  const next = replacer(content);
+  if (next === content) return false;
+  fs.writeFileSync(filePath, next, 'utf8');
+  return true;
+}
+
+function patchButtonProps(filePath) {
+  return replaceFile(filePath, (content) =>
+    content
+      .replace(/loadingProps:\s*\{\s*type:\s*Object,\s*\}/, 'loadingProps: { type: Object, value: {} }')
+      .replace(/loadingProps:\{type:Object\}/, 'loadingProps:{type:Object,value:{}}')
+      .replace(/style:\{type:String\}/, 'style:{type:String,value:""}'));
+}
+
+function patchButtonWxml(filePath) {
+  return replaceFile(filePath, (content) =>
+    content.replace(
+      /style="\{\{_\._style\(\[style,\s*customStyle\]\)\}\}"/g,
+      'style="{{_._style([style, customStyle]) || \'\'}}"',
+    ));
+}
+
 ensureFont()
   .then(() => {
-    const patched = targets.filter(patchWxss);
-    console.warn(`TDesign icon font patched: ${patched.length} file(s).`);
+    const patchedFonts = targets.filter(patchWxss);
+    const patchedButtons = buttonTargets.reduce(
+      (count, target) => count + Number(patchButtonProps(target.propsPath)) + Number(patchButtonWxml(target.wxmlPath)),
+      0,
+    );
+    console.warn(`TDesign patched: ${patchedFonts.length} font file(s), ${patchedButtons} button file(s).`);
   })
   .catch((error) => {
     console.error(error.message);
