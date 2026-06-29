@@ -1,6 +1,8 @@
 const express = require('express');
 const auth = require('../services/auth');
+const social = require('../services/social');
 const store = require('../services/store');
+const socketHub = require('../services/socketHub');
 const { ok, fail } = require('../response');
 
 const router = express.Router();
@@ -98,9 +100,48 @@ router.post('/posts/:id/favorite', auth.requireAuth, (req, res) => {
 router.post('/posts/:id/share', auth.requireAuth, (req, res) => {
   const post = req.data.posts.find((item) => item.id === req.params.id);
   if (!post) return fail(res, 404, '帖子不存在');
-  post.shares += 1;
+  const targetUserId = req.body.targetUserId;
+  const target = store.getUser(req.data, targetUserId);
+  if (!target) return fail(res, 404, '转发好友不存在');
+  if (!social.isMutual(req.data, req.user.id, targetUserId)) return fail(res, 403, '只能转发给互关好友');
+  const author = store.getUser(req.data, post.authorId);
+  const card = {
+    type: 'postShare',
+    targetType: 'post',
+    targetId: post.id,
+    title: post.title,
+    summary: post.content,
+    cover: (post.images || [])[0] || '',
+    authorName: (author && author.nickname) || '同学',
+    sharedBy: req.user.id,
+    createdAt: store.now()
+  };
+  const conversation = social.findOrCreateConversation(req.data, req.user.id, targetUserId, '社区论坛', card);
+  const message = {
+    id: store.id('msg'),
+    conversationId: conversation.id,
+    fromUserId: req.user.id,
+    type: 'card',
+    content: req.body.message || `分享了帖子「${post.title}」`,
+    card,
+    readBy: [req.user.id],
+    createdAt: store.now()
+  };
+  post.shares = Number(post.shares || 0) + 1;
+  conversation.relatedCard = card;
+  conversation.updatedAt = message.createdAt;
+  req.data.messages.push(message);
+  store.addNotification(req.data, {
+    userId: targetUserId,
+    type: '帖子分享',
+    title: `${req.user.nickname} 转发了一篇帖子给你`,
+    content: post.title,
+    relatedType: 'post',
+    relatedId: post.id
+  });
   store.save(req.data);
-  return ok(res, store.publicPost(req.data, post));
+  socketHub.broadcastToUser(targetUserId, { type: 'message', data: { conversationId: conversation.id, message } });
+  return ok(res, { post: store.publicPost(req.data, post), conversation, message }, '已转发');
 });
 
 router.post('/posts/:id/comments', auth.requireAuth, (req, res) => {

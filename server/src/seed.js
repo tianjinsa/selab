@@ -23,6 +23,7 @@ const users = [
     schoolVerified: true,
     creditScore: 96,
     creditLevel: 'A',
+    following: ['u_1002', 'u_1003'],
     muted: false,
     createdAt: now
   },
@@ -39,6 +40,7 @@ const users = [
     schoolVerified: true,
     creditScore: 91,
     creditLevel: 'A',
+    following: ['u_1001'],
     muted: false,
     createdAt: now
   },
@@ -55,6 +57,7 @@ const users = [
     schoolVerified: true,
     creditScore: 88,
     creditLevel: 'B',
+    following: ['u_1001'],
     muted: false,
     createdAt: now
   },
@@ -71,6 +74,7 @@ const users = [
     schoolVerified: true,
     creditScore: 100,
     creditLevel: 'S',
+    following: [],
     muted: false,
     createdAt: now
   }
