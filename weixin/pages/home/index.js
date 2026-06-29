@@ -131,6 +131,8 @@ Page({
     wx.navigateTo({ url: `/pages/community/detail/index?id=${event.currentTarget.dataset.id}` });
   },
 
+  stopTap() {},
+
   commentPost(event) {
     wx.navigateTo({ url: `/pages/community/detail/index?id=${event.currentTarget.dataset.id}&focus=1` });
   },

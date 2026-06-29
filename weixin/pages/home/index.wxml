@@ -55,25 +55,15 @@
               catchtap="toggleFollow"
             >{{item.followingAuthor ? '已关注' : '关注'}}</t-button>
           </view>
-          <view class="post-actions">
-            <t-button
-              size="small"
-              theme="{{item.liked ? 'primary' : 'default'}}"
-              variant="{{item.liked ? 'light' : 'text'}}"
-              icon="thumb-up"
-              data-id="{{item.id}}"
-              catchtap="likePost"
-            >{{item.likeCount}}</t-button>
-            <t-button size="small" variant="text" icon="chat" data-id="{{item.id}}" catchtap="commentPost">{{item.commentCount}}</t-button>
-            <t-button
-              size="small"
-              theme="{{item.favorited ? 'primary' : 'default'}}"
-              variant="{{item.favorited ? 'light' : 'text'}}"
-              icon="star"
-              data-id="{{item.id}}"
-              catchtap="favoritePost"
-            >{{item.favoriteCount}}</t-button>
-            <t-button size="small" variant="text" icon="share" data-id="{{item.id}}" catchtap="sharePost">{{item.shareCount}}</t-button>
+          <view class="post-metrics" catchtap="stopTap">
+            <view class="metric-item {{item.liked ? 'is-active' : ''}}">
+              <t-icon name="thumb-up" size="26rpx" />
+              <text>{{item.likeCount}}</text>
+            </view>
+            <view class="metric-item">
+              <t-icon name="chat" size="26rpx" />
+              <text>{{item.commentCount}}</text>
+            </view>
           </view>
         </view>
       </view>

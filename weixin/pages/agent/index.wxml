@@ -1,58 +1,83 @@
 <view class="agent-chat">
   <view class="chat-header">
-    <view class="title-row" style="padding-top: {{statusHeight}}px; padding-right: {{headerRightInset}}px;">
-      <view class="title-block">
-        <view class="page-title">智能体</view>
-        <view class="session-title">{{activeAgent.title}} · {{sessionTitle}}</view>
+    <view class="phone-nav" style="padding-top: {{statusHeight}}px; padding-right: {{headerRightInset}}px;">
+      <view class="nav-icon" bindtap="openHistory">
+        <t-icon name="notification" size="34rpx" />
       </view>
+      <view class="nav-title">新会话</view>
     </view>
-    <view class="header-actions">
-      <t-button class="tool-btn" size="small" theme="light" icon="chat" shape="round" bindtap="openHistory">历史</t-button>
-      <t-button class="tool-btn" size="small" theme="light" icon="add" shape="round" bindtap="newConversation">新建</t-button>
-      <t-button class="tool-btn" size="small" theme="primary" icon="service" shape="round" bindtap="openAgentSwitcher">智能体</t-button>
+
+    <view class="session-tools" style="padding-right: {{headerRightInset}}px;">
+      <view class="menu-button" bindtap="openHistory">
+        <t-icon name="menu" size="42rpx" />
+      </view>
+      <view class="session-copy" bindtap="openAgentSwitcher">
+        <view class="session-name">{{sessionTitle || '新会话'}}</view>
+        <view class="session-status">
+          <text class="status-dot"></text>
+          <text>{{activeAgent.title}} · 准备就绪</text>
+        </view>
+      </view>
+      <view class="new-button" bindtap="newConversation">
+        <t-icon name="add" size="38rpx" />
+      </view>
     </view>
   </view>
 
   <scroll-view class="message-list" scroll-y scroll-into-view="{{anchor}}">
-    <view class="agent-strip">
-      <view class="agent-badge">{{activeAgent.badge}}</view>
-      <view>
-        <view class="agent-name">{{activeAgent.title}}</view>
-        <view class="agent-desc">{{activeAgent.desc}}</view>
-      </view>
-    </view>
-
-    <view wx:for="{{messages}}" wx:key="id" class="message-row {{item.role}}">
-      <view wx:if="{{item.role === 'assistant'}}" class="avatar">{{activeAgent.badge}}</view>
-      <view class="bubble">
-        <view class="message-text">{{item.text}}</view>
-        <view wx:if="{{item.source}}" class="source-row">
-          <t-tag size="small" theme="primary" variant="light">{{item.tool}}</t-tag>
-          <text>{{item.source}}</text>
+    <view wx:if="{{isEmptyConversation}}" class="empty-card">
+      <view class="ai-mark">AI</view>
+      <view class="empty-title">从论文问题开始</view>
+      <view class="empty-desc">输入一个研究、写作或任务问题，AI 会在当前会话中回复。</view>
+      <view class="quick-list">
+        <view
+          wx:for="{{quickPrompts}}"
+          wx:key="item"
+          class="quick-pill"
+          data-prompt="{{item}}"
+          bindtap="useQuickPrompt"
+        >
+          {{item}}
         </view>
       </view>
     </view>
 
-    <view wx:if="{{loading}}" class="message-row assistant">
-      <view class="avatar">{{activeAgent.badge}}</view>
-      <view class="bubble typing">
-        <t-loading theme="dots" size="40rpx" />
+    <block wx:else>
+      <view wx:for="{{messages}}" wx:key="id" wx:if="{{item.id !== 'welcome'}}" class="message-row {{item.role}}">
+        <view wx:if="{{item.role === 'assistant'}}" class="avatar">{{activeAgent.badge}}</view>
+        <view class="bubble">
+          <view class="message-text">{{item.text}}</view>
+          <view wx:if="{{item.source}}" class="source-row">
+            <t-tag size="small" theme="primary" variant="light">{{item.tool}}</t-tag>
+            <text>{{item.source}}</text>
+          </view>
+        </view>
       </view>
-    </view>
+
+      <view wx:if="{{loading}}" class="message-row assistant">
+        <view class="avatar">{{activeAgent.badge}}</view>
+        <view class="bubble typing">
+          <t-loading theme="dots" size="40rpx" />
+        </view>
+      </view>
+    </block>
     <view id="bottom" />
   </scroll-view>
 
   <view class="composer">
-    <textarea
-      class="composer-input"
-      value="{{input}}"
-      placeholder="输入校园问题或平台操作需求"
-      auto-height
-      maxlength="500"
-      cursor-spacing="24"
-      bindinput="onInput"
-    />
-    <t-button class="send-btn" theme="primary" shape="round" icon="send" loading="{{loading}}" disabled="{{!input}}" bindtap="sendQuestion">发送</t-button>
+    <view class="composer-shell">
+      <textarea
+        class="composer-input"
+        value="{{input}}"
+        placeholder="输入论文、学习或任务问题..."
+        maxlength="500"
+        cursor-spacing="24"
+        bindinput="onInput"
+      />
+      <view class="send-action {{input && !loading ? 'is-ready' : ''}}" bindtap="sendQuestion">
+        {{loading ? '发送中' : '发送'}}
+      </view>
+    </view>
   </view>
 
   <t-drawer

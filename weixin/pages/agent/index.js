@@ -30,6 +30,8 @@ const agents = [
   },
 ];
 
+const quickPrompts = ['论文选题清单', '拆解写作步骤', '解释文献观点'];
+
 function getAgent(key) {
   return agents.find((item) => item.key === key) || agents[0];
 }
@@ -44,6 +46,10 @@ function buildGreeting(agent) {
       tool: 'system',
     },
   ];
+}
+
+function isEmptyConversation(messages) {
+  return messages.length === 1 && messages[0].id === 'welcome';
 }
 
 function mapAnswer(data) {
@@ -92,9 +98,11 @@ Page({
     sessions: [],
     historyItems: [],
     sessionId: '',
-    sessionTitle: '新对话',
+    sessionTitle: '新会话',
     input: '',
     messages: buildGreeting(agents[0]),
+    isEmptyConversation: true,
+    quickPrompts,
     loading: false,
     anchor: 'bottom',
   },
@@ -144,11 +152,13 @@ Page({
     const { key } = event.detail.item;
     const activeAgent = getAgent(key);
     const shouldResetGreeting = !this.data.sessionId && this.data.messages.length === 1;
+    const messages = shouldResetGreeting ? buildGreeting(activeAgent) : this.data.messages;
     this.setData({
       activeAgentKey: key,
       activeAgent,
       agentVisible: false,
-      messages: shouldResetGreeting ? buildGreeting(activeAgent) : this.data.messages,
+      messages,
+      isEmptyConversation: isEmptyConversation(messages),
     });
   },
 
@@ -161,6 +171,7 @@ Page({
       sessionId: session.id,
       sessionTitle: session.title || '历史对话',
       messages: messages.length ? messages : buildGreeting(this.data.activeAgent),
+      isEmptyConversation: !messages.length,
       historyVisible: false,
     });
     wx.nextTick(() => this.scrollToBottom());
@@ -170,9 +181,10 @@ Page({
     const { activeAgent } = this.data;
     this.setData({
       sessionId: '',
-      sessionTitle: '新对话',
+      sessionTitle: '新会话',
       input: '',
       messages: buildGreeting(activeAgent),
+      isEmptyConversation: true,
       historyVisible: false,
     });
     wx.nextTick(() => this.scrollToBottom());
@@ -188,6 +200,12 @@ Page({
     this.ask(question);
   },
 
+  useQuickPrompt(event) {
+    const { prompt } = event.currentTarget.dataset;
+    if (!prompt || this.data.loading) return;
+    this.ask(prompt);
+  },
+
   ask(question) {
     const userMessage = {
       id: `user-${Date.now()}`,
@@ -200,6 +218,7 @@ Page({
       input: '',
       loading: true,
       messages: this.data.messages.concat([userMessage]),
+      isEmptyConversation: false,
     });
     wx.nextTick(() => this.scrollToBottom());
 
@@ -215,6 +234,7 @@ Page({
           sessionId: data.sessionId || this.data.sessionId,
           sessionTitle: this.data.sessionId ? this.data.sessionTitle : question,
           messages,
+          isEmptyConversation: false,
         });
         this.loadSessions();
         wx.nextTick(() => this.scrollToBottom());
@@ -230,6 +250,7 @@ Page({
               tool: 'fallback',
             },
           ]),
+          isEmptyConversation: false,
         });
       })
       .finally(() => {

@@ -167,11 +167,31 @@ page {
   font-size: 20rpx;
 }
 
-.post-actions {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4rpx;
-  margin-top: 12rpx;
+.post-metrics {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin-top: 14rpx;
+  color: #64748b;
+}
+
+.metric-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  min-width: 52rpx;
+  height: 34rpx;
+  color: #64748b;
+  font-size: 22rpx;
+  line-height: 34rpx;
+}
+
+.metric-item.is-active {
+  color: #0052d9;
+}
+
+.metric-item text {
+  font-weight: 700;
 }
 
 .home-release {
