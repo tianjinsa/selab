@@ -1,0 +1,98 @@
+page {
+  background: #eef3f8;
+}
+
+.detail-page {
+  min-height: 100vh;
+  padding-bottom: 150rpx;
+}
+
+.cover {
+  width: 100%;
+  height: 520rpx;
+  display: block;
+}
+
+.main-card,
+.section {
+  margin: 18rpx 24rpx 0;
+  padding: 24rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.price {
+  color: #d35400;
+  font-size: 48rpx;
+  font-weight: 900;
+}
+
+.title {
+  margin-top: 12rpx;
+  color: #111827;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.meta,
+.muted {
+  margin-top: 10rpx;
+  color: #64748b;
+  font-size: 25rpx;
+}
+
+.desc {
+  margin-top: 18rpx;
+  color: #334155;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.section-title {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.seller {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-top: 18rpx;
+}
+
+.seller-name {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.guarantee {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10rpx;
+  margin-top: 18rpx;
+}
+
+.guarantee view {
+  padding: 18rpx 8rpx;
+  border-radius: 12rpx;
+  background: #f1f5f9;
+  color: #176b87;
+  text-align: center;
+  font-size: 23rpx;
+}
+
+.bottom-actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  padding: 18rpx 24rpx calc(env(safe-area-inset-bottom) + 18rpx);
+  border-top: 1rpx solid #dbe4ef;
+  background: #fff;
+}

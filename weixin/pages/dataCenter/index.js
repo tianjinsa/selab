@@ -1,104 +1,53 @@
 import request from '~/api/request';
+import { listFrom } from '~/utils/api';
 
 Page({
-  /**
-   * 页面的初始数据
-   */
   data: {
-    totalSituationDataList: null,
-    totalSituationKeyList: null,
-    completeRateDataList: null,
-    complete_rate_keyList: null,
-    interactionSituationDataList: null,
-    interaction_situation_keyList: null,
-    areaDataList: null,
-    areaDataKeysList: null,
-    memberitemWidth: null,
-    smallitemWidth: null,
+    totalSituationDataList: [],
+    interactionSituationDataList: [],
+    completeRateDataList: [],
+    areaDataList: [],
   },
 
   onLoad() {
     this.init();
   },
 
-  init() {
-    this.getMemberData();
-    this.getInteractionData();
-    this.getCompleteRateData();
-    this.getAreaData();
-  },
-
-  /**
-   * 获取 “整体情况” 数据
-   */
-  getMemberData() {
-    request('/dataCenter/member').then((res) => {
-      const totalSituationData = res.data.template.succ.data.list;
+  async init() {
+    try {
+      const [taskRes, postRes, goodsRes] = await Promise.all([
+        request('/tasks'),
+        request('/community/posts'),
+        request('/market/goods'),
+      ]);
+      const tasks = listFrom(taskRes);
+      const posts = listFrom(postRes);
+      const goods = listFrom(goodsRes);
+      const completedTasks = tasks.filter((item) => item.status === '已完成').length;
+      const activeTasks = tasks.filter((item) => item.status !== '已完成' && item.status !== '已取消').length;
+      const totalViews = posts.reduce((sum, item) => sum + Number(item.views || 0), 0);
+      const totalComments = posts.reduce((sum, item) => sum + Number(item.commentCount || 0), 0);
+      const totalConsults = goods.reduce((sum, item) => sum + Number(item.consults || 0), 0);
       this.setData({
-        totalSituationDataList: totalSituationData,
+        totalSituationDataList: [
+          { name: '任务总数', number: tasks.length },
+          { name: '社区帖子', number: posts.length },
+          { name: '在售商品', number: goods.length },
+        ],
+        interactionSituationDataList: [
+          { name: '帖子浏览', number: totalViews },
+          { name: '评论互动', number: totalComments },
+          { name: '商品咨询', number: totalConsults },
+        ],
+        completeRateDataList: [
+          { time: '任务完成率', percentage: tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0 },
+          { time: '任务活跃率', percentage: tasks.length ? Math.round((activeTasks / tasks.length) * 100) : 0 },
+          { time: '商品在售率', percentage: goods.length ? 100 : 0 },
+        ],
+        areaDataList: Array.from(new Set(goods.map((item) => item.location))).map((name) => ({ name })),
       });
-
-      // 计算每个.item元素的宽度
-      const itemWidth = `${(750 - 32 * (totalSituationData.length - 1)) / totalSituationData.length}rpx`;
-
-      // 更新.item元素的样式
-      this.setData({
-        memberitemWidth: itemWidth,
-      });
-    });
-  },
-
-  /**
-   * 获取 “互动情况” 数据
-   */
-  getInteractionData() {
-    request('/dataCenter/interaction').then((res) => {
-      const interactionSituationData = res.data.template.succ.data.list;
-      this.setData({
-        interactionSituationDataList: interactionSituationData,
-        interactionSituationKeysList: Object.keys(interactionSituationData[0]),
-      });
-
-      // 计算每个.item元素的宽度
-      const itemWidth = `${(750 - 32 * (interactionSituationData.length - 1)) / interactionSituationData.length}rpx`;
-      // 更新.item元素的样式
-      this.setData({
-        smallitemWidth: itemWidth,
-      });
-    });
-  },
-
-  /**
-   * 完播率
-   */
-  getCompleteRateData() {
-    request('/dataCenter/complete-rate').then((res) => {
-      const completeRateData = res.data.template.succ.data.list;
-      this.setData({
-        completeRateDataList: completeRateData,
-        completeRateKeysList: Object.keys(completeRateData[0]),
-      });
-
-      // 计算每个.item元素的宽度
-      const itemHeight = `${380 / completeRateData.length}rpx`;
-
-      // 更新.item元素的样式
-      this.setData({
-        itemHeight: itemHeight,
-      });
-    });
-  },
-
-  /**
-   * 按区域统计
-   */
-  getAreaData() {
-    request('/dataCenter/area').then((res) => {
-      const areaData = res.data.template.succ.data.list;
-      this.setData({
-        areaDataList: areaData,
-        areaDataKeysList: Object.keys(areaData[0]),
-      });
-    });
+    } catch (error) {
+      wx.showToast({ title: '数据加载失败', icon: 'none' });
+    }
   },
 });

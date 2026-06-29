@@ -13,53 +13,43 @@ Component({
     visible: false,
     sidebar: [
       {
-        title: '首页',
+        title: '任务互助',
+        url: 'pages/task/index',
+        isSidebar: true,
+      },
+      {
+        title: '二手市场',
+        url: 'pages/market/index',
+        isSidebar: true,
+      },
+      {
+        title: '社区论坛',
         url: 'pages/home/index',
         isSidebar: true,
       },
       {
-        title: '搜索页',
-        url: 'pages/search/index',
-        isSidebar: false,
-      },
-      {
-        title: '发布页',
-        url: 'pages/release/index',
-        isSidebar: false,
-      },
-      {
-        title: '消息列表页',
-        url: 'pages/message/index',
+        title: '智能体',
+        url: 'pages/agent/index',
         isSidebar: true,
       },
       {
-        title: '对话页',
-        url: 'pages/chat/index',
-        isSidebar: false,
-      },
-      {
-        title: '个人中心页',
+        title: '我的',
         url: 'pages/my/index',
         isSidebar: true,
       },
       {
-        title: '个人信息表单页',
-        url: 'pages/my/info-edit/index',
+        title: '消息中心',
+        url: 'pages/message/index',
         isSidebar: false,
       },
       {
-        title: '设置页',
-        url: 'pages/setting/index',
+        title: '发布帖子',
+        url: 'pages/release/index',
         isSidebar: false,
       },
       {
-        title: '数据图表页',
-        url: 'pages/dataCenter/index',
-        isSidebar: false,
-      },
-      {
-        title: '登录注册页',
-        url: 'pages/login/login',
+        title: '发布闲置',
+        url: 'pages/market/publish/index',
         isSidebar: false,
       },
     ],

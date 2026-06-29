@@ -10,7 +10,7 @@
           <text class="nickname">{{user.nickname}}</text>
           <t-tag theme="success" variant="light">信用 {{user.creditLevel}}</t-tag>
         </view>
-        <view class="profile-meta">学号 {{user.studentNo}} · {{user.phone}}</view>
+        <view class="profile-meta">学号 {{user.studentNo}} · {{user.contact}}</view>
         <view class="verified">校园身份已校验 · 全平台单点登录</view>
       </view>
       <t-icon name="edit" size="42rpx" bindtap="onEditProfile" />
@@ -28,14 +28,14 @@
       <view class="panel-title">统一消息中心</view>
       <view class="panel-desc">私信、报名、评论、点赞、交易和系统公告都在这里汇聚。</view>
     </view>
-    <t-badge count="{{2}}">
+    <t-badge count="{{unreadCount}}">
       <t-icon name="chat" size="52rpx" color="#176b87" />
     </t-badge>
   </view>
 
   <view class="section-title">通知摘要</view>
   <view class="notice-list">
-    <view wx:for="{{notifications}}" wx:key="title" class="notice-row {{item.unread ? 'unread' : ''}}">
+    <view wx:for="{{notifications}}" wx:key="id" class="notice-row {{item.unread ? 'unread' : ''}}">
       <view>
         <view class="notice-title">{{item.title}}</view>
         <view class="notice-meta">{{item.type}} · {{item.time}}</view>
@@ -46,7 +46,7 @@
 
   <view class="section-title">我的服务</view>
   <view class="service-grid">
-    <view wx:for="{{services}}" wx:key="title" class="service-card {{item.color}}" data-title="{{item.title}}" bindtap="onServiceTap">
+    <view wx:for="{{services}}" wx:key="title" class="service-card {{item.color}}" data-action="{{item.action}}" bindtap="onServiceTap">
       <t-icon name="{{item.icon}}" size="42rpx" />
       <view class="service-title">{{item.title}}</view>
       <view class="service-desc">{{item.desc}}</view>

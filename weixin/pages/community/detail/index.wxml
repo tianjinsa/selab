@@ -1,0 +1,56 @@
+<t-navbar title="帖子详情" left-arrow bind:go-back="goBack" />
+<view class="detail-page">
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="48rpx" text="加载帖子中" />
+  </view>
+
+  <block wx:elif="{{post}}">
+    <view class="post-panel">
+      <view class="author-row">
+        <t-avatar image="{{post.avatar}}" size="72rpx" />
+        <view class="author-main">
+          <view class="author-name">{{post.authorName}}</view>
+          <view class="post-meta">{{post.type}} · {{post.publishTime}} · {{post.views}} 浏览</view>
+        </view>
+      </view>
+      <view class="post-title">{{post.title}}</view>
+      <view class="post-content">{{post.content}}</view>
+      <image wx:if="{{post.cover}}" class="post-cover" src="{{post.cover}}" mode="aspectFill" />
+      <view class="tag-row">
+        <t-tag wx:for="{{post.topics}}" wx:key="index" size="small" variant="outline">#{{item}}</t-tag>
+      </view>
+      <view class="post-actions">
+        <t-button size="small" variant="text" icon="thumb-up" bindtap="likePost">{{post.likeCount}}</t-button>
+        <t-button size="small" variant="text" icon="chat">{{post.commentCount}}</t-button>
+        <t-button size="small" variant="text" icon="star" bindtap="favoritePost">收藏</t-button>
+        <t-button size="small" variant="text" icon="share" bindtap="sharePost">分享</t-button>
+      </view>
+    </view>
+
+    <view class="section-title">全部评论</view>
+    <t-empty wx:if="{{!comments.length}}" description="还没有评论" />
+    <view wx:else class="comment-list">
+      <view wx:for="{{comments}}" wx:key="id" class="comment-item">
+        <t-avatar image="{{item.avatar}}" size="56rpx" />
+        <view class="comment-main">
+          <view class="comment-head">
+            <text class="comment-author">{{item.authorName}}</text>
+            <text class="comment-time">{{item.publishTime}}</text>
+          </view>
+          <view class="comment-content">{{item.content}}</view>
+          <view wx:if="{{item.replies.length}}" class="reply-list">
+            <view wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id" class="reply-item">
+              <text class="reply-author">{{reply.authorName}}</text>
+              <text class="reply-content">：{{reply.content}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="comment-bar">
+    <t-input value="{{input}}" focus="{{focusInput}}" placeholder="写下你的评论" borderless bind:change="onInput" />
+    <t-button theme="primary" shape="round" loading="{{submitting}}" bindtap="submitComment">发送</t-button>
+  </view>
+</view>

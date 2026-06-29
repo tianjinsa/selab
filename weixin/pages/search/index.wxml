@@ -52,6 +52,28 @@
       </view>
     </view>
   </view>
+  <view wx:if="{{searching}}" class="search-state">
+    <t-loading theme="circular" size="44rpx" text="搜索中" />
+  </view>
+  <view wx:elif="{{results.length}}" class="result-wrap">
+    <view class="search-header">
+      <text class="search-title">搜索结果</text>
+    </view>
+    <view
+      wx:for="{{results}}"
+      wx:key="id"
+      class="result-item"
+      data-route="{{item.route}}"
+      data-id="{{item.id}}"
+      bindtap="openResult"
+    >
+      <t-tag size="small" theme="primary" variant="light">{{item.type}}</t-tag>
+      <view class="result-main">
+        <view class="result-title">{{item.title}}</view>
+        <view class="result-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
   <t-dialog
     visible="{{dialogShow}}"
     content="{{dialog.message}}"

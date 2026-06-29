@@ -84,6 +84,18 @@ router.post('/wechat-login', (req, res) => {
 
 router.get('/me', auth.requireAuth, (req, res) => ok(res, store.withoutPassword(req.user)));
 
+router.put('/me', auth.requireAuth, (req, res) => {
+  ['nickname', 'avatar', 'contact'].forEach((key) => {
+    if (Object.prototype.hasOwnProperty.call(req.body, key)) req.user[key] = req.body[key];
+  });
+  req.user.profile = {
+    ...(req.user.profile || {}),
+    ...(req.body.profile || {})
+  };
+  store.save(req.data);
+  return ok(res, store.withoutPassword(req.user), '个人资料已更新');
+});
+
 router.put('/password', auth.requireAuth, (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!auth.comparePassword(oldPassword, req.user)) return fail(res, 400, '原密码不正确');

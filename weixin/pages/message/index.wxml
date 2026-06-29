@@ -1,6 +1,7 @@
-<wxs src="./index.wxs" module="utils" />
+<t-navbar class="nav-bar" title="消息中心" left-arrow bind:go-back="goBack">
+  <t-button slot="right" size="small" theme="light" bindtap="markAllRead">全读</t-button>
+</t-navbar>
 
-<nav nav-type="title" title-text="全部消息"></nav>
 <scroll-view
   class="message-list"
   scroll-y
@@ -9,17 +10,18 @@
   bindrefresherrefresh="getMessageList"
 >
   <t-cell
-    wx:for="{{ messageList }}"
-    wx:key="index"
+    wx:for="{{ conversations }}"
+    wx:key="id"
     t-class-image="avatar"
-    t-class-description="content {{ utils.isRead(item.messages) ? '' : 'unread' }}"
+    t-class-description="content {{item.unreadCount ? 'unread' : ''}}"
     image="{{ item.avatar }}"
-    title="{{ item.name }}"
-    description="{{ item.messages[item.messages.length - 1].content }}"
+    title="{{ item.title }}"
+    description="{{ item.desc }}"
     hover
     bind:tap="toChat"
-    data-user-id="{{ item.userId }}"
+    data-id="{{ item.id }}"
   >
-    <t-badge slot="right-icon" count="{{ utils.computeUnreadNum(item.messages) }}" class="wrapper" />
+    <t-badge slot="right-icon" count="{{ item.unreadCount }}" class="wrapper" />
   </t-cell>
+  <t-empty wx:if="{{!loading && conversations.length === 0}}" icon="chat" description="暂无会话" />
 </scroll-view>

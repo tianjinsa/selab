@@ -85,6 +85,52 @@
   margin-top: 32rpx;
 }
 
+.search-state {
+  display: flex;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.result-wrap {
+  margin-top: 28rpx;
+}
+
+.result-item {
+  display: grid;
+  grid-template-columns: 82rpx 1fr;
+  gap: 16rpx;
+  align-items: flex-start;
+  margin-top: 18rpx;
+  padding: 20rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 12rpx;
+  background: #fff;
+}
+
+.result-main {
+  min-width: 0;
+}
+
+.result-title {
+  overflow: hidden;
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-desc {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 8rpx;
+  color: #64748b;
+  font-size: 24rpx;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .search-page .search-item .popular-item {
   background: #f3f3f3;
 }

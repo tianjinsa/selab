@@ -1,4 +1,7 @@
 import request from '~/api/request';
+import { unwrap } from '~/utils/api';
+
+const app = getApp();
 
 Page({
   data: {
@@ -65,21 +68,20 @@ Page({
   },
 
   async login() {
-    if (this.data.isPasswordLogin) {
-      const res = await request('/login/postPasswordLogin', 'post', { data: this.data.passwordInfo });
-      if (res.success) {
-        await wx.setStorageSync('access_token', res.data.token);
-        wx.switchTab({
-          url: `/pages/my/index`,
-        });
-      }
-    } else {
-      const res = await request('/login/getSendMessage', 'get');
-      if (res.success) {
+    try {
+      if (this.data.isPasswordLogin) {
+        const login = unwrap(await request('/auth/login', 'POST', this.data.passwordInfo));
+        wx.setStorageSync('access_token', login.token);
+        app.globalData.userInfo = login.user;
+        wx.switchTab({ url: '/pages/my/index' });
+      } else {
+        wx.showToast({ title: '演示验证码 123456', icon: 'none' });
         wx.navigateTo({
           url: `/pages/loginCode/loginCode?phoneNumber=${this.data.phoneNumber}`,
         });
       }
+    } catch (error) {
+      wx.showToast({ title: '登录失败', icon: 'none' });
     }
   },
 });

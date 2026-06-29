@@ -3,8 +3,7 @@
   "usingComponents": {
     "t-button": "tdesign-miniprogram/button/button",
     "t-tag": "tdesign-miniprogram/tag/tag",
-    "t-icon": "tdesign-miniprogram/icon/icon",
-    "t-input": "tdesign-miniprogram/input/input",
-    "nav": "/components/nav"
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-drawer": "tdesign-miniprogram/drawer/drawer"
   }
 }

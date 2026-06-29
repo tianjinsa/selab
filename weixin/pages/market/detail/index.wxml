@@ -1,0 +1,36 @@
+<t-navbar title="商品详情" left-arrow bind:go-back="goBack" />
+<view wx:if="{{goods}}" class="detail-page">
+  <image src="{{cover}}" class="cover" mode="aspectFill" />
+  <view class="main-card">
+    <view class="price">¥{{goods.price}}</view>
+    <view class="title">{{goods.name}}</view>
+    <view class="meta">{{goods.category}} · {{goods.condition}} · {{goods.tradeMode}}</view>
+    <view class="desc">{{goods.description}}</view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">卖家信息</view>
+    <view class="seller">
+      <t-avatar image="{{goods.seller.avatar}}" size="88rpx" />
+      <view>
+        <view class="seller-name">{{goods.seller.nickname}}</view>
+        <view class="muted">信用 {{goods.seller.creditLevel}} · {{goods.seller.creditScore}} 分</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">交易保障</view>
+    <view class="guarantee">
+      <view>买家付款</view>
+      <view>资金托管</view>
+      <view>确认收货</view>
+      <view>卖家到账</view>
+    </view>
+  </view>
+
+  <view class="bottom-actions">
+    <t-button theme="light" icon="chat" bindtap="consultSeller">咨询卖家</t-button>
+    <t-button theme="primary" bindtap="createOrder">下单担保</t-button>
+  </view>
+</view>

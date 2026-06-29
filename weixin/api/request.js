@@ -1,7 +1,7 @@
 import config from '~/config';
 
-const baseUrl = config.isMock ? config.mockBaseUrl : config.apiBaseUrl;
-const delay = config.isMock ? 500 : 0;
+const baseUrl = config.apiBaseUrl;
+const delay = 0;
 
 function isSuccessResponse(res) {
   const body = res.data || res;

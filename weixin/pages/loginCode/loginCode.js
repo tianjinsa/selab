@@ -1,4 +1,7 @@
 import request from '~/api/request';
+import { unwrap } from '~/utils/api';
+
+const app = getApp();
 
 Page({
   data: {
@@ -42,12 +45,17 @@ Page({
   },
 
   async login() {
-    const res = await request('/login/postCodeVerify', 'get', { code: this.data.verifyCode });
-    if (res.success) {
-      await wx.setStorageSync('access_token', res.data.token);
-      wx.switchTab({
-        url: `/pages/my/index`,
-      });
+    if (this.data.verifyCode !== '123456') {
+      wx.showToast({ title: '验证码为 123456', icon: 'none' });
+      return;
+    }
+    try {
+      const login = unwrap(await request('/auth/login', 'POST', { account: this.data.phoneNumber, password: '123456Aa' }));
+      wx.setStorageSync('access_token', login.token);
+      app.globalData.userInfo = login.user;
+      wx.switchTab({ url: '/pages/my/index' });
+    } catch (error) {
+      wx.showToast({ title: '手机号未注册', icon: 'none' });
     }
   },
 });

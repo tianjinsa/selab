@@ -1,6 +1,6 @@
 <wxs src="./index.wxs" module="utils" />
 
-<t-navbar class="nav-bar" title="{{ name }}" left-arrow />
+<t-navbar class="nav-bar" title="{{ name }}" left-arrow bind:go-back="goBack" />
 
 <view class="chat-container">
   <scroll-view class="content" scroll-y scroll-into-view="{{ anchor }}">
@@ -13,13 +13,6 @@
         <view wx:if="{{ item.from === 0 }}" class="message-area">
           <view class="message self">
           <text space="nbsp">{{ item.content }}</text>
-          <t-loading
-            wx:if="{{ item.messageId === null }}"
-            t-class="loading"
-            theme="spinner"
-            size="32rpx"
-            class="wrapper"
-          />
           </view>
           <t-avatar image="{{ myAvatar }}" size="small" />
         </view>
