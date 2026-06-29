@@ -1,87 +1,38 @@
-import request from '~/api/request';
-import useToastBehavior from '~/behaviors/useToast';
+import { currentUser, myStats, notifications } from '~/utils/campusData';
 
 Page({
-  behaviors: [useToastBehavior],
-
   data: {
-    isLoad: false,
-    service: [],
-    personalInfo: {},
-    gridList: [
-      {
-        name: '全部发布',
-        icon: 'root-list',
-        type: 'all',
-        url: '',
-      },
-      {
-        name: '审核中',
-        icon: 'search',
-        type: 'progress',
-        url: '',
-      },
-      {
-        name: '已发布',
-        icon: 'upload',
-        type: 'published',
-        url: '',
-      },
-      {
-        name: '草稿箱',
-        icon: 'file-copy',
-        type: 'draft',
-        url: '',
-      },
+    user: currentUser,
+    stats: myStats,
+    notifications,
+    services: [
+      { title: '我的任务', desc: '发布、报名、验收', icon: 'root-list', color: 'blue' },
+      { title: '我的闲置', desc: '在售、审核、订单', icon: 'shop', color: 'green' },
+      { title: '我的帖子', desc: '发布、收藏、互动', icon: 'chat', color: 'yellow' },
+      { title: '智能体会话', desc: '历史问答继续聊', icon: 'service', color: 'purple' },
     ],
-
-    settingList: [
-      { name: '联系客服', icon: 'service', type: 'service' },
-      { name: '设置', icon: 'setting', type: 'setting', url: '/pages/setting/index' },
+    securityItems: [
+      { title: '个人资料', desc: '头像、昵称、学号、联系方式', icon: 'user', action: 'profile' },
+      { title: '账号安全', desc: '修改密码、异常登录提醒', icon: 'secured', action: 'setting' },
+      { title: '消息免打扰', desc: '会话级提醒设置', icon: 'notification', action: 'message' },
+      { title: '客服与举报', desc: '人工介入、纠纷仲裁', icon: 'service', action: 'support' },
     ],
   },
-
-  onLoad() {
-    this.getServiceList();
+  onOpenMessage() {
+    wx.navigateTo({ url: '/pages/message/index' });
   },
-
-  async onShow() {
-    const Token = wx.getStorageSync('access_token');
-    const personalInfo = await this.getPersonalInfo();
-
-    if (Token) {
-      this.setData({
-        isLoad: true,
-        personalInfo,
-      });
-    }
+  onEditProfile() {
+    wx.navigateTo({ url: '/pages/my/info-edit/index' });
   },
-
-  getServiceList() {
-    request('/api/getServiceList').then((res) => {
-      const { service } = res.data.data;
-      this.setData({ service });
-    });
+  onSecurityTap(event) {
+    const { action } = event.currentTarget.dataset;
+    if (action === 'profile') return this.onEditProfile();
+    if (action === 'message') return this.onOpenMessage();
+    if (action === 'setting') return wx.navigateTo({ url: '/pages/setting/index' });
+    wx.showToast({ title: '已进入人工服务队列', icon: 'none' });
   },
-
-  async getPersonalInfo() {
-    const info = await request('/api/genPersonalInfo').then((res) => res.data.data);
-    return info;
-  },
-
-  onLogin(e) {
-    wx.navigateTo({
-      url: '/pages/login/login',
-    });
-  },
-
-  onNavigateTo() {
-    wx.navigateTo({ url: `/pages/my/info-edit/index` });
-  },
-
-  onEleClick(e) {
-    const { name, url } = e.currentTarget.dataset.data;
-    if (url) return;
-    this.onShowToast('#t-toast', name);
+  onServiceTap(event) {
+    const { title } = event.currentTarget.dataset;
+    wx.showToast({ title, icon: 'none' });
   },
 });

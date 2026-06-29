@@ -16,6 +16,7 @@ const marketRoutes = require('./routes/market');
 const messageRoutes = require('./routes/messages');
 const agentRoutes = require('./routes/agent');
 const adminRoutes = require('./routes/admin');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +36,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/admin', adminRoutes);
 
