@@ -83,6 +83,7 @@ function mapSessionItem(session) {
 Page({
   data: {
     statusHeight: 0,
+    headerRightInset: 20,
     activeAgentKey: 'campus',
     activeAgent: agents[0],
     agentItems: agents.map((item) => ({ title: `${item.title} · ${item.desc}`, key: item.key })),
@@ -99,8 +100,11 @@ Page({
   },
 
   async onLoad() {
-    const statusHeight = wx.getWindowInfo().statusBarHeight;
-    this.setData({ statusHeight });
+    const windowInfo = wx.getWindowInfo();
+    let headerRightInset = 20;
+    const menuButton = wx.getMenuButtonBoundingClientRect && wx.getMenuButtonBoundingClientRect();
+    if (menuButton && menuButton.left) headerRightInset = Math.max(20, windowInfo.windowWidth - menuButton.left + 8);
+    this.setData({ statusHeight: windowInfo.statusBarHeight, headerRightInset });
     await app.ensureLogin();
     this.loadSessions();
   },

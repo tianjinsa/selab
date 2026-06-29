@@ -1,23 +1,32 @@
 @import '/variable.less';
 
 page {
+  height: 100%;
+  overflow: hidden;
   background: #eef2f7;
 }
 
 .agent-chat {
-  min-height: calc(100vh - @tab-bar-height);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - @tab-bar-height);
+  overflow: hidden;
   background: #eef2f7;
   box-sizing: border-box;
 }
 
 .chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  padding: 18rpx 20rpx;
+  flex-shrink: 0;
+  padding: 0 20rpx 16rpx;
   border-bottom: 1rpx solid #dbe4ef;
   background: rgba(255, 255, 255, 0.96);
+  box-sizing: border-box;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  min-height: 96rpx;
   box-sizing: border-box;
 }
 
@@ -42,13 +51,19 @@ page {
 }
 
 .header-actions {
-  display: flex;
-  gap: 8rpx;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+}
+
+.tool-btn {
+  width: 100%;
 }
 
 .message-list {
-  height: calc(100vh - @tab-bar-height - 220rpx);
-  padding: 20rpx 20rpx 150rpx;
+  flex: 1;
+  height: 0;
+  padding: 20rpx 20rpx 24rpx;
   box-sizing: border-box;
 }
 
@@ -151,10 +166,7 @@ page {
 }
 
 .composer {
-  position: fixed;
-  right: 0;
-  bottom: @tab-bar-height;
-  left: 0;
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr 150rpx;
   gap: 14rpx;

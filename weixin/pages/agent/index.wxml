@@ -1,13 +1,15 @@
-<view class="agent-chat" style="padding-top: {{statusHeight}}px;">
+<view class="agent-chat">
   <view class="chat-header">
-    <view class="title-block">
-      <view class="page-title">智能体</view>
-      <view class="session-title">{{activeAgent.title}} · {{sessionTitle}}</view>
+    <view class="title-row" style="padding-top: {{statusHeight}}px; padding-right: {{headerRightInset}}px;">
+      <view class="title-block">
+        <view class="page-title">智能体</view>
+        <view class="session-title">{{activeAgent.title}} · {{sessionTitle}}</view>
+      </view>
     </view>
     <view class="header-actions">
-      <t-button size="small" theme="light" icon="chat" shape="round" bindtap="openHistory">历史</t-button>
-      <t-button size="small" theme="light" icon="add" shape="round" bindtap="newConversation">新建</t-button>
-      <t-button size="small" theme="primary" icon="service" shape="round" bindtap="openAgentSwitcher">智能体</t-button>
+      <t-button class="tool-btn" size="small" theme="light" icon="chat" shape="round" bindtap="openHistory">历史</t-button>
+      <t-button class="tool-btn" size="small" theme="light" icon="add" shape="round" bindtap="newConversation">新建</t-button>
+      <t-button class="tool-btn" size="small" theme="primary" icon="service" shape="round" bindtap="openAgentSwitcher">智能体</t-button>
     </view>
   </view>
 
