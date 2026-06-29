@@ -26,6 +26,29 @@ router.get('/goods', (req, res) => {
   return ok(res, filterGoods(data, req.query).map((item) => store.publicGoods(data, item)));
 });
 
+router.get('/mine', auth.requireAuth, (req, res) => {
+  const requestedIds = new Set(
+    req.data.messages
+      .filter((item) => {
+        const card = item.card || {};
+        return card.targetType === 'goods' && card.requesterId === req.user.id;
+      })
+      .map((item) => item.card.targetId),
+  );
+  req.data.orders
+    .filter((item) => item.buyerId === req.user.id)
+    .forEach((item) => requestedIds.add(item.goodsId));
+
+  const requestedGoods = req.data.goods
+    .filter((item) => requestedIds.has(item.id))
+    .map((item) => store.publicGoods(req.data, item));
+  const publishedGoods = req.data.goods
+    .filter((item) => item.sellerId === req.user.id)
+    .map((item) => store.publicGoods(req.data, item));
+  const orders = req.data.orders.filter((item) => item.buyerId === req.user.id || item.sellerId === req.user.id);
+  return ok(res, { requestedGoods, publishedGoods, orders });
+});
+
 router.post('/goods', auth.requireAuth, (req, res) => {
   const goods = {
     id: store.id('goods'),

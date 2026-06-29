@@ -32,6 +32,19 @@ router.get('/posts', (req, res) => {
   return ok(res, filterPosts(data, req.query).map((item) => store.publicPost(data, item)));
 });
 
+router.get('/mine', auth.requireAuth, (req, res) => {
+  const commentedIds = new Set(
+    req.data.comments.filter((item) => item.authorId === req.user.id).map((item) => item.postId),
+  );
+  const isInteracted = (post) =>
+    (post.likes || []).includes(req.user.id) || (post.favorites || []).includes(req.user.id) || commentedIds.has(post.id);
+  const interactedPosts = req.data.posts.filter(isInteracted).map((item) => store.publicPost(req.data, item));
+  const publishedPosts = req.data.posts
+    .filter((item) => item.authorId === req.user.id)
+    .map((item) => store.publicPost(req.data, item));
+  return ok(res, { interactedPosts, publishedPosts });
+});
+
 router.post('/posts', auth.requireAuth, (req, res) => {
   const sensitive = containsSensitive(req.data, `${req.body.title} ${req.body.content}`);
   if (sensitive) return fail(res, 400, `内容包含敏感词：${sensitive}`);

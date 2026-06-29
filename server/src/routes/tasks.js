@@ -47,6 +47,16 @@ router.get('/leaderboard', (req, res) => {
   return ok(res, ranked);
 });
 
+router.get('/mine', auth.requireAuth, (req, res) => {
+  const data = store.load();
+  const isTaken = (task) => task.assigneeId === req.user.id || (task.applicants || []).includes(req.user.id);
+  const takenTasks = data.tasks.filter(isTaken).map((item) => store.publicTask(data, item));
+  const publishedTasks = data.tasks
+    .filter((item) => item.publisherId === req.user.id)
+    .map((item) => store.publicTask(data, item));
+  return ok(res, { takenTasks, publishedTasks });
+});
+
 router.get('/functions/search', (req, res) => {
   const data = store.load();
   return ok(res, filterTasks(data, req.query).map((item) => store.publicTask(data, item)));
