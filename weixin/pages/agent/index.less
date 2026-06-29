@@ -1,0 +1,130 @@
+@import '/variable.less';
+
+page {
+  background: #edf2f7;
+}
+
+.agent-page {
+  min-height: calc(100vh - @tab-bar-height);
+  padding: 20rpx 24rpx calc(@tab-bar-height + 44rpx);
+}
+
+.agent-hero {
+  padding: 30rpx;
+  border-radius: 16rpx;
+  color: #fff;
+  background: linear-gradient(135deg, #182033 0%, #444b6e 48%, #f4d35e 100%);
+}
+
+.eyebrow {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 24rpx;
+}
+
+.hero-title {
+  margin-top: 8rpx;
+  font-size: 42rpx;
+  font-weight: 700;
+}
+
+.hero-desc {
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin: 18rpx 0;
+}
+
+.tool-card {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  min-height: 132rpx;
+  padding: 18rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.tool-title {
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.tool-desc {
+  margin-top: 4rpx;
+  color: #64748b;
+  font-size: 22rpx;
+  line-height: 1.4;
+}
+
+.quick-strip {
+  width: 100%;
+  margin-bottom: 18rpx;
+  white-space: nowrap;
+}
+
+.quick {
+  margin-right: 12rpx;
+}
+
+.chat-panel {
+  padding: 20rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 18rpx;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 600rpx;
+  padding: 18rpx;
+  border-radius: 16rpx;
+  background: #f1f5f9;
+}
+
+.message.user .bubble {
+  background: #176b87;
+  color: #fff;
+}
+
+.message-text {
+  font-size: 27rpx;
+  line-height: 1.55;
+}
+
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 14rpx;
+  color: #64748b;
+  font-size: 22rpx;
+}
+
+.input-bar {
+  display: grid;
+  grid-template-columns: 1fr 160rpx;
+  gap: 12rpx;
+  align-items: center;
+  margin-top: 18rpx;
+  padding: 14rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+}
