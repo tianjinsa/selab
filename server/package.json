@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed": "node src/scripts/reset-data.js"
+    "seed": "node src/scripts/reset-data.js",
+    "db:init": "node src/scripts/init-sqlserver.js",
+    "check:sqlserver": "node src/scripts/check-sqlserver.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

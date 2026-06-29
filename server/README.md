@@ -25,3 +25,27 @@ npm run seed
 ```
 
 `.env` 中设置 `USE_SQLSERVER=true` 后，可通过 `src/services/sqlServer.js` 的连接配置接入本地 SQL Server。
+
+## SQL Server
+
+按需求文档的本地连接信息，默认配置为 `localhost:8887`、用户 `sa`、密码 `123456Aa`。业务数据库命名为 `CampusSmartLifeDB`，初始化连接上下文使用 `tempdb`，不使用 `master`。重置初始化数据库：
+
+```bash
+npm run db:init
+```
+
+这个命令会删除旧的 `CampusSmartLifeDB`，重新创建新数据库，并执行 [schema.sql](sql/schema.sql) 建表。
+
+只检查连接：
+
+```bash
+npm run check:sqlserver
+```
+
+如果想手动建表，可在目标数据库中执行：
+
+```sql
+-- server/sql/schema.sql
+```
+
+如果本机 SQL Server 登录失败，后端仍会使用 JSON 演示仓库保证课程设计页面和 API 可运行。
