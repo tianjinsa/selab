@@ -11,12 +11,15 @@
       <view class="menu-button" bindtap="openHistory">
         <t-icon name="menu" size="42rpx" />
       </view>
-      <view class="session-copy" bindtap="openAgentSwitcher">
+      <view class="session-copy">
         <view class="session-name">{{sessionTitle || '新会话'}}</view>
         <view class="session-status">
           <text class="status-dot"></text>
           <text>{{activeAgent.title}} · 准备就绪</text>
         </view>
+      </view>
+      <view class="agent-button" bindtap="openAgentSwitcher">
+        <t-icon name="service" size="36rpx" />
       </view>
       <view class="new-button" bindtap="newConversation">
         <t-icon name="add" size="38rpx" />

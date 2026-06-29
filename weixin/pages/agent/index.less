@@ -46,6 +46,7 @@ page {
 
 .nav-icon,
 .menu-button,
+.agent-button,
 .new-button {
   display: flex;
   align-items: center;
@@ -65,19 +66,25 @@ page {
 
 .session-tools {
   display: grid;
-  grid-template-columns: 88rpx minmax(0, 1fr) 88rpx;
-  gap: 20rpx;
+  grid-template-columns: 88rpx minmax(0, 1fr) 80rpx 80rpx;
+  gap: 16rpx;
   align-items: center;
   margin-top: 8rpx;
   box-sizing: border-box;
 }
 
 .menu-button,
+.agent-button,
 .new-button {
-  width: 88rpx;
-  height: 88rpx;
+  width: 80rpx;
+  height: 80rpx;
   border: 1rpx solid rgba(226, 232, 240, 0.92);
   border-radius: 22rpx;
+}
+
+.menu-button {
+  width: 88rpx;
+  height: 88rpx;
 }
 
 .menu-button {
@@ -86,10 +93,16 @@ page {
   box-shadow: 0 12rpx 24rpx rgba(31, 41, 55, 0.06);
 }
 
+.agent-button {
+  color: #0052d9;
+  background: #eef5ff;
+  box-shadow: 0 12rpx 24rpx rgba(0, 82, 217, 0.1);
+}
+
 .new-button {
-  color: #00a870;
-  background: #e8fff5;
-  box-shadow: 0 14rpx 26rpx rgba(0, 168, 112, 0.14);
+  color: #0052d9;
+  background: #eef5ff;
+  box-shadow: 0 14rpx 26rpx rgba(0, 82, 217, 0.14);
 }
 
 .session-copy {
@@ -147,9 +160,9 @@ page {
   align-items: center;
   margin-top: 8rpx;
   padding: 52rpx 40rpx 48rpx;
-  border: 1rpx solid #d9f7e8;
+  border: 1rpx solid #dbe4ef;
   border-radius: 28rpx;
-  background: linear-gradient(180deg, #ffffff 0%, #effff7 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
   box-shadow: 0 24rpx 52rpx rgba(31, 41, 55, 0.08);
   box-sizing: border-box;
 }
@@ -162,7 +175,7 @@ page {
   height: 104rpx;
   border-radius: 24rpx;
   color: #ffffff;
-  background: #00a870;
+  background: #0052d9;
   font-size: 36rpx;
   font-weight: 900;
 }
@@ -200,13 +213,13 @@ page {
   align-items: center;
   justify-content: center;
   padding: 0 28rpx;
-  border: 1rpx solid #c8f5df;
+  border: 1rpx solid #cfe0ff;
   border-radius: 999rpx;
-  color: #00895e;
+  color: #0052d9;
   background: #ffffff;
   font-size: 28rpx;
   font-weight: 800;
-  box-shadow: 0 12rpx 22rpx rgba(0, 168, 112, 0.08);
+  box-shadow: 0 12rpx 22rpx rgba(0, 82, 217, 0.08);
   box-sizing: border-box;
 }
 
@@ -231,7 +244,7 @@ page {
   margin-top: 2rpx;
   border-radius: 18rpx;
   color: #ffffff;
-  background: #00a870;
+  background: #0052d9;
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -247,9 +260,9 @@ page {
 }
 
 .message-row.user .bubble {
-  border-color: #00a870;
+  border-color: #0052d9;
   color: #ffffff;
-  background: #00a870;
+  background: #0052d9;
 }
 
 .message-text {
@@ -321,8 +334,8 @@ page {
 }
 
 .send-action.is-ready {
-  color: #00a870;
-  background: #e7fff3;
+  color: #0052d9;
+  background: #edf4ff;
 }
 
 .drawer-empty {
