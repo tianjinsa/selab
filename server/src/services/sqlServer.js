@@ -5,7 +5,7 @@ const config = {
   port: Number(process.env.SQLSERVER_PORT || 8887),
   user: process.env.SQLSERVER_USER || 'sa',
   password: process.env.SQLSERVER_PASSWORD || '123456Aa',
-  database: process.env.SQLSERVER_DATABASE || 'CampusSmartLife',
+  database: process.env.SQLSERVER_DATABASE || 'CampusSmartLifeDB',
   options: {
     encrypt: false,
     trustServerCertificate: true
