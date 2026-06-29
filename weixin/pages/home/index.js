@@ -1,82 +1,38 @@
-import Message from 'tdesign-miniprogram/message/index';
-import request from '~/api/request';
-
-// 获取应用实例
-// const app = getApp()
+import { posts, postTabs } from '~/utils/campusData';
 
 Page({
   data: {
-    enable: false,
-    swiperList: [],
-    cardInfo: [],
-    // 发布
-    motto: 'Hello World',
-    userInfo: {},
-    hasUserInfo: false,
-    canIUse: wx.canIUse('button.open-type.getUserInfo'),
-    canIUseGetUserProfile: false,
-    canIUseOpenData: wx.canIUse('open-data.type.userAvatarUrl') && wx.canIUse('open-data.type.userNickName'), // 如需尝试获取用户信息可改为false
-  },
-  // 生命周期
-  async onReady() {
-    const [cardRes, swiperRes] = await Promise.all([
-      request('/home/cards').then((res) => res.data),
-      request('/home/swipers').then((res) => res.data),
-    ]);
-
-    this.setData({
-      cardInfo: cardRes.data,
-      focusCardInfo: cardRes.data.slice(0, 3),
-      swiperList: swiperRes.data,
-    });
+    tabs: postTabs,
+    activeTab: '推荐',
+    posts,
+    hotTopics: ['期末周', '校园跑', '课程设计', '二手教材', '搭子'],
+    stats: [
+      { label: '今日新帖', value: 36 },
+      { label: '活跃话题', value: 18 },
+      { label: '待回复求助', value: 7 },
+    ],
   },
   onLoad(option) {
-    if (wx.getUserProfile) {
-      this.setData({
-        canIUseGetUserProfile: true,
-      });
-    }
     if (option.oper) {
-      let content = '';
-      if (option.oper === 'release') {
-        content = '发布成功';
-      } else if (option.oper === 'save') {
-        content = '保存成功';
-      }
-      this.showOperMsg(content);
+      wx.showToast({ title: option.oper === 'release' ? '发布成功' : '保存成功', icon: 'success' });
     }
   },
-  onRefresh() {
-    this.refresh();
-  },
-  async refresh() {
-    this.setData({
-      enable: true,
-    });
-    const [cardRes, swiperRes] = await Promise.all([
-      request('/home/cards').then((res) => res.data),
-      request('/home/swipers').then((res) => res.data),
-    ]);
-
-    setTimeout(() => {
-      this.setData({
-        enable: false,
-        cardInfo: cardRes.data,
-        swiperList: swiperRes.data,
-      });
-    }, 1500);
-  },
-  showOperMsg(content) {
-    Message.success({
-      context: this,
-      offset: [120, 32],
-      duration: 4000,
-      content,
-    });
+  onTabChange(event) {
+    this.setData({ activeTab: event.detail.value });
   },
   goRelease() {
-    wx.navigateTo({
-      url: '/pages/release/index',
-    });
+    wx.navigateTo({ url: '/pages/release/index' });
+  },
+  likePost(event) {
+    const { id } = event.currentTarget.dataset;
+    const nextPosts = this.data.posts.map((item) => (item.id === id ? { ...item, likes: item.likes + 1 } : item));
+    this.setData({ posts: nextPosts });
+    wx.showToast({ title: '已点赞', icon: 'success' });
+  },
+  favoritePost() {
+    wx.showToast({ title: '已收藏', icon: 'success' });
+  },
+  sharePost() {
+    wx.showToast({ title: '已生成分享卡片', icon: 'none' });
   },
 });
