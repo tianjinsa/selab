@@ -89,12 +89,4 @@
       <view class="rank-count">{{item.count}} 单</view>
     </view>
   </view>
-
-  <view class="settle-panel">
-    <view>
-      <view class="settle-title">任务结束卡片</view>
-      <view class="settle-desc">任意一方可在私信里发起验收与结算，系统记录状态流转与资金流水。</view>
-    </view>
-    <t-button theme="primary" variant="outline" bindtap="requestSettle">发起结算</t-button>
-  </view>
 </view>

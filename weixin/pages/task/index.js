@@ -100,8 +100,4 @@ Page({
       })
       .catch(() => wx.showToast({ title: '无法进入私信', icon: 'none' }));
   },
-
-  requestSettle() {
-    wx.showToast({ title: '已发送验收结算卡片', icon: 'success' });
-  },
 });
