@@ -1,4 +1,5 @@
 export default {
   isMock: true,
-  baseUrl: '',
+  mockBaseUrl: '',
+  apiBaseUrl: 'http://localhost:8888/api',
 };
