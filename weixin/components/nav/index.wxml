@@ -17,7 +17,7 @@
     visible="{{visible}}"
     items="{{sidebar}}"
     placement="left"
-    title="功能导航"
+    title="{{drawerTitle}}"
     bind:item-click="itemClick"
   />
 </view>

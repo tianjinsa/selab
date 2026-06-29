@@ -8,3 +8,21 @@
     padding: 16rpx 24rpx;
   }
 }
+
+.manage-entry {
+  .t-tab-bar-item__icon {
+    animation: manage-spin 1.8s ease-in-out infinite;
+    transform-origin: center;
+  }
+}
+
+@keyframes manage-spin {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(28deg) scale(1.08);
+  }
+}

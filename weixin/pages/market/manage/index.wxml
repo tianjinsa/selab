@@ -1,0 +1,35 @@
+<t-navbar title="我的交易后台" left-arrow bind:go-back="goBack" />
+<view class="manage-page">
+  <view class="manage-head">
+    <view>
+      <view class="head-title">交易记录</view>
+      <view class="head-desc">求购、咨询和发布过的闲置都会保留在这里。</view>
+    </view>
+    <t-button theme="primary" icon="add" shape="round" bindtap="publishGoods">发布闲置</t-button>
+  </view>
+
+  <t-tabs value="{{activeTab}}" bind:change="onTabChange">
+    <t-tab-panel label="我求购的" value="requested" />
+    <t-tab-panel label="我发布的闲置" value="published" />
+  </t-tabs>
+
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="44rpx" text="加载交易中" />
+  </view>
+  <t-empty wx:elif="{{!currentGoods.length}}" description="暂无交易记录" />
+
+  <view wx:else class="goods-list">
+    <view wx:for="{{currentGoods}}" wx:key="id" class="goods-card" data-id="{{item.id}}" bindtap="openDetail">
+      <image class="goods-cover" src="{{item.cover}}" mode="aspectFill" />
+      <view class="goods-main">
+        <view class="goods-title">{{item.name}}</view>
+        <view class="goods-meta">{{item.category}} · {{item.condition}} · {{item.time}}</view>
+        <view class="goods-bottom">
+          <view class="price">¥{{item.price}}</view>
+          <t-tag wx:if="{{activeTab === 'requested' && item.orderStatus}}" size="small" theme="primary" variant="light">{{item.orderStatus}}</t-tag>
+          <t-tag wx:else size="small" theme="primary" variant="light">{{item.auditStatus}} · {{item.status}}</t-tag>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

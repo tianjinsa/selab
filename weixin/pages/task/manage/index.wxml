@@ -1,0 +1,38 @@
+<t-navbar title="我的任务后台" left-arrow bind:go-back="goBack" />
+<view class="manage-page">
+  <view class="manage-head">
+    <view>
+      <view class="head-title">任务记录</view>
+      <view class="head-desc">接取、报名、发布过的任务都会保留在这里。</view>
+    </view>
+    <t-button theme="primary" icon="add" shape="round" bindtap="publishTask">发布任务</t-button>
+  </view>
+
+  <t-tabs value="{{activeTab}}" bind:change="onTabChange">
+    <t-tab-panel label="我接取的任务" value="taken" />
+    <t-tab-panel label="我发布的任务" value="published" />
+  </t-tabs>
+
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="44rpx" text="加载任务中" />
+  </view>
+  <t-empty wx:elif="{{!currentTasks.length}}" description="暂无任务记录" />
+
+  <view wx:else class="record-list">
+    <view wx:for="{{currentTasks}}" wx:key="id" class="record-card" data-id="{{item.id}}" bindtap="openDetail">
+      <view class="record-head">
+        <view>
+          <view class="record-title">{{item.title}}</view>
+          <view class="record-meta">{{item.type}} · {{item.time}}</view>
+        </view>
+        <view class="reward">¥{{item.reward}}</view>
+      </view>
+      <view class="record-detail">{{item.detail}}</view>
+      <view class="record-foot">
+        <t-tag size="small" theme="primary" variant="light">{{item.status}}</t-tag>
+        <text wx:if="{{activeTab === 'taken'}}">发布者 {{item.publisherName}}</text>
+        <text wx:else>{{item.applicantCount}} 人报名 · 接单 {{item.assigneeName}}</text>
+      </view>
+    </view>
+  </view>
+</view>

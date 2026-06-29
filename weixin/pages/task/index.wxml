@@ -1,21 +1,5 @@
 <nav title-text="任务互助" />
 <view class="task-page">
-  <view class="market-hero">
-    <view>
-      <text class="eyebrow">校园任务互助</text>
-      <view class="hero-title">从发布到结算的互助闭环</view>
-      <view class="hero-desc">代取快递、学业互助、技能服务都走统一身份、私信沟通、托管支付和验收结算。</view>
-    </view>
-    <t-button theme="primary" icon="add" shape="round" bindtap="publishTask">发布任务</t-button>
-  </view>
-
-  <view class="flow-strip">
-    <view wx:for="{{flow}}" wx:key="index" class="flow-node">
-      <text>{{index + 1}}</text>
-      <view>{{item}}</view>
-    </view>
-  </view>
-
   <view class="search-panel">
     <t-search placeholder="搜索任务类型、地点或关键词" value="{{keyword}}" bind:change="onSearch" />
     <scroll-view scroll-x class="category-strip" show-scrollbar="{{false}}">

@@ -9,7 +9,6 @@ Page({
     tasks: [],
     filteredTasks: [],
     leaderboard: [],
-    flow: ['发布托管', '报名沟通', '确认接单', '交付验收', '酬金结算'],
     loading: true,
   },
 
@@ -65,11 +64,7 @@ Page({
   },
 
   publishTask() {
-    wx.showModal({
-      title: '模拟支付成功',
-      content: '发布任务时酬金已进入平台托管账户，任务完成后自动结算给接单者。',
-      showCancel: false,
-    });
+    wx.navigateTo({ url: '/pages/task/publish/index' });
   },
 
   openDetail(event) {

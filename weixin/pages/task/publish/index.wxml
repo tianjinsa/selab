@@ -1,0 +1,56 @@
+<t-navbar title="发布任务" left-arrow bind:go-back="goBack" />
+<view class="publish-page">
+  <view class="form-card">
+    <view class="field-label">任务标题</view>
+    <t-input value="{{form.title}}" placeholder="例如：南门快递代取" data-field="title" bind:change="updateField" />
+
+    <view class="field-label">任务类型</view>
+    <view class="chip-row">
+      <t-tag
+        wx:for="{{types}}"
+        wx:key="index"
+        size="large"
+        theme="{{form.type === item ? 'primary' : 'default'}}"
+        variant="{{form.type === item ? 'dark' : 'light'}}"
+        data-value="{{item}}"
+        bindtap="chooseType"
+      >
+        {{item}}
+      </t-tag>
+    </view>
+
+    <view class="field-label">酬金</view>
+    <t-input value="{{form.reward}}" type="digit" placeholder="请输入托管酬金" data-field="reward" bind:change="updateField" />
+
+    <view class="field-label">截止时间</view>
+    <t-input value="{{form.deadline}}" placeholder="例如：今天 20:00" data-field="deadline" bind:change="updateField" />
+
+    <view class="field-label">距离范围</view>
+    <t-input value="{{form.distance}}" placeholder="例如：0.8km / 校内" data-field="distance" bind:change="updateField" />
+
+    <view class="field-label">交付地点</view>
+    <t-input value="{{form.location}}" placeholder="例如：梅园 3 栋楼下" data-field="location" bind:change="updateField" />
+
+    <view class="field-label">任务详情</view>
+    <t-textarea
+      value="{{form.detail}}"
+      placeholder="说明任务内容、交付要求和注意事项"
+      maxlength="300"
+      indicator
+      data-field="detail"
+      bind:change="updateField"
+    />
+
+    <view class="field-label">验收凭证</view>
+    <t-input value="{{form.deliverable}}" placeholder="例如：完成截图 / 实物交付" data-field="deliverable" bind:change="updateField" />
+  </view>
+
+  <view class="audit-note">
+    <view class="note-title">酬金发布后进入平台托管</view>
+    <view class="note-desc">接单者完成任务并通过验收后，平台会模拟结算到接单者账户。</view>
+  </view>
+
+  <view class="bottom-actions">
+    <t-button theme="primary" size="large" block loading="{{submitting}}" bindtap="submit">发布任务</t-button>
+  </view>
+</view>

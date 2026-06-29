@@ -94,11 +94,14 @@ Page({
   onServiceTap(event) {
     const { action } = event.currentTarget.dataset;
     const routes = {
-      tasks: '/pages/task/index',
-      market: '/pages/market/index',
-      posts: '/pages/home/index',
-      agent: '/pages/agent/index',
+      tasks: { url: '/pages/task/manage/index', openType: 'navigateTo' },
+      market: { url: '/pages/market/manage/index', openType: 'navigateTo' },
+      posts: { url: '/pages/community/manage/index', openType: 'navigateTo' },
+      agent: { url: '/pages/agent/index', openType: 'switchTab' },
     };
-    if (routes[action]) wx.switchTab({ url: routes[action] });
+    const target = routes[action];
+    if (!target) return;
+    if (target.openType === 'switchTab') wx.switchTab({ url: target.url });
+    else wx.navigateTo({ url: target.url });
   },
 });

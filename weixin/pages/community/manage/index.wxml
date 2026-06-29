@@ -1,0 +1,34 @@
+<t-navbar title="我的社区后台" left-arrow bind:go-back="goBack" />
+<view class="manage-page">
+  <view class="manage-head">
+    <view>
+      <view class="head-title">社区记录</view>
+      <view class="head-desc">参与互动和自己发布过的帖子都会保留在这里。</view>
+    </view>
+    <t-button theme="primary" icon="add" shape="round" bindtap="publishPost">发布帖子</t-button>
+  </view>
+
+  <t-tabs value="{{activeTab}}" bind:change="onTabChange">
+    <t-tab-panel label="我参与的" value="interacted" />
+    <t-tab-panel label="我发布的帖子" value="published" />
+  </t-tabs>
+
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="44rpx" text="加载帖子中" />
+  </view>
+  <t-empty wx:elif="{{!currentPosts.length}}" description="暂无社区记录" />
+
+  <view wx:else class="post-list">
+    <view wx:for="{{currentPosts}}" wx:key="id" class="post-card" data-id="{{item.id}}" bindtap="openDetail">
+      <image class="post-cover" src="{{item.cover}}" mode="aspectFill" />
+      <view class="post-main">
+        <view class="post-title">{{item.title}}</view>
+        <view class="post-content">{{item.content}}</view>
+        <view class="post-bottom">
+          <t-tag size="small" theme="primary" variant="light">{{item.status || item.type}}</t-tag>
+          <text>{{item.likeCount}} 赞 · {{item.commentCount}} 评 · {{item.time}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
