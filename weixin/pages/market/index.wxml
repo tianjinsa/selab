@@ -1,0 +1,68 @@
+<nav title-text="二手市场" />
+<view class="market-page">
+  <view class="market-hero">
+    <view>
+      <text class="eyebrow">校园二手市场</text>
+      <view class="hero-title">闲置物品校内流转</view>
+      <view class="hero-desc">发布、审核、咨询、担保交易、评价与纠纷仲裁都有完整状态链路。</view>
+    </view>
+    <t-button theme="primary" icon="add" shape="round" bindtap="publishGoods">发布闲置</t-button>
+  </view>
+
+  <view class="order-flow">
+    <view wx:for="{{orderSteps}}" wx:key="index" class="step">
+      <text>{{index + 1}}</text>
+      <view>{{item}}</view>
+    </view>
+  </view>
+
+  <view class="search-panel">
+    <t-search placeholder="搜索商品、分类或交易地点" value="{{keyword}}" bind:change="onSearch" />
+    <scroll-view scroll-x class="category-strip" show-scrollbar="{{false}}">
+      <t-tag
+        wx:for="{{categories}}"
+        wx:key="index"
+        class="category"
+        size="large"
+        theme="{{activeCategory === item ? 'primary' : 'default'}}"
+        variant="{{activeCategory === item ? 'dark' : 'light'}}"
+        data-name="{{item}}"
+        bindtap="selectCategory"
+      >
+        {{item}}
+      </t-tag>
+    </scroll-view>
+  </view>
+
+  <view class="market-summary">
+    <view>
+      <text>热门分类</text>
+      <strong>数码 / 书籍 / 生活用品</strong>
+    </view>
+    <view>
+      <text>担保交易</text>
+      <strong>资金托管中</strong>
+    </view>
+  </view>
+
+  <view class="goods-grid">
+    <view wx:for="{{filteredGoods}}" wx:key="id" class="goods-card">
+      <image src="{{item.image}}" class="goods-image" mode="aspectFill" />
+      <view class="goods-body">
+        <view class="goods-title">{{item.name}}</view>
+        <view class="goods-price">¥{{item.price}}</view>
+        <view class="goods-meta">{{item.condition}} · {{item.tradeMode}}</view>
+        <view class="seller-row">
+          <t-tag size="small" theme="success" variant="light">信用 {{item.sellerCredit}}</t-tag>
+          <text>{{item.seller}} · {{item.location}}</text>
+        </view>
+        <view class="goods-stats">{{item.views}} 浏览 · {{item.consults}} 次咨询 · {{item.status}}</view>
+        <view class="goods-actions">
+          <t-button size="small" variant="text" icon="star" data-id="{{item.id}}" bindtap="favoriteGoods">收藏</t-button>
+          <t-button size="small" theme="light" icon="chat" bindtap="consultSeller">咨询</t-button>
+          <t-button size="small" theme="primary" data-name="{{item.name}}" bindtap="createOrder">下单</t-button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
