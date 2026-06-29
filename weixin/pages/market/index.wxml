@@ -41,7 +41,7 @@
       <view class="featured-desc">{{featured.condition}} · {{featured.tradeMode}} · {{featured.location}}</view>
       <view class="featured-bottom">
         <text>¥{{featured.price}}</text>
-        <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{featured.id}}" data-name="{{featured.name}}">下单</t-button>
+        <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{featured.id}}" data-name="{{featured.name}}">求购</t-button>
       </view>
     </view>
   </view>
@@ -74,7 +74,7 @@
             data-goods-id="{{item.id}}"
             data-name="{{item.name}}"
           >咨询</t-button>
-          <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{item.id}}" data-name="{{item.name}}">下单</t-button>
+          <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{item.id}}" data-name="{{item.name}}">求购</t-button>
         </view>
       </view>
     </view>

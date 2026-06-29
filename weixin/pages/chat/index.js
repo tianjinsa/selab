@@ -3,6 +3,49 @@ import { listFrom, unwrap } from '~/utils/api';
 
 const app = getApp();
 
+const statusTextMap = {
+  pending: '待处理',
+  accepted: '已同意',
+  rejected: '已拒绝',
+  expired: '已过期',
+  superseded: '已过期',
+};
+
+const cardTypeTextMap = {
+  taskApply: '任务申请',
+  goodsPurchase: '商品求购',
+};
+
+const statusThemeMap = {
+  pending: 'warning',
+  accepted: 'success',
+  rejected: 'danger',
+  expired: 'default',
+  superseded: 'default',
+};
+
+function mapCard(card, myUserId, content = '') {
+  if (!card) return null;
+  const status = card.status || 'pending';
+  const isOwner = card.ownerId === myUserId;
+  const isRequester = card.requesterId === myUserId;
+  const targetType = card.targetType || (card.type === 'goodsPurchase' ? 'goods' : 'task');
+  return {
+    ...card,
+    targetType,
+    status,
+    typeText: cardTypeTextMap[card.type] || '特殊消息',
+    statusText: card.actionMessage || statusTextMap[status] || '待处理',
+    statusTheme: statusThemeMap[status] || 'default',
+    summaryText: card.summary || content,
+    isOwner,
+    isRequester,
+    canAct: isOwner && status === 'pending',
+    waiting: isRequester && status === 'pending',
+    expiredLike: status === 'expired' || status === 'superseded',
+  };
+}
+
 Page({
   data: {
     myAvatar: '/static/chat/avatar.png',
@@ -63,8 +106,9 @@ Page({
     const messages = (data.list || []).map((item) => ({
       id: item.id,
       from: item.fromUserId === this.data.myUserId ? 0 : 1,
+      type: item.type || 'text',
       content: item.content,
-      card: item.card,
+      card: mapCard(item.card, this.data.myUserId, item.content),
       time: new Date(item.createdAt).getTime(),
     }));
     this.setData({ messages });
@@ -95,6 +139,25 @@ Page({
         return this.loadMessages();
       })
       .catch(() => wx.showToast({ title: '发送失败', icon: 'none' }));
+  },
+
+  openCardDetail(event) {
+    const { targetType, targetId } = event.currentTarget.dataset;
+    if (!targetId) return;
+    const url = targetType === 'goods' ? `/pages/market/detail/index?id=${targetId}` : `/pages/task/detail/index?id=${targetId}`;
+    wx.navigateTo({ url });
+  },
+
+  handleCardAction(event) {
+    const { messageId, action } = event.currentTarget.dataset;
+    if (!messageId || !action) return;
+    request(`/messages/conversations/${this.data.conversationId}/messages/${messageId}/card-action`, 'POST', { action })
+      .then(() => this.loadMessages())
+      .catch((error) => {
+        const message = (error.data && error.data.message) || '操作失败';
+        wx.showToast({ title: message, icon: 'none' });
+        this.loadMessages();
+      });
   },
 
   scrollToBottom() {

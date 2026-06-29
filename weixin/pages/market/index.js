@@ -91,34 +91,22 @@ Page({
   },
 
   consultSeller(event) {
-    const { sellerId, goodsId, name } = event.currentTarget.dataset;
-    request('/messages/conversations', 'POST', {
-      targetUserId: sellerId,
-      source: '二手市场',
-      relatedCard: { type: 'goods', id: goodsId, title: name, action: '商品咨询' },
-    })
-      .then((res) => wx.navigateTo({ url: `/pages/chat/index?conversationId=${unwrap(res).id}` }))
-      .catch(() => wx.showToast({ title: '无法进入私信', icon: 'none' }));
+    const { goodsId, name } = event.currentTarget.dataset;
+    this.requestGoods(goodsId, `我想咨询「${name}」，可以聊聊交易细节吗？`);
   },
 
   createOrder(event) {
     const { id, name } = event.currentTarget.dataset;
-    request(`/market/goods/${id}/orders`, 'POST')
+    this.requestGoods(id, `我想购买「${name}」，等待卖家确认。`);
+  },
+
+  requestGoods(id, message) {
+    request(`/market/goods/${id}/request`, 'POST', { message })
       .then((res) => {
-        const order = unwrap(res);
-        wx.showModal({
-          title: '订单已创建',
-          content: `你正在购买「${name}」。平台担保交易将托管资金，确认收货后再打款给卖家。`,
-          confirmText: '模拟支付',
-          success: (modal) => {
-            if (modal.confirm) {
-              request(`/market/orders/${order.id}/pay`, 'POST', { method: '微信支付' }).then(() => {
-                wx.showToast({ title: '支付成功', icon: 'success' });
-              });
-            }
-          },
-        });
+        const data = unwrap(res);
+        wx.showToast({ title: '已发送求购卡片', icon: 'none' });
+        wx.navigateTo({ url: `/pages/chat/index?conversationId=${data.conversation.id}` });
       })
-      .catch(() => wx.showToast({ title: '下单失败', icon: 'none' }));
+      .catch(() => wx.showToast({ title: '发送失败', icon: 'none' }));
   },
 });

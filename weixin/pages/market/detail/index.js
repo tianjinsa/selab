@@ -28,30 +28,23 @@ Page({
   consultSeller() {
     const { goods } = this.data;
     if (!goods || !goods.seller) return;
-    request('/messages/conversations', 'POST', {
-      targetUserId: goods.seller.id,
-      source: '二手市场',
-      relatedCard: { type: 'goods', id: goods.id, title: goods.name, action: '商品咨询' },
-    })
-      .then((res) => wx.navigateTo({ url: `/pages/chat/index?conversationId=${unwrap(res).id}` }))
-      .catch(() => wx.showToast({ title: '无法进入私信', icon: 'none' }));
+    this.requestGoods(`我想咨询「${goods.name}」，可以聊聊交易细节吗？`);
   },
 
   createOrder() {
     const { goods } = this.data;
     if (!goods) return;
-    request(`/market/goods/${goods.id}/orders`, 'POST')
+    this.requestGoods(`我想购买「${goods.name}」，等待卖家确认。`);
+  },
+
+  requestGoods(message) {
+    const { goods } = this.data;
+    request(`/market/goods/${goods.id}/request`, 'POST', { message })
       .then((res) => {
-        const order = unwrap(res);
-        wx.showModal({
-          title: '订单已创建',
-          content: '平台将先托管付款，确认收货后再打款给卖家。',
-          confirmText: '模拟支付',
-          success: (modal) => {
-            if (modal.confirm) request(`/market/orders/${order.id}/pay`, 'POST').then(() => wx.showToast({ title: '支付成功', icon: 'success' }));
-          },
-        });
+        const data = unwrap(res);
+        wx.showToast({ title: '已发送求购卡片', icon: 'none' });
+        wx.navigateTo({ url: `/pages/chat/index?conversationId=${data.conversation.id}` });
       })
-      .catch(() => wx.showToast({ title: '下单失败', icon: 'none' }));
+      .catch(() => wx.showToast({ title: '发送失败', icon: 'none' }));
   },
 });

@@ -31,6 +31,6 @@
 
   <view class="bottom-actions">
     <t-button theme="light" icon="chat" bindtap="consultSeller">咨询卖家</t-button>
-    <t-button theme="primary" bindtap="createOrder">下单担保</t-button>
+    <t-button theme="primary" bindtap="createOrder">发送求购</t-button>
   </view>
 </view>

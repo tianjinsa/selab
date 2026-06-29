@@ -11,16 +11,66 @@
         </view>
 
         <view wx:if="{{ item.from === 0 }}" class="message-area">
-          <view class="message self">
-          <text space="nbsp">{{ item.content }}</text>
+          <view class="message self {{item.card ? 'card-message' : ''}}">
+            <block wx:if="{{item.card}}">
+              <view
+                class="action-card"
+                data-target-type="{{item.card.targetType}}"
+                data-target-id="{{item.card.targetId}}"
+                bindtap="openCardDetail"
+              >
+                <view class="card-top">
+                  <t-tag size="small" theme="{{item.card.statusTheme}}" variant="light">{{item.card.typeText}}</t-tag>
+                  <text>{{item.card.statusText}}</text>
+                </view>
+                <view class="card-title">{{item.card.title}}</view>
+                <view class="card-summary">{{item.card.summaryText}}</view>
+                <view wx:if="{{item.card.waiting}}" class="card-wait">等待对方操作</view>
+                <view wx:elif="{{!item.card.canAct}}" class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
+              </view>
+            </block>
+            <text wx:else space="nbsp">{{ item.content }}</text>
           </view>
           <t-avatar image="{{ myAvatar }}" size="small" />
         </view>
 
         <view wx:else class="message-area">
           <t-avatar image="{{ avatar }}" size="small" />
-          <view class="message other">
-          <text space="nbsp">{{ item.content }}</text>
+          <view class="message other {{item.card ? 'card-message' : ''}}">
+            <block wx:if="{{item.card}}">
+              <view
+                class="action-card"
+                data-target-type="{{item.card.targetType}}"
+                data-target-id="{{item.card.targetId}}"
+                bindtap="openCardDetail"
+              >
+                <view class="card-top">
+                  <t-tag size="small" theme="{{item.card.statusTheme}}" variant="light">{{item.card.typeText}}</t-tag>
+                  <text>{{item.card.statusText}}</text>
+                </view>
+                <view class="card-title">{{item.card.title}}</view>
+                <view class="card-summary">{{item.card.summaryText}}</view>
+                <view wx:if="{{item.card.canAct}}" class="card-actions">
+                  <t-button
+                    size="small"
+                    theme="primary"
+                    data-message-id="{{item.id}}"
+                    data-action="accept"
+                    catchtap="handleCardAction"
+                  >同意</t-button>
+                  <t-button
+                    size="small"
+                    theme="light"
+                    data-message-id="{{item.id}}"
+                    data-action="reject"
+                    catchtap="handleCardAction"
+                  >拒绝</t-button>
+                </view>
+                <view wx:elif="{{item.card.waiting}}" class="card-wait">等待对方操作</view>
+                <view wx:else class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
+              </view>
+            </block>
+            <text wx:else space="nbsp">{{ item.content }}</text>
           </view>
         </view>
       </block>
