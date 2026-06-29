@@ -14,6 +14,7 @@ const statusTextMap = {
 const cardTypeTextMap = {
   taskApply: '任务申请',
   goodsPurchase: '商品求购',
+  postShare: '帖子分享',
 };
 
 const statusThemeMap = {
@@ -26,6 +27,21 @@ const statusThemeMap = {
 
 function mapCard(card, myUserId, content = '') {
   if (!card) return null;
+  if (card.type === 'postShare') {
+    return {
+      ...card,
+      targetType: 'post',
+      status: 'shared',
+      typeText: cardTypeTextMap[card.type],
+      statusText: '点击查看',
+      statusTheme: 'primary',
+      summaryText: card.summary || content,
+      passive: true,
+      canAct: false,
+      waiting: false,
+      expiredLike: false,
+    };
+  }
   const status = card.status || 'pending';
   const isOwner = card.ownerId === myUserId;
   const isRequester = card.requesterId === myUserId;
@@ -144,7 +160,12 @@ Page({
   openCardDetail(event) {
     const { targetType, targetId } = event.currentTarget.dataset;
     if (!targetId) return;
-    const url = targetType === 'goods' ? `/pages/market/detail/index?id=${targetId}` : `/pages/task/detail/index?id=${targetId}`;
+    const routes = {
+      goods: `/pages/market/detail/index?id=${targetId}`,
+      post: `/pages/community/detail/index?id=${targetId}`,
+      task: `/pages/task/detail/index?id=${targetId}`,
+    };
+    const url = routes[targetType] || routes.task;
     wx.navigateTo({ url });
   },
 

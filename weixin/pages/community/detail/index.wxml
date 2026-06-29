@@ -12,6 +12,14 @@
           <view class="author-name">{{post.authorName}}</view>
           <view class="post-meta">{{post.type}} · {{post.publishTime}} · {{post.views}} 浏览</view>
         </view>
+        <t-button
+          wx:if="{{!post.isMine}}"
+          size="small"
+          theme="{{post.followingAuthor ? 'primary' : 'light'}}"
+          variant="{{post.followingAuthor ? 'light' : 'outline'}}"
+          shape="round"
+          bindtap="toggleFollow"
+        >{{post.followingAuthor ? '已关注' : '关注'}}</t-button>
       </view>
       <view class="post-title">{{post.title}}</view>
       <view class="post-content">{{post.content}}</view>
@@ -20,10 +28,22 @@
         <t-tag wx:for="{{post.topics}}" wx:key="index" size="small" variant="outline">#{{item}}</t-tag>
       </view>
       <view class="post-actions">
-        <t-button size="small" variant="text" icon="thumb-up" bindtap="likePost">{{post.likeCount}}</t-button>
+        <t-button
+          size="small"
+          theme="{{post.liked ? 'primary' : 'default'}}"
+          variant="{{post.liked ? 'light' : 'text'}}"
+          icon="thumb-up"
+          bindtap="likePost"
+        >{{post.likeCount}}</t-button>
         <t-button size="small" variant="text" icon="chat">{{post.commentCount}}</t-button>
-        <t-button size="small" variant="text" icon="star" bindtap="favoritePost">收藏</t-button>
-        <t-button size="small" variant="text" icon="share" bindtap="sharePost">分享</t-button>
+        <t-button
+          size="small"
+          theme="{{post.favorited ? 'primary' : 'default'}}"
+          variant="{{post.favorited ? 'light' : 'text'}}"
+          icon="star"
+          bindtap="favoritePost"
+        >{{post.favoriteCount}}</t-button>
+        <t-button size="small" variant="text" icon="share" bindtap="sharePost">{{post.shareCount}}</t-button>
       </view>
     </view>
 
@@ -53,4 +73,30 @@
     <t-input value="{{input}}" focus="{{focusInput}}" placeholder="写下你的评论" borderless bind:change="onInput" />
     <t-button theme="primary" shape="round" loading="{{submitting}}" bindtap="submitComment">发送</t-button>
   </view>
+
+  <t-popup visible="{{shareVisible}}" placement="bottom" bind:visible-change="onShareVisibleChange">
+    <view class="share-sheet">
+      <view class="share-head">
+        <view>
+          <view class="share-title">转发给互关好友</view>
+          <view class="share-desc">选择一位好友，帖子会以卡片发送到私信</view>
+        </view>
+        <t-button size="small" theme="light" shape="round" bindtap="closeShareSheet">关闭</t-button>
+      </view>
+      <view wx:if="{{shareLoading}}" class="share-loading">
+        <t-loading theme="circular" size="40rpx" text="加载好友中" />
+      </view>
+      <t-empty wx:elif="{{!shareFriends.length}}" description="暂无互关好友" />
+      <view wx:else class="friend-list">
+        <view wx:for="{{shareFriends}}" wx:key="id" class="friend-item" data-user-id="{{item.id}}" bindtap="selectShareFriend">
+          <t-avatar image="{{item.avatar}}" size="72rpx" />
+          <view class="friend-main">
+            <view class="friend-name">{{item.nickname}}</view>
+            <view class="friend-desc">{{item.desc}}</view>
+          </view>
+          <t-button size="small" theme="primary" variant="light" loading="{{sharing}}">转发</t-button>
+        </view>
+      </view>
+    </view>
+  </t-popup>
 </view>

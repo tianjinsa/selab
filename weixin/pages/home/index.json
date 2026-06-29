@@ -8,6 +8,7 @@
     "t-avatar": "tdesign-miniprogram/avatar/avatar",
     "t-loading": "tdesign-miniprogram/loading/loading",
     "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-popup": "tdesign-miniprogram/popup/popup",
     "nav": "/components/nav",
     "card": "/components/card"
   }

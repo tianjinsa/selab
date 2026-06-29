@@ -23,10 +23,11 @@
                   <t-tag size="small" theme="{{item.card.statusTheme}}" variant="light">{{item.card.typeText}}</t-tag>
                   <text>{{item.card.statusText}}</text>
                 </view>
+                <image wx:if="{{item.card.cover}}" class="card-cover" src="{{item.card.cover}}" mode="aspectFill" />
                 <view class="card-title">{{item.card.title}}</view>
                 <view class="card-summary">{{item.card.summaryText}}</view>
                 <view wx:if="{{item.card.waiting}}" class="card-wait">等待对方操作</view>
-                <view wx:elif="{{!item.card.canAct}}" class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
+                <view wx:elif="{{!item.card.canAct && !item.card.passive}}" class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
               </view>
             </block>
             <text wx:else space="nbsp">{{ item.content }}</text>
@@ -48,6 +49,7 @@
                   <t-tag size="small" theme="{{item.card.statusTheme}}" variant="light">{{item.card.typeText}}</t-tag>
                   <text>{{item.card.statusText}}</text>
                 </view>
+                <image wx:if="{{item.card.cover}}" class="card-cover" src="{{item.card.cover}}" mode="aspectFill" />
                 <view class="card-title">{{item.card.title}}</view>
                 <view class="card-summary">{{item.card.summaryText}}</view>
                 <view wx:if="{{item.card.canAct}}" class="card-actions">
@@ -67,7 +69,7 @@
                   >拒绝</t-button>
                 </view>
                 <view wx:elif="{{item.card.waiting}}" class="card-wait">等待对方操作</view>
-                <view wx:else class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
+                <view wx:elif="{{!item.card.passive}}" class="card-status {{item.card.expiredLike ? 'expired' : ''}}">{{item.card.statusText}}</view>
               </view>
             </block>
             <text wx:else space="nbsp">{{ item.content }}</text>

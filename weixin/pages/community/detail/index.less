@@ -161,3 +161,77 @@ page {
   background: #fff;
   box-sizing: border-box;
 }
+
+.share-sheet {
+  padding: 28rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
+  border-radius: 24rpx 24rpx 0 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.share-head,
+.friend-item {
+  display: flex;
+  align-items: center;
+}
+
+.share-head {
+  justify-content: space-between;
+  gap: 20rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #edf2f7;
+}
+
+.share-title {
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.share-desc {
+  margin-top: 6rpx;
+  color: #64748b;
+  font-size: 23rpx;
+}
+
+.share-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48rpx 0;
+}
+
+.friend-list {
+  max-height: 560rpx;
+  overflow-y: auto;
+  padding-top: 8rpx;
+}
+
+.friend-item {
+  gap: 18rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #edf2f7;
+}
+
+.friend-item:last-child {
+  border-bottom: 0;
+}
+
+.friend-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.friend-name {
+  overflow: hidden;
+  color: #111827;
+  font-size: 28rpx;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-desc {
+  margin-top: 4rpx;
+  color: #64748b;
+  font-size: 23rpx;
+}

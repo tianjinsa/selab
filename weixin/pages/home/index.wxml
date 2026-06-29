@@ -44,12 +44,36 @@
               <view class="author-name">{{item.authorName}}</view>
               <view class="post-type">{{item.type}} · {{item.publishTime}}</view>
             </view>
+            <t-button
+              wx:if="{{!item.isMine}}"
+              size="small"
+              theme="{{item.followingAuthor ? 'primary' : 'light'}}"
+              variant="{{item.followingAuthor ? 'light' : 'outline'}}"
+              shape="round"
+              data-author-id="{{item.authorId}}"
+              data-following="{{item.followingAuthor ? 1 : 0}}"
+              catchtap="toggleFollow"
+            >{{item.followingAuthor ? '已关注' : '关注'}}</t-button>
           </view>
           <view class="post-actions">
-            <t-button size="small" variant="text" icon="thumb-up" data-id="{{item.id}}" catchtap="likePost">{{item.likeCount}}</t-button>
+            <t-button
+              size="small"
+              theme="{{item.liked ? 'primary' : 'default'}}"
+              variant="{{item.liked ? 'light' : 'text'}}"
+              icon="thumb-up"
+              data-id="{{item.id}}"
+              catchtap="likePost"
+            >{{item.likeCount}}</t-button>
             <t-button size="small" variant="text" icon="chat" data-id="{{item.id}}" catchtap="commentPost">{{item.commentCount}}</t-button>
-            <t-button size="small" variant="text" icon="star" data-id="{{item.id}}" catchtap="favoritePost"></t-button>
-            <t-button size="small" variant="text" icon="share" data-id="{{item.id}}" catchtap="sharePost"></t-button>
+            <t-button
+              size="small"
+              theme="{{item.favorited ? 'primary' : 'default'}}"
+              variant="{{item.favorited ? 'light' : 'text'}}"
+              icon="star"
+              data-id="{{item.id}}"
+              catchtap="favoritePost"
+            >{{item.favoriteCount}}</t-button>
+            <t-button size="small" variant="text" icon="share" data-id="{{item.id}}" catchtap="sharePost">{{item.shareCount}}</t-button>
           </view>
         </view>
       </view>
@@ -59,4 +83,30 @@
   <view class="home-release">
     <t-button theme="primary" size="large" icon="add" shape="round" bindtap="goRelease">发布</t-button>
   </view>
+
+  <t-popup visible="{{shareVisible}}" placement="bottom" bind:visible-change="onShareVisibleChange">
+    <view class="share-sheet">
+      <view class="share-head">
+        <view>
+          <view class="share-title">转发给互关好友</view>
+          <view class="share-desc">选择一位好友，帖子会以卡片发送到私信</view>
+        </view>
+        <t-button size="small" theme="light" shape="round" bindtap="closeShareSheet">关闭</t-button>
+      </view>
+      <view wx:if="{{shareLoading}}" class="share-loading">
+        <t-loading theme="circular" size="40rpx" text="加载好友中" />
+      </view>
+      <t-empty wx:elif="{{!shareFriends.length}}" description="暂无互关好友" />
+      <view wx:else class="friend-list">
+        <view wx:for="{{shareFriends}}" wx:key="id" class="friend-item" data-user-id="{{item.id}}" bindtap="selectShareFriend">
+          <t-avatar image="{{item.avatar}}" size="72rpx" />
+          <view class="friend-main">
+            <view class="friend-name">{{item.nickname}}</view>
+            <view class="friend-desc">{{item.desc}}</view>
+          </view>
+          <t-button size="small" theme="primary" variant="light" loading="{{sharing}}">转发</t-button>
+        </view>
+      </view>
+    </view>
+  </t-popup>
 </view>

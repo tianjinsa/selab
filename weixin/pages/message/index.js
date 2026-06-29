@@ -44,6 +44,7 @@ Page({
           title: (item.peer && item.peer.nickname) || '会话',
           avatar: (item.peer && item.peer.avatar) || '/static/avatar1.png',
           desc:
+            (item.lastMessage && item.lastMessage.card && item.lastMessage.card.title) ||
             (item.lastMessage && item.lastMessage.content) ||
             (item.relatedCard && item.relatedCard.title) ||
             '暂无消息',
