@@ -1,0 +1,41 @@
+<nav title-text="智能体" />
+<view class="agent-page">
+  <view class="agent-hero">
+    <text class="eyebrow">校园信息智能体</text>
+    <view class="hero-title">会调用平台能力的咨询助手</view>
+    <view class="hero-desc">知识库问答、答案溯源、多轮会话、任务/二手/社区 function 调用都集中在这里。</view>
+  </view>
+
+  <view class="tool-grid">
+    <view wx:for="{{tools}}" wx:key="key" class="tool-card" data-key="{{item.key}}" bindtap="useTool">
+      <t-icon name="{{item.icon}}" size="44rpx" />
+      <view>
+        <view class="tool-title">{{item.title}}</view>
+        <view class="tool-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-x class="quick-strip" show-scrollbar="{{false}}">
+    <t-tag wx:for="{{quickQuestions}}" wx:key="index" class="quick" size="large" variant="light" data-question="{{item}}" bindtap="askQuick">
+      {{item}}
+    </t-tag>
+  </scroll-view>
+
+  <view class="chat-panel">
+    <view wx:for="{{messages}}" wx:key="index" class="message {{item.role}}">
+      <view class="bubble">
+        <view class="message-text">{{item.text}}</view>
+        <view wx:if="{{item.source}}" class="source-row">
+          <t-tag size="small" theme="primary" variant="light">{{item.tool}}</t-tag>
+          <text>来源：{{item.source}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="input-bar">
+    <t-input value="{{input}}" placeholder="输入校园问题或平台操作需求" borderless bind:change="onInput" />
+    <t-button theme="primary" icon="send" shape="round" bindtap="sendQuestion">发送</t-button>
+  </view>
+</view>
