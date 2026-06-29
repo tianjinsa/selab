@@ -1,5 +1,12 @@
 {
-  "pages": ["pages/home/index", "pages/message/index", "pages/my/index"],
+  "pages": [
+    "pages/home/index",
+    "pages/task/index",
+    "pages/market/index",
+    "pages/agent/index",
+    "pages/my/index",
+    "pages/message/index"
+  ],
   "usingComponents": {
     "t-toast": "tdesign-miniprogram/toast/toast"
   },
@@ -55,12 +62,20 @@
     "custom": true,
     "list": [
       {
-        "pagePath": "pages/home/index",
-        "text": "首页"
+        "pagePath": "pages/task/index",
+        "text": "任务互助"
       },
       {
-        "pagePath": "pages/message/index",
-        "text": "消息"
+        "pagePath": "pages/market/index",
+        "text": "二手市场"
+      },
+      {
+        "pagePath": "pages/home/index",
+        "text": "社区论坛"
+      },
+      {
+        "pagePath": "pages/agent/index",
+        "text": "智能体"
       },
       {
         "pagePath": "pages/my/index",
