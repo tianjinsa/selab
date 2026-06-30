@@ -1,91 +1,171 @@
-.login {
-  &__title {
-    color: rgba(0, 0, 0, 0.9);
-    font-size: 56rpx;
-    font-weight: 600;
-    line-height: 72rpx;
-    padding: 16rpx 32rpx 40rpx;
-  }
+page {
+  min-height: 100vh;
+  background: #f4f7fb;
+}
 
-  &__input {
-    .input-label {
-      display: flex;
-      padding-right: 32rpx;
-      box-sizing: border-box;
-      border-right: 1rpx solid #e7e7e7;
-    }
+.login-scroll {
+  height: calc(100vh - 96rpx);
+}
 
-    .input-icon {
-      margin-left: 8rpx;
-    }
-  }
+.login-page {
+  min-height: 100%;
+  padding: 40rpx 32rpx 56rpx;
+  box-sizing: border-box;
+}
 
-  &__tips {
-    color: rgba(0, 0, 0, 0.4);
-    font-size: 24rpx;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 40rpx;
-    margin: 24rpx 32rpx 32rpx;
-  }
+.error-banner {
+  margin-bottom: 20rpx;
+  padding: 18rpx 22rpx;
+  border: 1rpx solid #fecdd3;
+  border-radius: 14rpx;
+  color: #b42318;
+  background: #fff1f2;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
 
-  &__button {
-    margin: 0 32rpx;
-  }
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40rpx 20rpx 48rpx;
+  text-align: center;
+}
 
-  &__password--forget {
-    display: flex;
-    font-size: 24rpx;
-    align-items: center;
-    margin: 32rpx;
-    line-height: 40rpx;
-  }
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 32rpx;
+  color: #ffffff;
+  background: #0052d9;
+  box-shadow: 0 18rpx 36rpx rgba(0, 82, 217, 0.2);
+  font-size: 48rpx;
+  font-weight: 900;
+}
 
-  &__others {
-    margin: 64rpx 32rpx auto 32rpx;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.brand-title {
+  margin-top: 28rpx;
+  color: #101828;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
 
-    &-label {
-      min-width: 96rpx;
-      color: rgba(0, 0, 0, 0.6);
-      font-size: 24rpx;
-      line-height: 40rpx;
-    }
+.brand-desc {
+  max-width: 560rpx;
+  margin-top: 14rpx;
+  color: #667085;
+  font-size: 26rpx;
+  line-height: 1.55;
+}
 
-    &-buttons {
-      flex: 1;
-      margin-left: 32rpx;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
+.login-card,
+.register-card {
+  border: 1rpx solid #e5eaf3;
+  border-radius: 18rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 30rpx rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
 
-      .button {
-        margin: 0 !important;
+.login-card {
+  padding: 32rpx;
+}
 
-        &:not(:last-child) {
-          margin-right: 32rpx !important;
-        }
-      }
-    }
-  }
+.card-title {
+  color: #111827;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.3;
+}
 
-  // 覆盖组件样式
-  .radio-class {
-    --td-radio-icon-size: 32rpx;
-    --td-radio-label-line-height: 40rpx;
+.card-desc {
+  margin-top: 8rpx;
+  margin-bottom: 28rpx;
+  color: #667085;
+  font-size: 24rpx;
+  line-height: 1.45;
+}
 
-    align-items: center;
-  }
+.field {
+  margin-bottom: 24rpx;
+}
 
-  .radio-class-icon {
-    margin-top: 0 !important;
-  }
+.field-label {
+  margin-bottom: 10rpx;
+  color: #344054;
+  font-size: 25rpx;
+  font-weight: 700;
+  line-height: 1.35;
+}
 
-  .radio-class-label {
-    margin-left: 8rpx !important;
-    font-size: 24rpx !important;
-    line-height: 40rpx !important;
-  }
+.input {
+  width: 100%;
+  height: 82rpx;
+  padding: 0 22rpx;
+  border: 2rpx solid #d0d8e5;
+  border-radius: 14rpx;
+  color: #111827;
+  background: #ffffff;
+  font-size: 28rpx;
+  line-height: 82rpx;
+  box-sizing: border-box;
+}
+
+.primary-btn {
+  width: 100%;
+  height: 84rpx;
+  margin-top: 12rpx;
+  border-radius: 14rpx;
+  color: #ffffff;
+  background: #0052d9;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 84rpx;
+}
+
+.demo-row {
+  display: flex;
+  gap: 16rpx;
+  margin: 24rpx 0;
+}
+
+.demo-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  height: 64rpx;
+  border: 1rpx solid #cfe0ff;
+  border-radius: 999rpx;
+  color: #0052d9;
+  background: #edf4ff;
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.register-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 26rpx 28rpx;
+  color: #0052d9;
+}
+
+.register-title {
+  color: #111827;
+  font-size: 29rpx;
+  font-weight: 900;
+}
+
+.register-desc {
+  margin-top: 6rpx;
+  color: #667085;
+  font-size: 23rpx;
+  line-height: 1.45;
 }

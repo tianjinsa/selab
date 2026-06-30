@@ -1,80 +1,60 @@
-<t-navbar left-arrow />
-<view class="page login">
-  <view class="login__title"> 欢迎登录 TDsign </view>
-  <view class="login__content">
-    <view class="login__input">
-      <view class="login__password" wx:if="{{isPasswordLogin}}">
-        <t-input
-          label="账号"
-          placeholder="请输入手机号/邮箱"
-          value="{{passwordInfo.account}}"
-          bindchange="onAccountChange"
-        ></t-input>
-        <t-input
-          label="密码"
-          placeholder="请输入密码"
-          type="password"
-          clearable
-          value="{{passwordInfo.password}}"
-          bindchange="onPasswordChange"
+<t-navbar title="账号登录" left-arrow />
+<scroll-view class="login-scroll" scroll-y type="list">
+  <view class="login-page">
+    <view wx:if="{{errorText}}" class="error-banner">{{errorText}}</view>
+
+    <view class="brand-block">
+      <view class="brand-mark">校</view>
+      <view class="brand-title">校园智慧生活</view>
+      <view class="brand-desc">任务互助、二手交易、社区论坛和智能体统一账号登录。</view>
+    </view>
+
+    <view class="login-card">
+      <view class="card-title">账号密码登录</view>
+      <view class="card-desc">可使用学号、手机号或管理员账号登录。</view>
+
+      <view class="field">
+        <view class="field-label">账号</view>
+        <input
+          class="input"
+          placeholder="请输入学号 / 手机号 / 账号"
+          value="{{account}}"
+          bindinput="onAccountInput"
         />
       </view>
 
-      <t-input wx:else value="{{phoneNumber}}" placeholder="请输入手机号" type="number" bindchange="onPhoneInput">
-        <view slot="label" class="input-label">
-          <text>+86</text>
-          <t-icon name="caret-down-small" size="40rpx" class="input-iconl"></t-icon>
-        </view>
-      </t-input>
+      <view class="field">
+        <view class="field-label">密码</view>
+        <input
+          class="input"
+          password="{{true}}"
+          placeholder="请输入密码"
+          value="{{password}}"
+          bindinput="onPasswordInput"
+        />
+      </view>
+
+      <button class="primary-btn" loading="{{loading}}" disabled="{{loading}}" bindtap="submitLogin">登录</button>
     </view>
 
-    <view class="login__tips">未注册的手机号验证通过后将自动注册</view>
-
-    <t-radio-group allow-uncheck borderless value="{{radioValue}}" bind:change="onCheckChange">
-      <t-radio
-        label="同意《协议条款》"
-        value="agree"
-        t-class="radio-class"
-        t-class-icon="radio-class-icon"
-        t-class-label="radio-class-label"
-      />
-    </t-radio-group>
-
-    <view class="login__button">
-      <t-button theme="primary" size="large" block disabled="{{!isSubmit}}" bindtap="login">
-        {{ isPasswordLogin ? '登录' : '验证并登录' }}
-      </t-button>
+    <view class="demo-row">
+      <view
+        wx:for="{{demoAccounts}}"
+        wx:key="label"
+        class="demo-chip"
+        data-index="{{index}}"
+        bindtap="useDemoAccount"
+      >
+        {{item.label}}
+      </view>
     </view>
 
-    <view class="login__password--forget" wx:if="{{isPasswordLogin}}">
-      <text>忘记密码？</text>
-      <t-link theme="primary" size="small">找回密码</t-link>
-    </view>
-  </view>
-
-  <view class="login__others">
-    <text class="login__others-label">其他方式</text>
-    <view class="login__others-buttons">
-      <t-button class="button" variant="outline" theme="default" size="medium" shape="round" bindtap="changeLogin">
-        {{isPasswordLogin ? '验证码登录' : '密码登录' }}
-      </t-button>
-      <t-button
-        class="button"
-        variant="outline"
-        theme="default"
-        size="medium"
-        icon="logo-wechat-stroke"
-        shape="circle"
-      ></t-button>
-      <t-button class="button" variant="outline" theme="default" size="medium" icon="logo-qq" shape="circle"></t-button>
-      <t-button
-        class="button"
-        variant="outline"
-        theme="default"
-        size="medium"
-        icon="logo-wecom"
-        shape="circle"
-      ></t-button>
+    <view class="register-card" bindtap="goRegister">
+      <view>
+        <view class="register-title">没有账号？</view>
+        <view class="register-desc">使用邀请码创建校园账号，不需要短信验证码。</view>
+      </view>
+      <t-icon name="chevron-right" size="36rpx" />
     </view>
   </view>
-</view>
+</scroll-view>

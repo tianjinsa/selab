@@ -41,9 +41,9 @@
       "pages": ["login"]
     },
     {
-      "root": "pages/loginCode",
-      "name": "loginCode",
-      "pages": ["loginCode"]
+      "root": "pages/register",
+      "name": "register",
+      "pages": ["index"]
     },
     {
       "root": "pages/dataCenter",

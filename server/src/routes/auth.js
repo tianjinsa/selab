@@ -15,11 +15,41 @@ function validateInvitation(data, code, userId) {
   return true;
 }
 
+function getInvitationStatus(data, code) {
+  const invitation = data.invitations.find((item) => item.code === code);
+  if (!invitation) return { valid: false, message: '邀请码不存在' };
+  if (new Date(invitation.expiresAt).getTime() < Date.now()) return { valid: false, message: '邀请码已过期' };
+  if (invitation.usedBy.length >= invitation.limit) return { valid: false, message: '邀请码使用次数已满' };
+  return {
+    valid: true,
+    code: invitation.code,
+    limit: invitation.limit,
+    usedCount: invitation.usedBy.length,
+    expiresAt: invitation.expiresAt,
+    message: '邀请码可用'
+  };
+}
+
+router.get('/validate-invite-code', (req, res) => {
+  const data = store.load();
+  const code = String(req.query.code || '').trim();
+  if (!code) return fail(res, 400, '请输入邀请码');
+  return ok(res, getInvitationStatus(data, code));
+});
+
 router.post('/register', (req, res) => {
   const data = store.load();
-  const { account, phone, password, nickname, studentNo, invitationCode } = req.body;
-  if (!account || !phone || !password || !invitationCode) return fail(res, 400, '账号、手机号、密码和邀请码不能为空');
-  if (data.users.some((item) => item.account === account || item.phone === phone)) return fail(res, 409, '账号或手机号已存在');
+  const account = String(req.body.account || req.body.username || '').trim();
+  const phone = String(req.body.phone || '').trim();
+  const password = String(req.body.password || '').trim();
+  const nickname = String(req.body.nickname || '').trim();
+  const studentNo = String(req.body.studentNo || account).trim();
+  const invitationCode = String(req.body.invitationCode || req.body.inviteCode || '').trim();
+  if (!account || !password || !invitationCode) return fail(res, 400, '账号、密码和邀请码不能为空');
+  if (account.length < 3) return fail(res, 400, '账号至少需要 3 个字符');
+  if (password.length < 6) return fail(res, 400, '密码至少需要 6 位');
+  if (phone && !/^1[3-9]\d{9}$/.test(phone)) return fail(res, 400, '手机号格式不正确');
+  if (data.users.some((item) => item.account === account || (phone && item.phone === phone))) return fail(res, 409, '账号或手机号已存在');
 
   const user = {
     id: store.id('u'),
@@ -27,13 +57,14 @@ router.post('/register', (req, res) => {
     phone,
     role: 'student',
     passwordHash: auth.hashPassword(password),
-    nickname: nickname || `校园用户${phone.slice(-4)}`,
+    nickname: nickname || `校园用户${account.slice(-4)}`,
     avatar: '/static/avatar1.png',
-    studentNo: studentNo || account,
-    contact: phone.replace(/^(\d{3})\d{4}(\d+)/, '$1****$2'),
+    studentNo,
+    contact: phone ? phone.replace(/^(\d{3})\d{4}(\d+)/, '$1****$2') : '',
     schoolVerified: true,
     creditScore: 90,
     creditLevel: 'A',
+    following: [],
     muted: false,
     createdAt: store.now()
   };
