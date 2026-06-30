@@ -124,8 +124,10 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     role: 'assistant',
     content: '',
     status: 'running',
+    runState: 'requesting',
     cards: [],
     toolEvents: [],
+    streamParts: [],
     reasoningContent: '',
     runId
   });
@@ -221,8 +223,10 @@ async function createAssistantRun(store, realtime, user, sessionId, userContent,
     role: 'assistant',
     content: '',
     status: 'running',
+    runState: 'requesting',
     cards: [],
     toolEvents: [],
+    streamParts: [],
     reasoningContent: '',
     runId
   });
@@ -262,34 +266,48 @@ async function runAgent(store, realtime, user, sessionId, assistantMessageId, us
     .map((item) => ({ role: item.role, content: item.content }));
   const messages = [{ role: 'system', content: systemPrompt }, ...history];
   const toolDefinitions = createToolDefinitions();
-  const first = await callChatCompletions(store, realtime, user, sessionId, assistantMessageId, runId, config, messages, toolDefinitions, controller);
-  if (first.toolCalls.length) {
-    const toolMessages = [];
-    for (const call of first.toolCalls) {
-      const result = await executeAiTool(store, realtime, user, assistantMessageId, call);
-      toolMessages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+  const conversation = [...messages];
+  const maxToolRounds = 5;
+  for (let round = 0; round < maxToolRounds; round += 1) {
+    const hasToolContext = conversation.some((item) => item.role === 'tool');
+    const result = await callChatCompletions(
+      store,
+      realtime,
+      user,
+      sessionId,
+      assistantMessageId,
+      config,
+      conversation,
+      toolDefinitions,
+      controller,
+      { allowThinking: !hasToolContext }
+    );
+    if (!result.toolCalls.length) {
+      await markAssistantDone(store, realtime, user.id, sessionId, assistantMessageId, runId);
+      return;
     }
-    const secondMessages = [
-      ...messages,
-      {
-        role: 'assistant',
-        content: first.content || '',
-        tool_calls: first.toolCalls.map((call) => ({
-          id: call.id,
-          type: 'function',
-          function: { name: call.name, arguments: call.argumentsText || '{}' }
-        }))
-      },
-      ...toolMessages
-    ];
-    await callChatCompletions(store, realtime, user, sessionId, assistantMessageId, runId, config, secondMessages, toolDefinitions, controller, true);
-  } else {
-    await markAssistantDone(store, realtime, user.id, sessionId, assistantMessageId, runId);
+    conversation.push({
+      role: 'assistant',
+      content: result.content || '',
+      tool_calls: result.toolCalls.map((call) => ({
+        id: call.id,
+        type: 'function',
+        function: { name: call.name, arguments: call.argumentsText || '{}' }
+      }))
+    });
+    const toolMessages = [];
+    for (const call of result.toolCalls) {
+      const toolResult = await executeAiTool(store, realtime, user, assistantMessageId, call);
+      toolMessages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(toolResult) });
+    }
+    conversation.push(...toolMessages);
   }
+  throw new Error('工具调用轮次过多，请缩小问题范围后重试');
 }
 
-async function callChatCompletions(store, realtime, user, sessionId, assistantMessageId, runId, config, messages, tools, controller, finalPass = false) {
-  const body = buildChatCompletionBody(config, messages, tools);
+async function callChatCompletions(store, realtime, user, sessionId, assistantMessageId, config, messages, tools, controller, options = {}) {
+  const body = buildChatCompletionBody(config, messages, tools, options);
+  await setAssistantRunState(store, realtime, user.id, assistantMessageId, 'requesting');
   const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -304,6 +322,7 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
   const decoder = new TextDecoder();
   let buffer = '';
   let content = '';
+  let lastChannel = '';
   const toolCalls = new Map();
   while (true) {
     const { done, value } = await reader.read();
@@ -320,9 +339,11 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
       const delta = chunk.choices?.[0]?.delta || {};
       const reasoningDelta = extractReasoningDelta(delta);
       if (reasoningDelta) {
+        lastChannel = 'reasoning';
         await appendAssistantReasoning(store, realtime, user.id, assistantMessageId, reasoningDelta);
       }
       if (delta.content) {
+        lastChannel = 'content';
         content += delta.content;
         await appendAssistantContent(store, realtime, user.id, assistantMessageId, delta.content);
       }
@@ -336,9 +357,11 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
         toolCalls.set(key, existing);
         if (existing.name && !wasNotified) {
           existing.notified = true;
+          existing.channel = lastChannel || 'content';
           await recordToolEvent(store, realtime, user.id, assistantMessageId, {
             id: existing.id,
             toolName: existing.name,
+            channel: existing.channel,
             argumentsText: existing.argumentsText,
             arguments: parseToolArguments(existing.argumentsText),
             status: 'calling',
@@ -348,10 +371,12 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
       }
       if (chunk.choices?.[0]?.finish_reason === 'tool_calls') {
         for (const call of toolCalls.values()) {
+          call.channel = call.channel || lastChannel || 'content';
           if (call.notified) continue;
           await recordToolEvent(store, realtime, user.id, assistantMessageId, {
             id: call.id,
             toolName: call.name,
+            channel: call.channel,
             argumentsText: call.argumentsText,
             arguments: parseToolArguments(call.argumentsText),
             status: 'calling',
@@ -362,13 +387,10 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
       }
     }
   }
-  if (finalPass || !toolCalls.size) {
-    await markAssistantDone(store, realtime, user.id, sessionId, assistantMessageId, runId);
-  }
   return { content, toolCalls: [...toolCalls.values()] };
 }
 
-function buildChatCompletionBody(config, messages, tools) {
+function buildChatCompletionBody(config, messages, tools, options = {}) {
   const body = {
     model: config.model,
     messages,
@@ -376,10 +398,15 @@ function buildChatCompletionBody(config, messages, tools) {
     stream: true,
     stream_options: { include_usage: true }
   };
-  if (config.includeReasoning) body.include_reasoning = true;
-  if (config.enableThinking) body.enable_thinking = true;
-  if (config.thinkingType) body.thinking = { type: config.thinkingType };
-  if (config.reasoningEffort) body.reasoning_effort = config.reasoningEffort;
+  const allowThinking = options.allowThinking !== false;
+  if (allowThinking) {
+    if (config.includeReasoning) body.include_reasoning = true;
+    if (config.enableThinking) body.enable_thinking = true;
+    if (config.thinkingType) body.thinking = { type: config.thinkingType };
+    if (config.reasoningEffort) body.reasoning_effort = config.reasoningEffort;
+  } else if (config.enableThinking) {
+    body.enable_thinking = false;
+  }
   return body;
 }
 
@@ -448,6 +475,7 @@ async function runLocalTool(store, realtime, user, assistantMessageId, toolName,
   await recordToolEvent(store, realtime, user.id, assistantMessageId, {
     id: callId,
     toolName,
+    channel: 'content',
     arguments: args,
     argumentsText: JSON.stringify(args),
     status: 'calling',
@@ -466,6 +494,7 @@ async function runLocalTool(store, realtime, user, assistantMessageId, toolName,
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: callId,
       toolName,
+      channel: 'content',
       arguments: args,
       argumentsText: JSON.stringify(args),
       status: 'done',
@@ -477,6 +506,7 @@ async function runLocalTool(store, realtime, user, assistantMessageId, toolName,
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: callId,
       toolName,
+      channel: 'content',
       arguments: args,
       argumentsText: JSON.stringify(args),
       status: 'error',
@@ -490,18 +520,44 @@ async function appendAssistantContent(store, realtime, userId, messageId, delta)
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message) return;
   message.content = `${message.content || ''}${delta}`;
+  message.runState = 'responding';
+  const part = appendTextStreamPart(message, 'content', delta);
   message.updatedAt = now();
   await store.saveCollection('aiMessages');
-  realtime.sendToUser(userId, 'ai.token', { sessionId: message.sessionId, messageId, delta });
+  realtime.sendToUser(userId, 'ai.token', { sessionId: message.sessionId, messageId, delta, partId: part.id, channel: 'content', runState: message.runState });
 }
 
 async function appendAssistantReasoning(store, realtime, userId, messageId, delta) {
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message) return;
   message.reasoningContent = `${message.reasoningContent || ''}${delta}`;
+  message.runState = 'responding';
+  const part = appendTextStreamPart(message, 'reasoning', delta);
   message.updatedAt = now();
   await store.saveCollection('aiMessages');
-  realtime.sendToUser(userId, 'ai.reasoning', { sessionId: message.sessionId, messageId, delta });
+  realtime.sendToUser(userId, 'ai.reasoning', { sessionId: message.sessionId, messageId, delta, partId: part.id, channel: 'reasoning', runState: message.runState });
+}
+
+function appendTextStreamPart(message, channel, delta) {
+  const streamParts = Array.isArray(message.streamParts) ? [...message.streamParts] : [];
+  const last = streamParts[streamParts.length - 1];
+  if (last?.type === 'text' && last.channel === channel) {
+    last.text = `${last.text || ''}${delta}`;
+    last.updatedAt = now();
+    message.streamParts = streamParts;
+    return last;
+  }
+  const part = {
+    id: `text_${randomUUID()}`,
+    type: 'text',
+    channel,
+    text: String(delta || ''),
+    createdAt: now(),
+    updatedAt: now()
+  };
+  streamParts.push(part);
+  message.streamParts = streamParts;
+  return part;
 }
 
 async function recordToolEvent(store, realtime, userId, messageId, event) {
@@ -516,6 +572,7 @@ async function recordToolEvent(store, realtime, userId, messageId, event) {
     id,
     toolName: event.toolName || existing.toolName || '',
     displayName: toolDisplayName(event.toolName || existing.toolName || ''),
+    channel: event.channel || existing.channel || 'content',
     arguments: event.arguments ?? existing.arguments ?? {},
     argumentsText: event.argumentsText ?? existing.argumentsText ?? '',
     status: event.status || existing.status || 'calling',
@@ -527,11 +584,16 @@ async function recordToolEvent(store, realtime, userId, messageId, event) {
   if (index >= 0) toolEvents.splice(index, 1, next);
   else toolEvents.push(next);
   message.toolEvents = toolEvents;
+  ensureToolStreamPart(message, next);
+  if (next.status === 'calling') message.runState = 'waiting_tool';
+  else if (next.status === 'error') message.runState = 'error';
+  else if (message.status === 'running') message.runState = 'responding';
   message.updatedAt = now();
   await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.tool_call', {
     sessionId: message.sessionId,
     messageId,
+    runState: message.runState,
     toolEvent: publicToolEvent(next)
   });
   return next;
@@ -542,26 +604,63 @@ function publicToolEvent(event) {
     id: event.id,
     toolName: event.toolName,
     displayName: event.displayName || toolDisplayName(event.toolName),
+    channel: event.channel || 'content',
     arguments: event.arguments || {},
     status: event.status,
     summary: event.summary || '',
     resultPreview: previewToolResult(event.result),
+    error: event.status === 'error' ? event.summary || '工具调用失败' : '',
     createdAt: event.createdAt,
     updatedAt: event.updatedAt
   };
 }
 
+function ensureToolStreamPart(message, event) {
+  const streamParts = Array.isArray(message.streamParts) ? [...message.streamParts] : [];
+  const existing = streamParts.find((part) => part.type === 'tool' && part.toolEventId === event.id);
+  if (existing) {
+    existing.channel = event.channel || existing.channel || 'content';
+    existing.updatedAt = now();
+    message.streamParts = streamParts;
+    return existing;
+  }
+  const part = {
+    id: `tool_${event.id}`,
+    type: 'tool',
+    channel: event.channel || 'content',
+    toolEventId: event.id,
+    createdAt: now(),
+    updatedAt: now()
+  };
+  streamParts.push(part);
+  message.streamParts = streamParts;
+  return part;
+}
+
 async function finishAssistantMessage(store, realtime, userId, sessionId, messageId, runId, text, status, append = true) {
   if (append && text) await appendAssistantContent(store, realtime, userId, messageId, text);
-  await store.update('aiMessages', messageId, { status });
+  await store.update('aiMessages', messageId, { status, runState: status });
   await store.update('aiSessions', sessionId, { status, currentRunId: '', stoppedAt: status === 'stopped' ? now() : '' });
   realtime.sendToUser(userId, status === 'error' ? 'ai.run.error' : 'ai.run.done', { sessionId, runId, messageId, status });
 }
 
 async function markAssistantDone(store, realtime, userId, sessionId, messageId, runId) {
-  await store.update('aiMessages', messageId, { status: 'done' });
+  await store.update('aiMessages', messageId, { status: 'done', runState: 'done' });
   await store.update('aiSessions', sessionId, { status: 'idle', currentRunId: '' });
   realtime.sendToUser(userId, 'ai.run.done', { sessionId, runId, messageId, status: 'done' });
+}
+
+async function setAssistantRunState(store, realtime, userId, messageId, runState) {
+  const message = store.collection('aiMessages').find((item) => item.id === messageId);
+  if (!message || message.runState === runState) return;
+  message.runState = runState;
+  message.updatedAt = now();
+  await store.saveCollection('aiMessages');
+  realtime.sendToUser(userId, 'ai.message_state', {
+    sessionId: message.sessionId,
+    messageId,
+    runState
+  });
 }
 
 function createToolDefinitions() {
@@ -612,6 +711,7 @@ async function executeAiTool(store, realtime, user, assistantMessageId, call) {
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: call.id,
       toolName: call.name,
+      channel: call.channel || 'content',
       arguments: args,
       argumentsText: call.argumentsText || '{}',
       status: 'calling',
@@ -631,6 +731,7 @@ async function executeAiTool(store, realtime, user, assistantMessageId, call) {
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: call.id,
       toolName: call.name,
+      channel: call.channel || 'content',
       arguments: args,
       argumentsText: call.argumentsText || '{}',
       status: 'done',
@@ -642,6 +743,7 @@ async function executeAiTool(store, realtime, user, assistantMessageId, call) {
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: call.id,
       toolName: call.name,
+      channel: call.channel || 'content',
       arguments: args,
       argumentsText: call.argumentsText || '{}',
       status: 'error',

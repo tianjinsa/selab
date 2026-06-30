@@ -1606,6 +1606,11 @@ a {
   margin-bottom: 10px;
 }
 
+.assistant-content-flow {
+  display: grid;
+  gap: 8px;
+}
+
 .tool-event {
   align-items: flex-start;
   padding: 9px 10px;
@@ -1622,6 +1627,7 @@ a {
 .tool-event > div {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .tool-event strong {
@@ -1646,6 +1652,15 @@ a {
 .tool-event.error {
   border-color: rgba(180, 35, 24, 0.28);
   background: rgba(180, 35, 24, 0.07);
+}
+
+.inline-tool-event {
+  margin: 2px 0;
+}
+
+.tool-error-text {
+  color: var(--danger) !important;
+  font-weight: 760;
 }
 
 .markdown-body {
