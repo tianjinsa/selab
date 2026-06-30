@@ -22,16 +22,8 @@
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="start">
-        <div>
-          <h3 style="margin: 0;">词云</h3>
-          <p class="muted">由用户输入 Tag 统计生成，不做 AI 推荐 Tag。</p>
-        </div>
-        <n-space>
-          <n-tag v-for="word in words" :key="word.text" :bordered="false" @click="filters.tag = word.text; loadPosts()">{{ word.text }} · {{ word.value }}</n-tag>
-        </n-space>
-      </n-space>
-      <n-alert style="margin-top: 12px;" type="info" :show-icon="false">{{ summary?.summary || '暂无社区热点总结' }}</n-alert>
+      <h3 style="margin: 0 0 12px;">社区热点</h3>
+      <n-alert type="info" :show-icon="false">{{ summary?.summary || '暂无社区热点总结' }}</n-alert>
     </section>
 
     <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall" appear>
@@ -62,13 +54,12 @@ import { request } from '../../../shared/http.js';
 
 const route = useRoute();
 const posts = ref([]);
-const words = ref([]);
 const summary = ref(null);
 const filters = reactive({ keyword: '', tag: '', sort: 'new' });
 
 onMounted(async () => {
   filters.keyword = String(route.query.keyword || '');
-  await Promise.all([loadPosts(), loadWordCloud(), loadSummary()]);
+  await Promise.all([loadPosts(), loadSummary()]);
 });
 
 async function loadPosts() {
@@ -77,10 +68,6 @@ async function loadPosts() {
   if (filters.tag) params.set('tag', filters.tag);
   if (filters.sort === 'hot') params.set('sort', 'hot');
   posts.value = (await request(`/api/forum/posts?${params.toString()}`)).posts;
-}
-
-async function loadWordCloud() {
-  words.value = (await request('/api/forum/word-cloud')).words;
 }
 
 async function loadSummary() {
