@@ -67,6 +67,7 @@ const routeTitle = computed(() => {
   const map = {
     '/': '校园首页',
     '/profile': '个人中心',
+    '/users': '同学主页',
     '/messages': '统一私信',
     '/notifications': '通知中心',
     '/tasks': '校园任务互助',

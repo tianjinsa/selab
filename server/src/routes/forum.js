@@ -53,7 +53,11 @@ router.get('/summary', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.get('/posts/:id', requireUser, asyncHandler(async (req, res) => {
-  res.json({ post: getPostDetail(req.store, req.params.id, req.user.id) });
+  res.json({
+    post: getPostDetail(req.store, req.params.id, req.user.id, {
+      trackView: req.query.trackView !== 'false'
+    })
+  });
 }));
 
 router.post('/posts/:id/like', requireUser, asyncHandler(async (req, res) => {

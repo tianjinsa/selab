@@ -3,6 +3,7 @@ import { userSession } from './session.js';
 import LoginPage from './pages/LoginPage.vue';
 import DashboardPage from './pages/DashboardPage.vue';
 import ProfilePage from './pages/ProfilePage.vue';
+import UserProfilePage from './pages/UserProfilePage.vue';
 import MessagesPage from './pages/MessagesPage.vue';
 import NotificationsPage from './pages/NotificationsPage.vue';
 import PlaceholderPage from './pages/PlaceholderPage.vue';
@@ -28,6 +29,7 @@ export const userRouter = createRouter({
     { path: '/login', component: LoginPage, meta: { public: true } },
     { path: '/', component: DashboardPage },
     { path: '/profile', component: ProfilePage },
+    { path: '/users/:id', component: UserProfilePage },
     { path: '/messages/:id?', component: MessagesPage },
     { path: '/notifications', component: NotificationsPage },
     { path: '/tasks', component: TaskMarketPage },
