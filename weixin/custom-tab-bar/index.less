@@ -5,8 +5,8 @@
   align-items: center;
   height: calc(@tab-bar-height + env(safe-area-inset-bottom));
   padding: 6rpx 10rpx calc(8rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid rgba(226, 232, 240, 0.92);
-  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid rgba(216, 226, 237, 0.92);
+  background: rgba(255, 255, 255, 0.97);
   box-shadow: 0 -8rpx 28rpx rgba(15, 23, 42, 0.06);
   box-sizing: border-box;
 }
@@ -30,11 +30,11 @@
   height: 64rpx;
   gap: 12rpx;
   padding: 0 22rpx;
-  border: 1rpx solid #d8e5ff;
+  border: 1rpx solid @line-color;
   border-radius: 24rpx;
-  color: #111827;
+  color: @text-strong;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 14rpx 36rpx rgba(15, 23, 42, 0.12);
+  box-shadow: @shadow-float;
   box-sizing: border-box;
   animation: transition-panel-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -42,8 +42,8 @@
 .transition-spinner {
   width: 22rpx;
   height: 22rpx;
-  border: 3rpx solid rgba(0, 82, 217, 0.16);
-  border-top-color: #0052d9;
+  border: 3rpx solid rgba(23, 107, 135, 0.16);
+  border-top-color: @primary-color;
   border-radius: 50%;
   box-sizing: border-box;
   animation: transition-spin 680ms linear infinite;
@@ -56,8 +56,8 @@
   width: 28rpx;
   height: 28rpx;
   border-radius: 50%;
-  color: #0052d9;
-  background: #edf4ff;
+  color: @primary-color;
+  background: #eef8fb;
   font-size: 18rpx;
   font-weight: 900;
   line-height: 28rpx;
@@ -67,13 +67,13 @@
   width: 42rpx;
   height: 6rpx;
   border-radius: 999rpx;
-  background: #0052d9;
+  background: @primary-color;
 }
 
 .transition-text {
   max-width: 360rpx;
   overflow: hidden;
-  color: #1f2937;
+  color: @text-strong;
   font-size: 24rpx;
   font-weight: 800;
   line-height: 32rpx;
@@ -82,8 +82,8 @@
 }
 
 .state-destination .transition-panel {
-  border-color: #cfe0ff;
-  background: #edf4ff;
+  border-color: #cbe8ee;
+  background: #eef8fb;
 }
 
 .state-leaving .transition-panel,
@@ -116,7 +116,7 @@
 }
 
 .tab-item.is-active {
-  color: #0052d9;
+  color: @primary-color;
 }
 
 .tab-icon-shell {
@@ -135,8 +135,8 @@
 
 .tab-icon-shell.is-manage {
   color: #ffffff;
-  background: #0052d9;
-  box-shadow: 0 12rpx 28rpx rgba(0, 82, 217, 0.22);
+  background: @primary-color;
+  box-shadow: 0 12rpx 28rpx rgba(23, 107, 135, 0.22);
   animation: manage-button-scale-in 280ms cubic-bezier(0.18, 0.9, 0.22, 1) both;
 }
 
@@ -150,6 +150,24 @@
   position: absolute;
   inset: 0;
   transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.tab-badge {
+  position: absolute;
+  top: -8rpx;
+  right: 2rpx;
+  min-width: 30rpx;
+  height: 30rpx;
+  padding: 0 8rpx;
+  border: 2rpx solid #ffffff;
+  border-radius: 999rpx;
+  color: #ffffff;
+  background: @danger-color;
+  font-size: 18rpx;
+  font-weight: 800;
+  line-height: 30rpx;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .base-icon {

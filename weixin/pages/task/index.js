@@ -100,7 +100,7 @@ Page({
       targetUserId: userId,
       source: '任务互助',
       relatedCard: { type: 'task', id: taskId, title, action: '任务咨询' },
-      })
+    })
       .then((res) => {
         const conversation = unwrap(res);
         wx.navigateTo({ url: `/pages/chat/index?conversationId=${conversation.id}` });

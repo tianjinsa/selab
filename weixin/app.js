@@ -75,7 +75,12 @@ App({
     if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
     const socket = wx.connectSocket({ url: `${config.socketUrl}?token=${token}` });
     socket.onMessage((event) => {
-      const data = JSON.parse(event.data || '{}');
+      let data = {};
+      try {
+        data = JSON.parse(event.data || '{}');
+      } catch (error) {
+        return;
+      }
       if (data.type === 'message') this.setUnreadNum(this.globalData.unreadNum + 1);
       this.eventBus.emit('socket-message', data);
     });

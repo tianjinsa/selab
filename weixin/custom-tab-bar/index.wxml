@@ -13,6 +13,8 @@
     wx:key="value"
     class="tab-item {{item.value === value ? 'is-active' : ''}} {{pressedValue === item.value ? 'is-pressing' : ''}}"
     data-value="{{item.value}}"
+    aria-role="button"
+    aria-label="{{item.label}}"
     bindtouchstart="handlePressStart"
     bindtouchcancel="clearPress"
     bindtouchend="clearPress"
@@ -23,6 +25,7 @@
         <t-icon class="tab-icon base-icon" name="{{item.icon}}" size="40rpx" />
         <t-icon class="tab-icon gear-icon" name="setting" size="40rpx" />
       </view>
+      <view wx:if="{{item.value === 'my' && unreadNum}}" class="tab-badge">{{unreadNum > 99 ? '99+' : unreadNum}}</view>
     </view>
     <view class="tab-label">{{item.label}}</view>
   </view>

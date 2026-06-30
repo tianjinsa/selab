@@ -1,19 +1,24 @@
-/* pages/message/message.wxss */
+@import '/variable.less';
+
 page {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   height: 100vh;
   padding-bottom: calc(env(safe-area-inset-bottom) + 112rpx);
+  color: @text-main;
+  background: @page-bg;
 }
 
 .nav-bar {
-  border-bottom: 1rpx solid #e7e7e7;
+  border-bottom: 1rpx solid @line-color-soft;
 }
 
 .message-list {
   height: 0;
   flex-grow: 1;
+  padding: 16rpx 20rpx 24rpx;
+  box-sizing: border-box;
 }
 
 .avatar {
@@ -21,12 +26,15 @@ page {
 }
 
 .content > view {
-  width: 560rpx;
-  white-space: nowrap;
   overflow: hidden;
+  max-width: 560rpx;
+  color: @text-secondary;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .content.unread > view {
-  width: 510rpx;
+  max-width: 510rpx;
+  color: @text-strong;
+  font-weight: 700;
 }

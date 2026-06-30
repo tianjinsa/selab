@@ -13,7 +13,11 @@
     <text>{{filteredGoods.length}} 件</text>
   </view>
 
-  <view class="goods-list">
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="48rpx" text="加载商品中" />
+  </view>
+
+  <view wx:else class="goods-list">
     <view wx:for="{{filteredGoods}}" wx:key="id" class="goods-row" data-id="{{item.id}}" bindtap="openDetail">
       <image src="{{item.cover}}" class="goods-image" mode="aspectFill" />
       <view class="goods-main">

@@ -3,7 +3,7 @@
 page {
   height: 100%;
   overflow: hidden;
-  background: #f2f5fa;
+  background: @page-bg;
 }
 
 .agent-chat {
@@ -11,15 +11,15 @@ page {
   flex-direction: column;
   height: calc(100vh - @tab-bar-height);
   overflow: hidden;
-  color: #172033;
-  background: #f2f5fa;
+  color: @text-main;
+  background: @page-bg;
   box-sizing: border-box;
 }
 
 .chat-header {
   flex-shrink: 0;
   padding: 0 24rpx 22rpx;
-  background: #f2f5fa;
+  background: @page-bg;
   box-sizing: border-box;
 }
 
@@ -36,7 +36,7 @@ page {
   left: 96rpx;
   right: 96rpx;
   overflow: hidden;
-  color: #1f2937;
+  color: @text-strong;
   font-size: 34rpx;
   font-weight: 800;
   text-align: center;
@@ -59,7 +59,7 @@ page {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  color: #111827;
+  color: @text-strong;
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 12rpx 24rpx rgba(31, 41, 55, 0.06);
 }
@@ -78,7 +78,7 @@ page {
 .new-button {
   width: 80rpx;
   height: 80rpx;
-  border: 1rpx solid rgba(226, 232, 240, 0.92);
+  border: 1rpx solid rgba(216, 226, 237, 0.92);
   border-radius: 22rpx;
 }
 
@@ -88,21 +88,21 @@ page {
 }
 
 .menu-button {
-  color: #111827;
-  background: #ffffff;
-  box-shadow: 0 12rpx 24rpx rgba(31, 41, 55, 0.06);
+  color: @text-strong;
+  background: @surface-color;
+  box-shadow: @shadow-card;
 }
 
 .agent-button {
-  color: #0052d9;
-  background: #eef5ff;
-  box-shadow: 0 12rpx 24rpx rgba(0, 82, 217, 0.1);
+  color: @primary-color;
+  background: #eef8fb;
+  box-shadow: 0 12rpx 24rpx rgba(23, 107, 135, 0.1);
 }
 
 .new-button {
-  color: #0052d9;
-  background: #eef5ff;
-  box-shadow: 0 14rpx 26rpx rgba(0, 82, 217, 0.14);
+  color: @primary-color;
+  background: #eef8fb;
+  box-shadow: 0 14rpx 26rpx rgba(23, 107, 135, 0.14);
 }
 
 .session-copy {
@@ -111,7 +111,7 @@ page {
 
 .session-name {
   overflow: hidden;
-  color: #111827;
+  color: @text-strong;
   font-size: 34rpx;
   font-weight: 800;
   line-height: 1.2;
@@ -127,7 +127,7 @@ page {
   margin-top: 8rpx;
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
-  color: #667085;
+  color: @text-secondary;
   background: rgba(255, 255, 255, 0.84);
   font-size: 22rpx;
   line-height: 1.2;
@@ -160,10 +160,10 @@ page {
   align-items: center;
   margin-top: 8rpx;
   padding: 52rpx 40rpx 48rpx;
-  border: 1rpx solid #dbe4ef;
+  border: 1rpx solid @line-color;
   border-radius: 28rpx;
   background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
-  box-shadow: 0 24rpx 52rpx rgba(31, 41, 55, 0.08);
+  box-shadow: @shadow-card;
   box-sizing: border-box;
 }
 
@@ -175,14 +175,14 @@ page {
   height: 104rpx;
   border-radius: 24rpx;
   color: #ffffff;
-  background: #0052d9;
+  background: @primary-color;
   font-size: 36rpx;
   font-weight: 900;
 }
 
 .empty-title {
   margin-top: 28rpx;
-  color: #101828;
+  color: @text-strong;
   font-size: 36rpx;
   font-weight: 900;
   line-height: 1.25;
@@ -192,7 +192,7 @@ page {
 .empty-desc {
   max-width: 560rpx;
   margin-top: 14rpx;
-  color: #6b7280;
+  color: @text-secondary;
   font-size: 27rpx;
   line-height: 1.55;
   text-align: center;
@@ -213,9 +213,9 @@ page {
   align-items: center;
   justify-content: center;
   padding: 0 28rpx;
-  border: 1rpx solid #cfe0ff;
+  border: 1rpx solid #cbe8ee;
   border-radius: 999rpx;
-  color: #0052d9;
+  color: @primary-color;
   background: #ffffff;
   font-size: 28rpx;
   font-weight: 800;

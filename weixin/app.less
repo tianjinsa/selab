@@ -1,9 +1,13 @@
-/**app.wxss**/
+@import '/variable.less';
+
 page {
-  background-color: #f3f3f3;
+  color: @text-main;
+  background-color: @page-bg;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .page {
-  height: 100vh;
-  background-color: #fff;
+  min-height: 100vh;
+  background-color: @page-bg;
+  box-sizing: border-box;
 }

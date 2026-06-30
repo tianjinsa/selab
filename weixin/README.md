@@ -1,70 +1,38 @@
-# TDesign 通用页面模板
+# 校园智能生活服务平台小程序端
 
-基于 TDesign 打造的通用页面模板，包含通用的登陆注册、个人中心、设置中心、信息流等等功能。
+本目录是校园智能生活服务平台的微信小程序端，基于 TDesign MiniProgram 实现任务互助、二手市场、社区论坛、智能体问答、个人中心、消息中心和私信聊天。
 
-## 模版功能预览
+## 主要页面
 
-### 首页
+| 路径 | 说明 |
+| --- | --- |
+| `pages/home/` | 社区首页，包含推荐、热门、点赞、评论、收藏和分享入口。 |
+| `pages/task/` | 任务市场，包含搜索、分类筛选、排行榜、报名、私信和发布入口。 |
+| `pages/market/` | 二手市场，包含商品浏览、搜索、收藏、咨询和求购入口。 |
+| `pages/agent/` | 校园智能体，支持校园、任务、交易三个场景和流式会话。 |
+| `pages/my/` | 个人中心，汇总资料、任务、闲置、帖子、信用和设置入口。 |
+| `pages/message/` | 消息会话列表，展示未读状态并进入聊天页。 |
+| `pages/chat/` | 私信聊天，支持文本消息和任务、商品、帖子卡片。 |
 
-<div style="display: flex">
-  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/home-1.png">
-  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/home-2.png">
-</div>
+## 界面与交互
 
-### 信息发布
+- 全局样式变量集中在 `variable.less`，页面样式使用统一背景、卡片、边框、阴影和文字色。
+- 自定义 Tab Bar 覆盖任务、二手、社区、智能体、我的五个主入口。
+- 导航栏和“我的”Tab 会展示 WebSocket 同步的未读消息徽标。
+- 高频列表页提供加载态、空态和可触达的发布、咨询、报名等操作入口。
 
-<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/publish-1.png">
-
-### 搜索页
-
-<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/search-1.png">
-
-### 个人中心
-<div style="display: flex">
-  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-1.png">
-  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-2.png">
-  <img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/user-3.png">
-</div>
-
-
-### 设置中心
-
-<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/setting-1.png">
-
-### 消息中心
-
-<img width="375" alt="image" src="https://tdesign.gtimg.com/miniprogram/template/message-1.png">
-
-
-## 开发预览
-### 目录结构（TODO: 生成目录结构树）
-
-
-### 在开发者工具中预览
+## 本地运行
 
 ```bash
-# 安装项目依赖
 npm install
-
+npm run lint
 ```
 
-打开[微信开发者工具](https://mp.weixin.qq.com/debug/wxadoc/dev/devtools/download.html)，导入整个项目，构建 npm 包，就可以预览示例了。
+使用微信开发者工具导入 `weixin/`，执行“构建 npm”后预览。
 
-### 基础库版本
+本地 API 地址在 `config.js` 中配置：
 
-最低基础库版本`^2.6.5`
-
-
-## 贡献成员
-
-<a href="https://github.com/TDesignOteam/tdesign-miniprogram-starter/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=TDesignOteam/tdesign-miniprogram-starter" />
-</a>
-
-## 反馈
-
-有任何问题，建议通过 [Github issues](https://github.com/TDesignOteam/tdesign-miniprogram-starter/issues) 反馈。
-
-## 开源协议
-
-TDesign 遵循 [MIT 协议](https://github.com/TDesignOteam/tdesign-miniprogram-starter/blob/main/LICENSE)。
+```js
+apiBaseUrl: 'http://localhost:8888/api'
+socketUrl: 'ws://localhost:8888/ws'
+```

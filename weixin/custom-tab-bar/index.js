@@ -57,18 +57,20 @@ Component({
       this.routeTimer = null;
       this.transitionTimer = null;
       this.transitionExitTimer = null;
+      this.unreadHandler = null;
     },
     ready() {
       this.refreshActiveTab();
 
-      // 同步全局未读消息数量
       this.setUnreadNum(app.globalData.unreadNum);
-      app.eventBus.on('unread-num-change', (unreadNum) => {
+      this.unreadHandler = (unreadNum) => {
         this.setUnreadNum(unreadNum);
-      });
+      };
+      app.eventBus.on('unread-num-change', this.unreadHandler);
     },
     detached() {
       this.clearTimers();
+      if (this.unreadHandler) app.eventBus.off('unread-num-change', this.unreadHandler);
     },
   },
   pageLifetimes: {

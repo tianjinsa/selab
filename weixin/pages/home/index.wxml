@@ -16,7 +16,7 @@
 
   <view wx:else class="waterfall">
     <view wx:for="{{columns}}" wx:for-item="column" wx:key="index" class="waterfall-column">
-      <view wx:for="{{column}}" wx:key="id" class="post-card" data-id="{{item.id}}" bindtap="openDetail">
+      <view wx:for="{{column}}" wx:key="id" class="post-card" data-id="{{item.id}}" aria-role="button" aria-label="查看帖子详情" bindtap="openDetail">
         <image class="post-cover" style="height: {{item.coverHeight}}rpx;" src="{{item.cover}}" mode="aspectFill" />
         <view class="post-body">
           <view class="post-title">{{item.title}}</view>
@@ -42,13 +42,17 @@
             >{{item.followingAuthor ? '已关注' : '关注'}}</t-button>
           </view>
           <view class="post-metrics" catchtap="stopTap">
-            <view class="metric-item {{item.liked ? 'is-active' : ''}}">
+            <view class="metric-item {{item.liked ? 'is-active' : ''}}" data-id="{{item.id}}" catchtap="likePost">
               <t-icon name="thumb-up" size="26rpx" />
               <text>{{item.likeCount}}</text>
             </view>
-            <view class="metric-item">
+            <view class="metric-item" data-id="{{item.id}}" catchtap="commentPost">
               <t-icon name="chat" size="26rpx" />
               <text>{{item.commentCount}}</text>
+            </view>
+            <view class="metric-item" data-id="{{item.id}}" catchtap="sharePost">
+              <t-icon name="share" size="26rpx" />
+              <text>{{item.shareCount}}</text>
             </view>
           </view>
         </view>

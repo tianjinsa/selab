@@ -39,7 +39,7 @@ const agents = [
   },
 ];
 
-const quickPrompts = ['论文选题清单', '拆解写作步骤', '解释文献观点'];
+const quickPrompts = ['怎么发布跑腿任务', '查找二手教材', '校园卡补办流程'];
 
 function getAgent(key) {
   return agents.find((item) => item.key === key) || agents[0];
@@ -327,7 +327,7 @@ Page({
               role: 'assistant',
               text: getErrorMessage(error, '智能体模型未配置或请求失败，请检查后端 OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL。'),
               source: '系统提示',
-              tool: 'fallback',
+              tool: 'error',
             },
           ]),
           isEmptyConversation: false,

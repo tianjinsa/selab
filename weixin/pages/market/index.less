@@ -1,27 +1,31 @@
 @import '/variable.less';
 
 page {
-  background: #eef3f8;
+  background: @page-bg;
 }
 
 .market-page {
   min-height: calc(100vh - @tab-bar-height);
   padding: 20rpx 24rpx calc(@tab-bar-height + 44rpx);
+  background: @page-bg;
+  box-sizing: border-box;
 }
 
 .goods-meta,
 .goods-stats,
 .seller-row text {
   display: block;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 23rpx;
 }
 
 .search-panel,
 .goods-row {
-  border: 1rpx solid #dbe4ef;
-  border-radius: 16rpx;
-  background: #fff;
+  border: 1rpx solid @line-color;
+  border-radius: @radius-card;
+  background: @surface-color;
+  box-shadow: @shadow-card;
+  box-sizing: border-box;
 }
 
 .search-panel {
@@ -40,8 +44,8 @@ page {
   height: 76rpx;
   padding: 0 22rpx;
   border-radius: 999rpx;
-  color: #64748b;
-  background: #f1f5f9;
+  color: @text-secondary;
+  background: @surface-muted;
   font-size: 26rpx;
   box-sizing: border-box;
 }
@@ -53,7 +57,7 @@ page {
 }
 
 .price {
-  color: #d35400;
+  color: @warning-color;
   font-size: 38rpx;
   font-weight: 800;
 }
@@ -65,13 +69,13 @@ page {
 }
 
 .section-title text:first-child {
-  color: #111827;
+  color: @text-strong;
   font-size: 32rpx;
   font-weight: 800;
 }
 
 .section-title text:last-child {
-  color: #64748b;
+  color: @text-secondary;
   font-size: 24rpx;
 }
 
@@ -94,7 +98,7 @@ page {
 }
 
 .goods-title {
-  color: #111827;
+  color: @text-strong;
   font-size: 31rpx;
   font-weight: 800;
   line-height: 1.28;
@@ -114,6 +118,7 @@ page {
 .goods-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8rpx;
   margin-top: 12rpx;
 }
@@ -121,6 +126,12 @@ page {
 .price {
   margin-right: auto;
   font-size: 34rpx;
+}
+
+.state-box {
+  display: flex;
+  justify-content: center;
+  padding: 72rpx 0 42rpx;
 }
 
 .market-release {
@@ -132,19 +143,19 @@ page {
 .empty-state {
   padding: 64rpx 24rpx;
   border: 1rpx dashed #cbd5e1;
-  border-radius: 16rpx;
+  border-radius: @radius-card;
   background: rgba(255, 255, 255, 0.72);
   text-align: center;
 }
 
 .empty-title {
-  color: #111827;
+  color: @text-strong;
   font-size: 30rpx;
   font-weight: 800;
 }
 
 .empty-desc {
   margin-top: 10rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 24rpx;
 }

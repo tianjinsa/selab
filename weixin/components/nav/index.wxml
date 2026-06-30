@@ -2,8 +2,9 @@
   <t-navbar title="{{ navType === 'search' ? '' : titleText }}">
     <view slot="left">
       <view class="home-navbar__left">
-        <view class="home-navbar__message" bindtap="openMessage">
+        <view class="home-navbar__message" aria-role="button" aria-label="消息中心" bindtap="openMessage">
           <t-icon class="home-navbar__icon" name="chat" size="44rpx" />
+          <view wx:if="{{unreadNum}}" class="home-navbar__badge">{{unreadNum > 99 ? '99+' : unreadNum}}</view>
         </view>
         <t-search
           shape="round"

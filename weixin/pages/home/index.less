@@ -1,13 +1,14 @@
 @import '/variable.less';
 
 page {
-  background: #eef2f7;
+  background: @page-bg;
 }
 
 .community-page {
   min-height: calc(100vh - @tab-bar-height);
   padding-bottom: calc(@tab-bar-height + 48rpx);
-  background: #eef2f7;
+  background: @page-bg;
+  box-sizing: border-box;
 }
 
 .topic-strip {
@@ -41,16 +42,22 @@ page {
 .post-card {
   overflow: hidden;
   margin-bottom: 18rpx;
-  border: 1rpx solid #dbe4ef;
-  border-radius: 14rpx;
-  background: #fff;
-  box-shadow: 0 10rpx 22rpx rgba(15, 23, 42, 0.06);
+  border: 1rpx solid @line-color;
+  border-radius: @radius-card;
+  background: @surface-color;
+  box-shadow: @shadow-card;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.post-card:active {
+  transform: translateY(1rpx);
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.06);
 }
 
 .post-cover {
   width: 100%;
   display: block;
-  background: #dbe4ef;
+  background: @line-color;
 }
 
 .post-body {
@@ -58,7 +65,7 @@ page {
 }
 
 .post-title {
-  color: #111827;
+  color: @text-strong;
   font-size: 29rpx;
   font-weight: 700;
   line-height: 1.35;
@@ -68,7 +75,7 @@ page {
   display: -webkit-box;
   overflow: hidden;
   margin-top: 10rpx;
-  color: #334155;
+  color: @text-main;
   font-size: 24rpx;
   line-height: 1.5;
   -webkit-box-orient: vertical;
@@ -96,7 +103,7 @@ page {
 
 .author-name {
   overflow: hidden;
-  color: #142033;
+  color: @text-strong;
   font-size: 24rpx;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -105,16 +112,16 @@ page {
 
 .post-type {
   margin-top: 2rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 20rpx;
 }
 
 .post-metrics {
   display: flex;
   align-items: center;
-  gap: 22rpx;
+  gap: 18rpx;
   margin-top: 14rpx;
-  color: #64748b;
+  color: @text-secondary;
 }
 
 .metric-item {
@@ -123,13 +130,13 @@ page {
   gap: 6rpx;
   min-width: 52rpx;
   height: 34rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 22rpx;
   line-height: 34rpx;
 }
 
 .metric-item.is-active {
-  color: #0052d9;
+  color: @primary-color;
 }
 
 .metric-item text {
@@ -145,7 +152,7 @@ page {
 .share-sheet {
   padding: 28rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
   border-radius: 24rpx 24rpx 0 0;
-  background: #fff;
+  background: @surface-color;
   box-sizing: border-box;
 }
 
@@ -159,18 +166,18 @@ page {
   justify-content: space-between;
   gap: 20rpx;
   padding-bottom: 20rpx;
-  border-bottom: 1rpx solid #edf2f7;
+  border-bottom: 1rpx solid @line-color-soft;
 }
 
 .share-title {
-  color: #111827;
+  color: @text-strong;
   font-size: 32rpx;
   font-weight: 800;
 }
 
 .share-desc {
   margin-top: 6rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 23rpx;
 }
 
@@ -189,7 +196,7 @@ page {
 .friend-item {
   gap: 18rpx;
   padding: 20rpx 0;
-  border-bottom: 1rpx solid #edf2f7;
+  border-bottom: 1rpx solid @line-color-soft;
 }
 
 .friend-item:last-child {
@@ -203,7 +210,7 @@ page {
 
 .friend-name {
   overflow: hidden;
-  color: #111827;
+  color: @text-strong;
   font-size: 28rpx;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -212,6 +219,6 @@ page {
 
 .friend-desc {
   margin-top: 4rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 23rpx;
 }

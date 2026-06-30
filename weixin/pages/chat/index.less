@@ -1,15 +1,20 @@
-/* pages/chat/index.wxss */
+@import '/variable.less';
+
+page {
+  background: @page-bg;
+}
+
 .chat-container {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   height: 100vh;
   font-size: 32rpx;
-  background-color: #fff;
+  background-color: @page-bg;
 }
 
 .nav-bar {
-  border-bottom: 1rpx solid #e7e7e7;
+  border-bottom: 1rpx solid @line-color-soft;
 }
 
 .content {
@@ -29,7 +34,7 @@
   justify-content: center;
   align-items: flex-end;
   height: 56rpx;
-  color: #00000066;
+  color: @text-placeholder;
   font-size: 24rpx;
   line-height: 40rpx;
 }
@@ -45,6 +50,7 @@
   box-sizing: border-box;
   max-width: 510rpx;
   padding: 24rpx;
+  color: @text-strong;
   font-size: 28rpx;
   line-height: 44rpx;
 }
@@ -52,18 +58,20 @@
 .message.self {
   border-radius: 24rpx 0 24rpx 24rpx;
   margin-left: auto;
-  background-color: #d9e1ff;
+  color: #ffffff;
+  background-color: @primary-color;
 }
 
 .message.other {
   border-radius: 0 24rpx 24rpx 24rpx;
-  background-color: #f3f3f3;
+  background-color: @surface-color;
+  box-shadow: @shadow-card;
 }
 
 .message.card-message {
   max-width: 560rpx;
   padding: 0;
-  color: #111827;
+  color: @text-strong;
   background: transparent;
 }
 
@@ -76,15 +84,15 @@
   box-sizing: border-box;
   width: 540rpx;
   padding: 22rpx;
-  border: 1rpx solid #dbe4ef;
-  border-radius: 16rpx;
-  background: #ffffff;
-  box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.06);
+  border: 1rpx solid @line-color;
+  border-radius: @radius-card;
+  background: @surface-color;
+  box-shadow: @shadow-card;
 }
 
 .message.self .action-card {
-  border-color: #c7d2fe;
-  background: #f8faff;
+  border-color: #cbe8ee;
+  background: #f8fcfd;
 }
 
 .card-top {
@@ -92,14 +100,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 16rpx;
-  color: #64748b;
+  color: @text-secondary;
   font-size: 22rpx;
   line-height: 32rpx;
 }
 
 .card-title {
   margin-top: 16rpx;
-  color: #0f172a;
+  color: @text-strong;
   font-size: 30rpx;
   font-weight: 700;
   line-height: 42rpx;
@@ -111,12 +119,12 @@
   display: block;
   margin-top: 16rpx;
   border-radius: 12rpx;
-  background: #dbe4ef;
+  background: @line-color;
 }
 
 .card-summary {
   margin-top: 8rpx;
-  color: #475569;
+  color: @text-secondary;
   font-size: 24rpx;
   line-height: 38rpx;
 }
@@ -145,8 +153,8 @@
 }
 
 .card-status.expired {
-  color: #64748b;
-  background: #f1f5f9;
+  color: @text-secondary;
+  background: @surface-muted;
 }
 
 .loading {
@@ -170,8 +178,8 @@
   align-items: center;
   gap: 24rpx;
   padding: 24rpx 24rpx calc(env(safe-area-inset-bottom) + 24rpx);
-  border-top: 1rpx solid #e7e7e7;
-  background-color: #ffffff;
+  border-top: 1rpx solid @line-color-soft;
+  background-color: rgba(255, 255, 255, 0.98);
 }
 
 .input {
@@ -180,8 +188,8 @@
   height: 80rpx;
   padding: 16rpx 32rpx;
   border-radius: 40rpx;
-  border: 1rpx solid #dcdcdc;
-  background: #f3f3f3;
+  border: 1rpx solid @line-color;
+  background: @surface-muted;
   line-height: 48rpx;
 }
 

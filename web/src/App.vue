@@ -1,6 +1,6 @@
 <template>
   <div class="admin-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="管理后台导航">
       <div class="brand">
         <div class="brand-mark">校</div>
         <div>
@@ -27,13 +27,17 @@
           <h1>{{ pageTitle }}</h1>
         </div>
         <div class="top-actions">
-          <el-tag type="success" effect="plain">API {{ apiState }}</el-tag>
-          <el-button :icon="Refresh" @click="loadAll">刷新</el-button>
+          <el-tag :type="apiTagType" effect="plain">API {{ apiState }}</el-tag>
+          <el-button :icon="Refresh" :loading="pageLoading" @click="loadAll">刷新</el-button>
           <el-button v-if="loggedIn" :icon="SwitchButton" @click="logout">退出</el-button>
         </div>
       </header>
 
       <section v-if="!loggedIn" class="login-panel">
+        <div class="login-copy">
+          <h2>管理员登录</h2>
+          <p>进入课程演示后台，处理任务、内容、交易、举报与系统参数。</p>
+        </div>
         <el-form :model="loginForm" label-position="top" @submit.prevent>
           <el-form-item label="管理员账号">
             <el-input v-model="loginForm.account" autocomplete="username" />
@@ -41,7 +45,7 @@
           <el-form-item label="密码">
             <el-input v-model="loginForm.password" type="password" autocomplete="current-password" show-password />
           </el-form-item>
-          <el-button type="primary" :loading="loading" @click="login">登录管理后台</el-button>
+          <el-button type="primary" :loading="loginLoading" @click="login">登录管理后台</el-button>
         </el-form>
       </section>
 
@@ -54,7 +58,13 @@
               <small>{{ metric.hint }}</small>
             </article>
           </div>
-          <el-table :data="overview.latestAudits || []" height="340">
+          <el-table
+            v-loading="pageLoading"
+            :data="overview.latestAudits || []"
+            height="340"
+            row-key="id"
+            empty-text="暂无审计记录"
+          >
             <el-table-column prop="type" label="类型" width="120" />
             <el-table-column prop="title" label="操作" />
             <el-table-column prop="actorId" label="操作者" width="160" />
@@ -63,7 +73,7 @@
         </section>
 
         <section v-if="active === 'tasks'" class="panel">
-          <el-table :data="tasks" height="640">
+          <el-table v-loading="pageLoading" :data="tasks" height="640" row-key="id" empty-text="暂无任务">
             <el-table-column prop="title" label="任务" min-width="220" />
             <el-table-column prop="type" label="类型" width="120" />
             <el-table-column prop="reward" label="酬金" width="90" />
@@ -80,12 +90,12 @@
         </section>
 
         <section v-if="active === 'community'" class="panel">
-          <el-table :data="posts" height="640">
+          <el-table v-loading="pageLoading" :data="posts" height="640" row-key="id" empty-text="暂无帖子">
             <el-table-column prop="title" label="帖子" min-width="240" />
             <el-table-column prop="type" label="类型" width="120" />
             <el-table-column prop="author.nickname" label="作者" width="120" />
             <el-table-column label="互动" width="150">
-              <template #default="{ row }">{{ row.likes.length }} 赞 / {{ row.commentCount }} 评</template>
+              <template #default="{ row }">{{ countItems(row.likes) }} 赞 / {{ row.commentCount || 0 }} 评</template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="110" />
             <el-table-column label="操作" width="180">
@@ -98,7 +108,7 @@
         </section>
 
         <section v-if="active === 'market'" class="panel">
-          <el-table :data="goods" height="640">
+          <el-table v-loading="pageLoading" :data="goods" height="640" row-key="id" empty-text="暂无商品">
             <el-table-column prop="name" label="商品" min-width="220" />
             <el-table-column prop="category" label="分类" width="110" />
             <el-table-column prop="price" label="价格" width="90" />
@@ -116,7 +126,7 @@
         </section>
 
         <section v-if="active === 'users'" class="panel">
-          <el-table :data="users" height="640">
+          <el-table v-loading="pageLoading" :data="users" height="640" row-key="id" empty-text="暂无用户">
             <el-table-column prop="nickname" label="昵称" min-width="160" />
             <el-table-column prop="account" label="账号" width="140" />
             <el-table-column prop="studentNo" label="学号" width="140" />
@@ -135,7 +145,7 @@
         </section>
 
         <section v-if="active === 'reports'" class="panel split">
-          <el-table :data="reports" height="640">
+          <el-table v-loading="pageLoading" :data="reports" height="640" row-key="id" empty-text="暂无举报">
             <el-table-column prop="targetType" label="对象" width="100" />
             <el-table-column prop="targetId" label="对象ID" width="160" />
             <el-table-column prop="reason" label="原因" />
@@ -152,7 +162,7 @@
         <section v-if="active === 'agent'" class="panel agent-grid">
           <div class="agent-card">
             <h2>知识库</h2>
-            <el-table :data="knowledge" height="460">
+            <el-table v-loading="pageLoading" :data="knowledge" height="460" row-key="id" empty-text="暂无知识库条目">
               <el-table-column prop="category" label="分类" width="120" />
               <el-table-column prop="title" label="标题" />
               <el-table-column prop="version" label="版本" width="80" />
@@ -160,7 +170,7 @@
           </div>
           <div class="agent-card">
             <h2>提示词配置</h2>
-            <el-table :data="prompts" height="460">
+            <el-table v-loading="pageLoading" :data="prompts" height="460" row-key="id" empty-text="暂无提示词配置">
               <el-table-column prop="scene" label="场景" width="120" />
               <el-table-column prop="content" label="内容" />
               <el-table-column prop="active" label="启用" width="80" />
@@ -169,6 +179,10 @@
         </section>
 
         <section v-if="active === 'settings'" class="panel settings-grid">
+          <div class="settings-head">
+            <h2>系统参数</h2>
+            <p>这些配置会直接影响小程序的注册、分类、任务发布和内容审核。</p>
+          </div>
           <el-form :model="settings" label-width="140px">
             <el-form-item label="邀请码注册">
               <el-switch v-model="settings.invitationRequired" />
@@ -233,7 +247,8 @@ import { Refresh, SwitchButton } from '@element-plus/icons-vue';
 import { api, getToken, setToken } from './api';
 
 const active = ref('overview');
-const loading = ref(false);
+const loginLoading = ref(false);
+const pageLoading = ref(false);
 const loggedIn = ref(Boolean(getToken()));
 const apiState = ref('checking');
 const overview = ref({});
@@ -271,6 +286,8 @@ const pageTitle = computed(() => {
   return map[active.value];
 });
 
+const apiTagType = computed(() => (apiState.value === 'online' ? 'success' : 'danger'));
+
 const metrics = computed(() => [
   { label: '注册用户', value: overview.value.users || 0, hint: '统一用户体系' },
   { label: '活跃任务', value: overview.value.activeTasks || 0, hint: '报名/进行/待验收' },
@@ -279,6 +296,10 @@ const metrics = computed(() => [
   { label: '待审举报', value: overview.value.unreadReports || 0, hint: '人工处理队列' },
   { label: '智能问答', value: overview.value.questionCount || 0, hint: '累计用户提问' }
 ]);
+
+function countItems(value) {
+  return Array.isArray(value) ? value.length : 0;
+}
 
 function normalizeGoodsCategory(item) {
   if (typeof item === 'string') return { name: item, children: [] };
@@ -352,7 +373,7 @@ function settingsPayload() {
 }
 
 async function login() {
-  loading.value = true;
+  loginLoading.value = true;
   try {
     const data = await api('/auth/login', { method: 'POST', body: loginForm });
     setToken(data.token);
@@ -362,7 +383,7 @@ async function login() {
   } catch (error) {
     ElMessage.error(error.message);
   } finally {
-    loading.value = false;
+    loginLoading.value = false;
   }
 }
 
@@ -380,27 +401,34 @@ async function loadAll() {
     if (!loggedIn.value) return;
   }
   if (!loggedIn.value) return;
-  const [overviewData, taskData, postData, goodsData, userData, reportData, knowledgeData, promptData, settingsData] =
-    await Promise.all([
-      api('/admin/overview'),
-      api('/admin/tasks'),
-      api('/admin/posts'),
-      api('/admin/goods'),
-      api('/admin/users'),
-      api('/admin/reports'),
-      api('/agent/knowledge'),
-      api('/agent/prompts'),
-      api('/admin/settings')
-    ]);
-  overview.value = overviewData;
-  tasks.value = taskData;
-  posts.value = postData;
-  goods.value = goodsData;
-  users.value = userData;
-  reports.value = reportData;
-  knowledge.value = knowledgeData;
-  prompts.value = promptData;
-  normalizeSettings(settingsData);
+  pageLoading.value = true;
+  try {
+    const [overviewData, taskData, postData, goodsData, userData, reportData, knowledgeData, promptData, settingsData] =
+      await Promise.all([
+        api('/admin/overview'),
+        api('/admin/tasks'),
+        api('/admin/posts'),
+        api('/admin/goods'),
+        api('/admin/users'),
+        api('/admin/reports'),
+        api('/agent/knowledge'),
+        api('/agent/prompts'),
+        api('/admin/settings')
+      ]);
+    overview.value = overviewData;
+    tasks.value = taskData;
+    posts.value = postData;
+    goods.value = goodsData;
+    users.value = userData;
+    reports.value = reportData;
+    knowledge.value = knowledgeData;
+    prompts.value = promptData;
+    normalizeSettings(settingsData);
+  } catch (error) {
+    ElMessage.error(error.message || '数据加载失败');
+  } finally {
+    pageLoading.value = false;
+  }
 }
 
 async function updateTask(row, status) {
@@ -448,17 +476,18 @@ onMounted(loadAll);
 .admin-shell {
   display: grid;
   grid-template-columns: 248px 1fr;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
   padding: 22px 14px;
-  border-right: 1px solid #d9e1eb;
-  background: #111827;
-  color: #fff;
+  border-right: 1px solid var(--admin-border);
+  background: var(--admin-sidebar);
+  color: #ffffff;
+  box-sizing: border-box;
 }
 
 .brand {
@@ -474,8 +503,8 @@ onMounted(loadAll);
   height: 42px;
   place-items: center;
   border-radius: 8px;
-  background: #39c5bb;
-  color: #08111f;
+  background: var(--admin-accent);
+  color: #07111f;
   font-weight: 800;
 }
 
@@ -486,7 +515,7 @@ onMounted(loadAll);
 
 .brand span {
   margin-top: 4px;
-  color: #9ca3af;
+  color: #96a3b6;
   font-size: 12px;
 }
 
@@ -499,15 +528,29 @@ onMounted(loadAll);
   height: 44px;
   margin: 4px 0;
   border-radius: 8px;
-  color: #cbd5e1;
+  color: #c9d4e5;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.nav :deep(.el-menu-item:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.nav :deep(.el-menu-item:active) {
+  transform: translateY(1px);
 }
 
 .nav :deep(.el-menu-item.is-active) {
-  background: #233145;
+  background: #243348;
   color: #ffffff;
 }
 
 .workspace {
+  min-width: 0;
   padding: 28px;
 }
 
@@ -515,12 +558,13 @@ onMounted(loadAll);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 18px;
   margin-bottom: 22px;
 }
 
 .eyebrow {
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--admin-text-muted);
   font-size: 13px;
 }
 
@@ -547,10 +591,10 @@ h2 {
 
 .login-panel,
 .panel {
-  border: 1px solid #dbe3ee;
+  border: 1px solid var(--admin-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
 }
 
 .login-panel {
@@ -558,8 +602,24 @@ h2 {
   padding: 28px;
 }
 
+.login-copy {
+  margin-bottom: 22px;
+}
+
+.login-copy p,
+.settings-head p {
+  margin: 8px 0 0;
+  color: var(--admin-text-muted);
+  line-height: 1.6;
+}
+
+.login-panel :deep(.el-button) {
+  width: 100%;
+}
+
 .panel {
   padding: 18px;
+  overflow: hidden;
 }
 
 .metric-grid {
@@ -572,20 +632,21 @@ h2 {
 .metric {
   min-height: 104px;
   padding: 16px;
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--admin-border-soft);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--admin-surface-muted);
 }
 
 .metric span,
 .metric small {
   display: block;
-  color: #64748b;
+  color: var(--admin-text-muted);
 }
 
 .metric strong {
   display: block;
   margin: 10px 0 4px;
+  color: var(--admin-text);
   font-size: 30px;
 }
 
@@ -601,6 +662,10 @@ h2 {
 
 .settings-grid {
   max-width: 760px;
+}
+
+.settings-head {
+  margin-bottom: 20px;
 }
 
 .category-editor {
@@ -619,9 +684,9 @@ h2 {
 
 .goods-category-box {
   padding: 12px;
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--admin-border-soft);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--admin-surface-muted);
 }
 
 .child-category-list {
@@ -634,5 +699,73 @@ h2 {
 
 .child-row {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (max-width: 1280px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    z-index: 20;
+    height: auto;
+    padding: 12px 14px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .brand {
+    padding: 4px 8px 10px;
+  }
+
+  .nav {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+  }
+
+  .nav :deep(.el-menu-item) {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .workspace {
+    padding: 20px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace {
+    padding: 16px;
+  }
+
+  .login-panel {
+    width: 100%;
+  }
+
+  .metric-grid,
+  .category-row,
+  .child-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -23,7 +23,11 @@
     <text>{{filteredTasks.length}} 个可浏览任务</text>
   </view>
 
-  <view class="task-list">
+  <view wx:if="{{loading}}" class="state-box">
+    <t-loading theme="circular" size="48rpx" text="加载任务中" />
+  </view>
+
+  <view wx:else class="task-list">
     <view wx:for="{{filteredTasks}}" wx:key="id" class="task-card" data-id="{{item.id}}" bindtap="openDetail">
       <view class="task-head">
         <view>
@@ -76,5 +80,9 @@
       </view>
       <view class="rank-count">{{item.count}} 单</view>
     </view>
+  </view>
+
+  <view class="task-release">
+    <t-button theme="primary" size="large" icon="add" shape="round" bindtap="publishTask">发布任务</t-button>
   </view>
 </view>

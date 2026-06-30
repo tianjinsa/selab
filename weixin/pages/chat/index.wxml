@@ -6,7 +6,7 @@
   <scroll-view class="content" scroll-y scroll-into-view="{{ anchor }}">
     <view class="messages">
       <block wx:for="{{ messages }}" wx:key="index">
-        <view wx:if="{{ index === 0 || item.time - messages[index - 1].time > 120000 }}" class="time" >
+        <view wx:if="{{ index === 0 || item.time - messages[index - 1].time > 120000 }}" class="time">
           {{ utils.formatTime(item.time) }}
         </view>
 
@@ -89,7 +89,7 @@
       type="text"
       confirm-type="send"
       placeholder="请输入"
-      placeholder-style="color: #00000066"
+      placeholder-style="color: #8a94a6"
       adjust-position="{{ false }}"
       hold-keyboard
       confirm-hold
@@ -99,5 +99,5 @@
       bindconfirm="sendMessage"
     />
   </view>
-  <t-button class="send" theme="primary" shape="round" disabled="{{ !input }}" bind:tap="sendMessage">发送</t-button>
+  <t-button class="send" theme="primary" shape="round" disabled="{{ !input }}" aria-label="发送消息" bind:tap="sendMessage">发送</t-button>
 </view>
