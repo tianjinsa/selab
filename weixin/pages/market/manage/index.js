@@ -1,6 +1,8 @@
 import request from '~/api/request';
 import { formatTime, getImage, unwrap } from '~/utils/api';
 
+const app = getApp();
+
 function mapGoods(item, orders = []) {
   const order = orders.find((candidate) => candidate.goodsId === item.id);
   return {
@@ -32,6 +34,7 @@ Page({
   async loadData() {
     this.setData({ loading: true });
     try {
+      await app.ensureLogin();
       const data = unwrap(await request('/market/mine')) || {};
       const orders = data.orders || [];
       this.setData(

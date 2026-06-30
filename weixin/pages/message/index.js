@@ -35,8 +35,14 @@ Page({
     wx.switchTab({ url: '/pages/my/index' });
   },
 
-  getMessageList() {
+  async getMessageList() {
     this.setData({ loading: true });
+    try {
+      await app.ensureLogin();
+    } catch (error) {
+      this.setData({ loading: false });
+      return;
+    }
     request('/messages/conversations')
       .then((res) => {
         const conversations = listFrom(res).map((item) => ({

@@ -1,6 +1,8 @@
 import request from '~/api/request';
 import { formatTime, unwrap } from '~/utils/api';
 
+const app = getApp();
+
 function mapTask(item) {
   return {
     ...item,
@@ -31,6 +33,7 @@ Page({
   async loadData() {
     this.setData({ loading: true });
     try {
+      await app.ensureLogin();
       const data = unwrap(await request('/tasks/mine')) || {};
       this.setData(
         {

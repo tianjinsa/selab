@@ -45,7 +45,8 @@
       "less"
     ],
     "condition": false,
-    "ignoreUploadUnusedFiles": true,
+    "ignoreDevUnusedFiles": false,
+    "ignoreUploadUnusedFiles": false,
     "compileWorklet": false,
     "localPlugins": false,
     "swc": false,

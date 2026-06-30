@@ -2,6 +2,8 @@ import request from '~/api/request';
 import { unwrap } from '~/utils/api';
 import { areaList } from './areaData.js';
 
+const app = getApp();
+
 Page({
   data: {
     personInfo: {
@@ -48,9 +50,10 @@ Page({
     this.getPersonalInfo();
   },
 
-  getPersonalInfo() {
-    request('/auth/me').then((res) => {
-      const user = unwrap(res);
+  async getPersonalInfo() {
+    try {
+      await app.ensureLogin();
+      const user = unwrap(await request('/auth/me'));
       const profile = user.profile || {};
       const address = profile.address || this.data.personInfo.address;
       this.setData(
@@ -66,7 +69,9 @@ Page({
         },
         () => this.updateAddressText(),
       );
-    });
+    } catch (error) {
+      wx.showToast({ title: '资料加载失败', icon: 'none' });
+    }
   },
 
   updateAddressText() {
@@ -179,8 +184,14 @@ Page({
     });
   },
 
-  onSaveInfo() {
+  async onSaveInfo() {
     const { personInfo } = this.data;
+    try {
+      await app.ensureLogin();
+    } catch (error) {
+      wx.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
     request('/auth/me', 'PUT', {
       nickname: personInfo.name,
       profile: {
