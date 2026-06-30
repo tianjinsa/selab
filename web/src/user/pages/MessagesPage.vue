@@ -33,12 +33,16 @@
                 <span>{{ item.card.title }}</span>
                 <n-tag size="small" :type="cardStatusType(item.card.status)">{{ cardStatusText(item.card.status) }}</n-tag>
               </div>
-              <p style="margin: 8px 0 4px;">{{ item.card.taskTitle || item.content }}</p>
-              <p class="muted" style="margin: 0;">申请人：{{ item.card.applicantName }} · 信用分 {{ item.card.applicantCredit }}</p>
-              <p class="muted" style="margin: 4px 0 0;">酬金：￥{{ item.card.reward }} · 有效期至 {{ formatTime(item.card.expiresAt) }}</p>
+              <p style="margin: 8px 0 4px;">{{ item.card.taskTitle || item.card.productTitle || item.content }}</p>
+              <p class="muted" style="margin: 0;">{{ cardActorLabel(item.card) }}：{{ item.card.applicantName || item.card.buyerName }} · 信用分 {{ item.card.applicantCredit || item.card.buyerCredit }}</p>
+              <p class="muted" style="margin: 4px 0 0;">金额：￥{{ item.card.reward || item.card.price }} · 有效期至 {{ formatTime(item.card.expiresAt) }}</p>
               <n-space v-if="canOperateTaskCard(item.card)" style="margin-top: 10px;">
                 <n-button size="small" type="primary" @click="operateTaskCard(item.card, 'accept')">同意</n-button>
                 <n-button size="small" secondary @click="operateTaskCard(item.card, 'reject')">拒绝</n-button>
+              </n-space>
+              <n-space v-if="canOperateProductCard(item.card)" style="margin-top: 10px;">
+                <n-button size="small" type="primary" @click="operateProductCard(item.card, 'accept')">同意出售</n-button>
+                <n-button size="small" secondary @click="operateProductCard(item.card, 'reject')">拒绝</n-button>
               </n-space>
               <p v-if="item.card.expiredReason" class="muted" style="margin: 8px 0 0;">{{ item.card.expiredReason }}</p>
             </div>
@@ -207,12 +211,31 @@ function canOperateTaskCard(card) {
     && card.status === 'pending';
 }
 
+function canOperateProductCard(card) {
+  return card.type === 'product_purchase'
+    && card.sellerId === session.user?.id
+    && card.status === 'pending';
+}
+
+function cardActorLabel(card) {
+  return card.type === 'product_purchase' ? '买家' : '申请人';
+}
+
 async function operateTaskCard(card, action) {
   const path = action === 'accept'
     ? `/api/tasks/applications/${card.applicationId}/accept`
     : `/api/tasks/applications/${card.applicationId}/reject`;
   await request(path, { method: 'POST' });
   notice.success(action === 'accept' ? '已同意该任务申请' : '已拒绝该任务申请');
+  if (activeId.value) await selectConversation(activeId.value);
+}
+
+async function operateProductCard(card, action) {
+  const path = action === 'accept'
+    ? `/api/market/orders/${card.orderId}/accept`
+    : `/api/market/orders/${card.orderId}/reject`;
+  await request(path, { method: 'POST' });
+  notice.success(action === 'accept' ? '已同意出售，等待买家支付' : '已拒绝购买申请');
   if (activeId.value) await selectConversation(activeId.value);
 }
 </script>
