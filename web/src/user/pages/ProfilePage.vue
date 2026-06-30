@@ -3,13 +3,22 @@
     <section class="surface panel">
       <h2 style="margin-top: 0;">资料维护</h2>
       <n-form :model="form" label-placement="top">
-        <n-form-item label="头像地址">
-          <n-input-group>
-            <n-input v-model:value="form.avatarUrl" placeholder="上传后自动填入，也可使用图片地址" />
-            <n-upload :show-file-list="false" :custom-request="uploadAvatar">
-              <n-button>上传</n-button>
-            </n-upload>
-          </n-input-group>
+        <n-form-item label="头像">
+          <div class="avatar-upload-row">
+            <n-avatar round :size="64" :src="form.avatarUrl || undefined">
+              {{ avatarText(form.nickname) }}
+            </n-avatar>
+            <div>
+              <n-upload
+                accept="image/jpeg,image/png,image/webp"
+                :show-file-list="false"
+                :custom-request="uploadAvatar"
+              >
+                <n-button secondary :loading="avatarUploading">上传头像</n-button>
+              </n-upload>
+              <p class="muted">支持 jpg、png、webp，上传后会直接保存为当前头像。</p>
+            </div>
+          </div>
         </n-form-item>
         <n-form-item label="昵称">
           <n-input v-model:value="form.nickname" />
@@ -64,6 +73,7 @@ import { loadUserSession, userSession as session } from '../session.js';
 const message = useMessage();
 const saving = ref(false);
 const changing = ref(false);
+const avatarUploading = ref(false);
 const form = reactive({ avatarUrl: '', nickname: '', phone: '', contact: '', bio: '' });
 const passwordForm = reactive({ oldPassword: '', newPassword: '' });
 
@@ -83,16 +93,21 @@ onMounted(async () => {
 });
 
 async function uploadAvatar({ file, onFinish, onError }) {
+  avatarUploading.value = true;
   try {
     const body = new FormData();
     body.append('file', file.file);
-    const data = await request('/api/files/upload', { method: 'POST', body });
-    form.avatarUrl = data.url;
-    message.success('头像已上传');
+    const uploadData = await request('/api/files/upload', { method: 'POST', body });
+    const profileData = await request('/api/profile', { method: 'PATCH', body: { avatarUrl: uploadData.url } });
+    session.user = profileData.user;
+    syncForm();
+    message.success('头像已更新');
     onFinish();
   } catch (error) {
     message.error(error.message || '上传失败');
     onError();
+  } finally {
+    avatarUploading.value = false;
   }
 }
 
@@ -122,5 +137,9 @@ async function changePassword() {
   } finally {
     changing.value = false;
   }
+}
+
+function avatarText(name = '') {
+  return String(name || '同').slice(0, 1);
 }
 </script>

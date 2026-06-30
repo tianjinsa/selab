@@ -38,7 +38,12 @@
           <n-tag v-for="tag in post.tags" :key="tag" size="small">{{ tag }}</n-tag>
         </n-space>
         <n-space justify="space-between" style="margin-top: 10px;">
-          <span class="muted">{{ post.author?.nickname }}</span>
+          <button type="button" class="comment-author inline" @click.stop="$router.push(`/users/${post.authorId}`)">
+            <n-avatar round :size="24" :src="post.author?.avatarUrl || undefined">
+              {{ avatarText(post.author?.nickname) }}
+            </n-avatar>
+            <strong>{{ post.author?.nickname || '同学' }}</strong>
+          </button>
           <span class="muted">赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }}</span>
         </n-space>
       </article>
@@ -72,5 +77,9 @@ async function loadPosts() {
 
 async function loadSummary() {
   summary.value = (await request('/api/forum/summary')).summary;
+}
+
+function avatarText(name = '') {
+  return String(name || '同').slice(0, 1);
 }
 </script>

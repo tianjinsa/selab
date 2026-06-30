@@ -20,8 +20,27 @@
       <n-form-item label="Tag">
         <n-dynamic-tags v-model:value="form.tags" :max="5" />
       </n-form-item>
-      <n-form-item label="图片地址">
-        <n-input v-model:value="imageText" type="textarea" placeholder="每行一个图片地址，可留空" />
+      <n-form-item label="图片">
+        <div class="upload-field">
+          <n-upload
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            :max="9"
+            :show-file-list="false"
+            :custom-request="uploadPostImage"
+          >
+            <n-button secondary :loading="uploading">上传图片</n-button>
+          </n-upload>
+          <span class="muted">最多 9 张，支持 jpg、png、webp。</span>
+        </div>
+        <div v-if="form.imageUrls.length" class="image-preview-grid">
+          <div v-for="url in form.imageUrls" :key="url" class="image-preview-item">
+            <img :src="url" alt="帖子图片预览" />
+            <n-button circle quaternary size="small" @click="removeImage(url)">
+              <template #icon><X :size="15" /></template>
+            </n-button>
+          </div>
+        </div>
       </n-form-item>
       <n-button type="primary" :loading="saving" @click="submit">发布</n-button>
     </n-form>
@@ -32,23 +51,20 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
+import { X } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 
 const router = useRouter();
 const message = useMessage();
 const saving = ref(false);
-const imageText = ref('');
+const uploading = ref(false);
 const typeOptions = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item }));
 const form = reactive({ title: '', content: '', type: '经验分享帖', tags: [], imageUrls: [], visibility: 'public' });
 
 async function submit() {
   saving.value = true;
   try {
-    const body = {
-      ...form,
-      imageUrls: imageText.value.split('\n').map((item) => item.trim()).filter(Boolean)
-    };
-    const data = await request('/api/forum/posts', { method: 'POST', body });
+    const data = await request('/api/forum/posts', { method: 'POST', body: { ...form, imageUrls: form.imageUrls } });
     message.success('帖子已发布');
     router.push(`/forum/${data.post.id}`);
   } catch (error) {
@@ -56,5 +72,31 @@ async function submit() {
   } finally {
     saving.value = false;
   }
+}
+
+async function uploadPostImage({ file, onFinish, onError }) {
+  if (form.imageUrls.length >= 9) {
+    message.warning('最多上传 9 张图片');
+    onError();
+    return;
+  }
+  uploading.value = true;
+  try {
+    const body = new FormData();
+    body.append('file', file.file);
+    const data = await request('/api/files/upload', { method: 'POST', body });
+    form.imageUrls.push(data.url);
+    message.success('图片已上传');
+    onFinish();
+  } catch (error) {
+    message.error(error.message || '上传失败');
+    onError();
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function removeImage(url) {
+  form.imageUrls = form.imageUrls.filter((item) => item !== url);
 }
 </script>

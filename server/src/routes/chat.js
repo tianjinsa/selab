@@ -1,6 +1,8 @@
 import express from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireUser } from '../services/auth.js';
+import { notFound } from '../utils/errors.js';
+import { listPosts } from '../services/forum.js';
 import {
   getOrCreateConversation,
   listConversations,
@@ -27,6 +29,32 @@ router.get('/users/search', requireUser, asyncHandler(async (req, res) => {
       creditScore: user.creditScore
     }));
   res.json({ users });
+}));
+
+router.get('/users/:id', requireUser, asyncHandler(async (req, res) => {
+  const target = req.store.collection('users').find((user) => user.id === req.params.id && !user.isBanned);
+  if (!target) throw notFound('用户不存在');
+  const follows = req.store.collection('follows');
+  const posts = listPosts(req.store, { authorId: target.id }, req.user.id);
+  res.json({
+    user: {
+      id: target.id,
+      studentId: target.studentId,
+      nickname: target.nickname,
+      avatarUrl: target.avatarUrl,
+      contact: target.contact,
+      bio: target.bio,
+      creditScore: target.creditScore,
+      createdAt: target.createdAt
+    },
+    followed: follows.some((item) => item.followerId === req.user.id && item.followingId === target.id),
+    stats: {
+      postCount: posts.length,
+      followerCount: follows.filter((item) => item.followingId === target.id).length,
+      followingCount: follows.filter((item) => item.followerId === target.id).length
+    },
+    posts
+  });
 }));
 
 router.get('/conversations', requireUser, asyncHandler(async (req, res) => {

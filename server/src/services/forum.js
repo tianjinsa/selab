@@ -36,6 +36,14 @@ function normalizeTags(store, tags) {
   return [...new Set(next)];
 }
 
+function normalizePostImageUrls(imageUrls) {
+  return (Array.isArray(imageUrls) ? imageUrls : [])
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .filter((item) => item.startsWith('/uploads/'))
+    .slice(0, 9);
+}
+
 export async function createPost(store, user, body) {
   assertCanPost(user);
   const title = String(body.title || '').trim();
@@ -44,12 +52,13 @@ export async function createPost(store, user, body) {
   if (!content) throw badRequest('请输入正文内容');
   assertCleanContent(store, title, content);
   const tags = normalizeTags(store, body.tags);
+  const imageUrls = normalizePostImageUrls(body.imageUrls);
   const post = await store.insert('posts', {
     authorId: user.id,
     title,
     content,
     type: body.type || '经验分享帖',
-    imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.slice(0, 9) : [],
+    imageUrls,
     visibility: body.visibility || 'public',
     viewCount: 0,
     shareCount: 0,
@@ -77,11 +86,13 @@ export function listPosts(store, query = {}, viewerId = '') {
   return decorated.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
-export function getPostDetail(store, postId, viewerId = '') {
+export function getPostDetail(store, postId, viewerId = '', options = {}) {
   const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
   if (!post) throw notFound('帖子不存在');
-  post.viewCount = Number(post.viewCount || 0) + 1;
-  store.saveCollection('posts').catch(() => {});
+  if (options.trackView !== false) {
+    post.viewCount = Number(post.viewCount || 0) + 1;
+    store.saveCollection('posts').catch(() => {});
+  }
   return decoratePost(store, post, viewerId, true);
 }
 
