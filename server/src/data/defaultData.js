@@ -14,6 +14,12 @@ export function createEmptyData() {
         { id: 'cat-book', name: '教材资料', parentId: null },
         { id: 'cat-digital', name: '数码电子', parentId: null }
       ],
+      gradeCategoryMap: {
+        freshman: ['生活用品', '教材资料'],
+        middle: ['教材资料', '数码电子'],
+        senior: ['生活用品', '数码电子'],
+        unknown: ['生活用品', '教材资料', '数码电子']
+      },
       sensitiveWords: ['诈骗', '赌博', '暴力'],
       taskRewardMin: 1,
       taskRewardMax: 500,
@@ -50,6 +56,7 @@ export const collectionNames = [
   'postFavorites',
   'follows',
   'products',
+  'productFavorites',
   'productCategories',
   'categoryRequests',
   'orders',
