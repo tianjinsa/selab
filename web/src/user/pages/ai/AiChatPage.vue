@@ -86,30 +86,44 @@
           </template>
 
           <template v-else>
-            <div v-if="item.role === 'assistant' && item.reasoningContent" class="reasoning-panel">
+            <div v-if="item.role === 'assistant' && reasoningBlocks(item).length" class="reasoning-panel">
               <div class="reasoning-heading">
                 <Brain :size="15" />
                 <span>思考过程</span>
               </div>
-              <div class="reasoning-content">{{ item.reasoningContent }}</div>
-            </div>
-
-            <div v-if="item.role === 'assistant' && visibleToolEvents(item).length" class="tool-timeline">
-              <div v-for="event in visibleToolEvents(item)" :key="event.id" class="tool-event" :class="event.status">
-                <Wrench :size="15" />
-                <div>
-                  <strong>{{ event.displayName || event.toolName }}</strong>
-                  <span>{{ toolStatusText(event.status) }}</span>
-                  <small v-if="event.summary">{{ event.summary }}</small>
-                </div>
+              <div class="reasoning-content">
+                <template v-for="block in reasoningBlocks(item)" :key="block.id">
+                  <div v-if="block.type === 'text'" class="reasoning-text markdown-body" v-html="renderMarkdown(block.text)" />
+                  <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
+                    <Wrench :size="15" />
+                    <div>
+                      <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
+                      <span>{{ toolStatusText(block.tool.status) }}</span>
+                      <small v-if="block.tool.summary">{{ block.tool.summary }}</small>
+                      <small v-if="block.tool.error" class="tool-error-text">{{ block.tool.error }}</small>
+                    </div>
+                  </div>
+                </template>
               </div>
             </div>
 
             <div
-              v-if="item.content"
-              class="markdown-body"
-              v-html="renderMarkdown(item.content)"
-            />
+              v-if="contentBlocks(item).length"
+              class="assistant-content-flow"
+            >
+              <template v-for="block in contentBlocks(item)" :key="block.id">
+                <div v-if="block.type === 'text'" class="markdown-body" v-html="renderMarkdown(block.text)" />
+                <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
+                  <Wrench :size="15" />
+                  <div>
+                    <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
+                    <span>{{ toolStatusText(block.tool.status) }}</span>
+                    <small v-if="block.tool.summary">{{ block.tool.summary }}</small>
+                    <small v-if="block.tool.error" class="tool-error-text">{{ block.tool.error }}</small>
+                  </div>
+                </div>
+              </template>
+            </div>
             <div v-else-if="item.role === 'assistant' && item.status === 'running'" class="muted pending-text">
               正在组织回答...
             </div>
@@ -301,26 +315,46 @@ function connectSocket() {
     if (packet.event === 'ai.run.started') {
       running.value = true;
       if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
-      ensureAssistantMessage(packet.payload);
+      const target = ensureAssistantMessage(packet.payload);
+      if (target) target.runState = 'requesting';
     }
     if (packet.event === 'ai.token') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId);
-      if (target) target.content = `${target.content || ''}${packet.payload.delta}`;
+      const target = messages.value.find((item) => item.id === packet.payload.messageId)
+        || ensureAssistantMessage(packet.payload);
+      if (target) {
+        target.content = `${target.content || ''}${packet.payload.delta}`;
+        target.runState = packet.payload.runState || 'responding';
+        mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'content', packet.payload.delta);
+      }
       scrollBottom();
     }
     if (packet.event === 'ai.reasoning') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId);
-      if (target) target.reasoningContent = `${target.reasoningContent || ''}${packet.payload.delta}`;
+      const target = messages.value.find((item) => item.id === packet.payload.messageId)
+        || ensureAssistantMessage(packet.payload);
+      if (target) {
+        target.reasoningContent = `${target.reasoningContent || ''}${packet.payload.delta}`;
+        target.runState = packet.payload.runState || 'responding';
+        mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'reasoning', packet.payload.delta);
+      }
       scrollBottom();
     }
     if (packet.event === 'ai.tool_call') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
       const target = messages.value.find((item) => item.id === packet.payload.messageId)
         || ensureAssistantMessage(packet.payload);
-      if (target) mergeToolEvent(target, packet.payload.toolEvent);
+      if (target) {
+        target.runState = packet.payload.runState || target.runState;
+        mergeToolEvent(target, packet.payload.toolEvent);
+      }
       scrollBottom();
+    }
+    if (packet.event === 'ai.message_state') {
+      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+      const target = messages.value.find((item) => item.id === packet.payload.messageId)
+        || ensureAssistantMessage(packet.payload);
+      if (target) target.runState = packet.payload.runState;
     }
     if (packet.event === 'ai.cards') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
@@ -440,12 +474,105 @@ async function regenerate(item, silent = false) {
 }
 
 function normalizeMessage(item) {
-  return {
+  const normalized = {
     ...item,
     content: item.content || '',
     cards: Array.isArray(item.cards) ? item.cards : [],
     toolEvents: Array.isArray(item.toolEvents) ? item.toolEvents : [],
-    reasoningContent: item.reasoningContent || ''
+    streamParts: Array.isArray(item.streamParts) ? item.streamParts : [],
+    reasoningContent: item.reasoningContent || '',
+    runState: item.runState || item.status || ''
+  };
+  if (!normalized.streamParts.length) {
+    normalized.streamParts = legacyStreamParts(normalized);
+  }
+  return normalized;
+}
+
+function legacyStreamParts(item) {
+  const parts = [];
+  if (item.reasoningContent) {
+    parts.push({
+      id: `legacy_reasoning_${item.id}`,
+      type: 'text',
+      channel: 'reasoning',
+      text: item.reasoningContent
+    });
+  }
+  for (const event of visibleToolEvents(item)) {
+    parts.push({
+      id: `legacy_tool_${event.id}`,
+      type: 'tool',
+      channel: event.channel || 'content',
+      toolEventId: event.id
+    });
+  }
+  if (item.content) {
+    parts.push({
+      id: `legacy_content_${item.id}`,
+      type: 'text',
+      channel: 'content',
+      text: item.content
+    });
+  }
+  return parts;
+}
+
+function mergeTextPart(message, partId, channel, delta) {
+  const parts = Array.isArray(message.streamParts) ? [...message.streamParts] : [];
+  const id = partId || `live_${channel}_${message.id}`;
+  const existing = parts.find((part) => part.id === id);
+  if (existing?.type === 'text') {
+    existing.text = `${existing.text || ''}${delta}`;
+    existing.channel = channel;
+    message.streamParts = parts;
+    return;
+  }
+  const last = parts[parts.length - 1];
+  if (!partId && last?.type === 'text' && last.channel === channel) {
+    last.text = `${last.text || ''}${delta}`;
+    message.streamParts = parts;
+    return;
+  }
+  parts.push({
+    id,
+    type: 'text',
+    channel,
+    text: String(delta || '')
+  });
+  message.streamParts = parts;
+}
+
+function toolEventMap(message) {
+  return new Map((message.toolEvents || []).map((event) => [event.id, event]));
+}
+
+function messageBlocks(message, channel) {
+  const events = toolEventMap(message);
+  return (message.streamParts || [])
+    .filter((part) => (part.channel || 'content') === channel)
+    .map((part) => {
+      if (part.type === 'tool') {
+        return { ...part, tool: events.get(part.toolEventId) };
+      }
+      return part;
+    })
+    .filter((part) => part.type !== 'tool' || part.tool);
+}
+
+function reasoningBlocks(message) {
+  return messageBlocks(message, 'reasoning');
+}
+
+function contentBlocks(message) {
+  return messageBlocks(message, 'content');
+}
+
+function normalizeToolEvent(event = {}) {
+  return {
+    ...event,
+    channel: event.channel || 'content',
+    error: event.error || (event.status === 'error' ? event.summary || '工具调用失败' : '')
   };
 }
 
@@ -460,8 +587,10 @@ function ensureAssistantMessage(payload = {}) {
     role: 'assistant',
     content: '',
     status: 'running',
+    runState: payload.runState || 'requesting',
     cards: [],
     toolEvents: [],
+    streamParts: [],
     reasoningContent: '',
     createdAt: new Date().toISOString()
   });
@@ -471,11 +600,26 @@ function ensureAssistantMessage(payload = {}) {
 
 function mergeToolEvent(message, event) {
   if (!event) return;
+  const nextEvent = normalizeToolEvent(event);
   const events = Array.isArray(message.toolEvents) ? [...message.toolEvents] : [];
-  const index = events.findIndex((item) => item.id === event.id);
-  if (index >= 0) events.splice(index, 1, { ...events[index], ...event });
-  else events.push(event);
+  const index = events.findIndex((item) => item.id === nextEvent.id);
+  if (index >= 0) events.splice(index, 1, normalizeToolEvent({ ...events[index], ...nextEvent }));
+  else events.push(nextEvent);
   message.toolEvents = events;
+  ensureToolPart(message, nextEvent);
+}
+
+function ensureToolPart(message, event) {
+  const parts = Array.isArray(message.streamParts) ? [...message.streamParts] : [];
+  if (!parts.some((part) => part.type === 'tool' && part.toolEventId === event.id)) {
+    parts.push({
+      id: `tool_${event.id}`,
+      type: 'tool',
+      channel: event.channel || 'content',
+      toolEventId: event.id
+    });
+    message.streamParts = parts;
+  }
 }
 
 function visibleToolEvents(message) {
@@ -532,10 +676,26 @@ function messageStatusText(status) {
 
 function messageMetaText(message) {
   const parts = [];
-  const status = messageStatusText(message.status);
-  if (status && message.status !== 'done') parts.push(status);
+  if (message.role === 'assistant') {
+    const runState = messageRunStateText(message);
+    if (runState) parts.push(runState);
+  } else {
+    const status = messageStatusText(message.status);
+    if (status && message.status !== 'done') parts.push(status);
+  }
   if (message.editedAt) parts.push('已编辑');
   return parts.join(' · ');
+}
+
+function messageRunStateText(message) {
+  if (message.status === 'done') return '';
+  if (message.runState === 'requesting') return '请求中';
+  if (message.runState === 'responding') return '回复中';
+  if (message.runState === 'waiting_tool') return '等待工具中';
+  if (message.runState === 'error' || message.status === 'error') return '出错';
+  if (message.runState === 'stopped' || message.status === 'stopped') return '已停止';
+  if (message.status === 'running') return '请求中';
+  return '';
 }
 
 function toolStatusText(status) {
