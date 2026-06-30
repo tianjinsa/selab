@@ -985,6 +985,35 @@ a {
   gap: 8px;
 }
 
+.market-order-product {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.market-order-product img {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  object-fit: cover;
+  background: #e7ece9;
+}
+
+.market-order-product span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.market-order-product small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .user-posts {
   margin-top: 16px;
 }

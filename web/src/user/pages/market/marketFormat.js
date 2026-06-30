@@ -16,6 +16,28 @@ export const orderStatusText = {
   cancelled: '已取消'
 };
 
+export function orderStatusType(status) {
+  return {
+    applying: 'warning',
+    rejected: 'error',
+    waiting_payment: 'warning',
+    waiting_delivery: 'info',
+    waiting_receive: 'info',
+    completed: 'success',
+    dispute: 'error',
+    cancelled: 'default'
+  }[status] || 'default';
+}
+
+export function productStatusType(status) {
+  return {
+    on_sale: 'success',
+    trading: 'warning',
+    sold: 'info',
+    off_shelf: 'default'
+  }[status] || 'default';
+}
+
 export function formatMoney(value) {
   return `￥${Number(value || 0).toFixed(2)}`;
 }

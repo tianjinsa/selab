@@ -15,6 +15,7 @@ import {
   listMarketAdmin,
   listMyOrders,
   listProducts,
+  marketWorkbench,
   marketMeta,
   payOrder,
   receiveOrder,
@@ -47,6 +48,10 @@ router.get('/recommendations/grade', requireUser, asyncHandler(async (req, res) 
 
 router.get('/orders/my', requireUser, asyncHandler(async (req, res) => {
   res.json({ orders: listMyOrders(req.store, req.user.id) });
+}));
+
+router.get('/orders/workbench', requireUser, asyncHandler(async (req, res) => {
+  res.json(marketWorkbench(req.store, req.user.id));
 }));
 
 router.post('/category-requests', requireUser, asyncHandler(async (req, res) => {

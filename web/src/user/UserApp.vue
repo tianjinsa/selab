@@ -74,6 +74,7 @@ const routeTitle = computed(() => {
     '/tasks/workbench': '任务工作台',
     '/forum': '校园社区论坛',
     '/market': '校园二手市场',
+    '/market/orders': '我的交易',
     '/ai': '校园信息智能体'
   };
   return map[route.path] || map[`/${route.path.split('/')[1]}`] || '校园首页';
