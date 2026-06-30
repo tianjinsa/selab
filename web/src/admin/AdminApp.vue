@@ -1,12 +1,15 @@
 <template>
-  <n-config-provider>
+  <n-config-provider :theme="naiveTheme" :theme-overrides="naiveThemeOverrides">
     <n-message-provider>
       <n-dialog-provider>
-        <router-view v-if="$route.meta.public" v-slot="{ Component, route }">
-          <transition name="page-flow" mode="out-in" appear>
-            <component :is="Component" :key="route.fullPath" />
-          </transition>
-        </router-view>
+        <div v-if="$route.meta.public" class="public-shell">
+          <ThemeToggle class="theme-floating-toggle" />
+          <router-view v-slot="{ Component, route }">
+            <transition name="page-flow" mode="out-in" appear>
+              <component :is="Component" :key="route.fullPath" />
+            </transition>
+          </router-view>
+        </div>
         <div v-else class="app-shell">
           <aside class="side-nav">
             <div class="brand-block">
@@ -29,10 +32,13 @@
                 <h1 class="page-title">{{ pageTitle }}</h1>
                 <p class="page-desc">管理员操作会写入操作日志，危险操作需要确认。</p>
               </div>
-              <n-button secondary @click="logout">
-                <template #icon><LogOut :size="16" /></template>
-                退出
-              </n-button>
+              <n-space align="center">
+                <ThemeToggle />
+                <n-button secondary @click="logout">
+                  <template #icon><LogOut :size="16" /></template>
+                  退出
+                </n-button>
+              </n-space>
             </div>
             <router-view v-slot="{ Component, route }">
               <transition name="page-flow" mode="out-in" appear>
@@ -50,9 +56,12 @@
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Bot, ClipboardList, Gauge, LogOut, MessagesSquare, ShieldCheck, ShoppingBag, UsersRound } from '@lucide/vue';
+import ThemeToggle from '../shared/ThemeToggle.vue';
+import { useThemeMode } from '../shared/theme.js';
 import { clearAdminSession, loadAdminSession } from './session.js';
 
 const router = useRouter();
+const { naiveTheme, naiveThemeOverrides } = useThemeMode();
 const pageTitle = computed(() => {
   if (router.currentRoute.value.path === '/users') return '用户管理';
   if (router.currentRoute.value.path === '/tasks') return '任务管理';

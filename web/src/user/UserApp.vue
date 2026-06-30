@@ -1,12 +1,15 @@
 <template>
-  <n-config-provider>
+  <n-config-provider :theme="naiveTheme" :theme-overrides="naiveThemeOverrides">
     <n-message-provider>
       <n-dialog-provider>
-        <router-view v-if="$route.meta.public" v-slot="{ Component, route }">
-          <transition name="page-flow" mode="out-in" appear>
-            <component :is="Component" :key="route.fullPath" />
-          </transition>
-        </router-view>
+        <div v-if="$route.meta.public" class="public-shell">
+          <ThemeToggle class="theme-floating-toggle" />
+          <router-view v-slot="{ Component, route }">
+            <transition name="page-flow" mode="out-in" appear>
+              <component :is="Component" :key="route.fullPath" />
+            </transition>
+          </router-view>
+        </div>
         <div v-else class="app-shell">
           <aside class="side-nav">
             <div class="brand-block">
@@ -31,6 +34,7 @@
                 <p class="page-desc">{{ session.user?.nickname || '同学' }}，信用分 {{ session.user?.creditScore ?? '-' }}</p>
               </div>
               <n-space align="center">
+                <ThemeToggle />
                 <n-badge :value="session.unreadCount" :max="99">
                   <n-button secondary circle @click="$router.push('/notifications')">
                     <template #icon><Bell :size="16" /></template>
@@ -58,10 +62,13 @@
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound } from '@lucide/vue';
+import ThemeToggle from '../shared/ThemeToggle.vue';
+import { useThemeMode } from '../shared/theme.js';
 import { clearUserSession, loadUserSession, userSession as session } from './session.js';
 
 const route = useRoute();
 const router = useRouter();
+const { naiveTheme, naiveThemeOverrides } = useThemeMode();
 
 const routeTitle = computed(() => {
   const map = {
