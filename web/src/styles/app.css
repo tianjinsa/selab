@@ -248,6 +248,13 @@ a {
   overflow: hidden;
 }
 
+.ai-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 680px;
+  overflow: hidden;
+}
+
 .conversation-list {
   border-right: 1px solid var(--line);
   background: rgba(255, 253, 248, 0.72);
@@ -323,7 +330,8 @@ a {
 @media (max-width: 920px) {
   .app-shell,
   .auth-card,
-  .chat-layout {
+  .chat-layout,
+  .ai-layout {
     grid-template-columns: 1fr;
   }
 

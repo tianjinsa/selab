@@ -1,6 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { verifyUserToken } from '../services/auth.js';
 import { markConversationRead, sendMessage } from '../services/chat.js';
+import { cancelAiRun, startAiRun } from '../services/ai.js';
 
 export class RealtimeHub {
   constructor(store) {
@@ -68,6 +69,17 @@ export class RealtimeHub {
       if (packet.event === 'chat.message.read') {
         const { conversationId } = packet.payload || {};
         await markConversationRead(this.store, this, ws.userId, conversationId);
+        return;
+      }
+      if (packet.event === 'ai.message.send') {
+        const result = await startAiRun(this.store, this, ws.userId, packet.payload || {});
+        ws.send(JSON.stringify({ event: 'ai.message.accepted', payload: result }));
+        return;
+      }
+      if (packet.event === 'ai.run.cancel') {
+        const { sessionId } = packet.payload || {};
+        await cancelAiRun(this.store, ws.userId, sessionId);
+        ws.send(JSON.stringify({ event: 'ai.run.cancelled', payload: { sessionId } }));
         return;
       }
       ws.send(JSON.stringify({ event: 'error', payload: { message: '未知 WebSocket 事件' } }));

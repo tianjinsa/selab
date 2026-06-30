@@ -20,6 +20,7 @@ import MarketCreatePage from './pages/market/MarketCreatePage.vue';
 import MarketDetailPage from './pages/market/MarketDetailPage.vue';
 import MarketGradePage from './pages/market/MarketGradePage.vue';
 import MarketOrdersPage from './pages/market/MarketOrdersPage.vue';
+import AiChatPage from './pages/ai/AiChatPage.vue';
 
 export const userRouter = createRouter({
   history: createWebHistory('/'),
@@ -44,7 +45,7 @@ export const userRouter = createRouter({
     { path: '/market/grade', component: MarketGradePage },
     { path: '/market/orders', component: MarketOrdersPage },
     { path: '/market/:id', component: MarketDetailPage },
-    { path: '/ai', component: PlaceholderPage, props: { title: '校园信息智能体', phase: '阶段 5' } }
+    { path: '/ai', component: AiChatPage }
   ]
 });
 

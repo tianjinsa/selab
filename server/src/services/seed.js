@@ -48,4 +48,35 @@ export async function seedInitialData(store) {
       }
     ]);
   }
+  if (store.collection('knowledgeEntries').length === 0) {
+    await store.replaceCollection('knowledgeEntries', [
+      {
+        id: randomUUID(),
+        title: '校园快递点开放时间',
+        category: '校园办事流程',
+        content: '快递点通常在 9:00-21:00 开放，节假日以学校通知为准。取件请携带取件码和校园卡。',
+        source: '后勤服务中心',
+        createdAt: now(),
+        updatedAt: now()
+      },
+      {
+        id: randomUUID(),
+        title: '平台任务互助说明',
+        category: '平台使用说明',
+        content: '用户发布任务需要完成模拟支付，任务完成后系统记录模拟结算流水。信用分低于 4 分不能接任务。',
+        source: '平台规则',
+        createdAt: now(),
+        updatedAt: now()
+      },
+      {
+        id: randomUUID(),
+        title: '二手市场担保流程',
+        category: '平台使用说明',
+        content: '买家申请购买后由卖家确认，买家模拟支付后卖家线下交付，买家确认收货后订单完成。',
+        source: '平台规则',
+        createdAt: now(),
+        updatedAt: now()
+      }
+    ]);
+  }
 }
