@@ -1037,6 +1037,59 @@ a {
   background: #dceee9;
 }
 
+.chat-attachment.image {
+  display: grid;
+  gap: 8px;
+}
+
+.chat-attachment.image img {
+  display: block;
+  width: min(320px, 64vw);
+  max-height: 260px;
+  border-radius: calc(var(--radius) - 2px);
+  object-fit: cover;
+  background: #dfe8e4;
+}
+
+.chat-attachment.image p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.chat-attachment.file {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: min(320px, 72vw);
+  color: inherit;
+  text-decoration: none;
+}
+
+.chat-attachment.file > svg {
+  color: var(--brand);
+}
+
+.chat-attachment.file span {
+  min-width: 0;
+}
+
+.chat-attachment.file strong,
+.chat-attachment.file small {
+  display: block;
+}
+
+.chat-attachment.file strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment.file small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
 .message-meta {
   display: flex;
   align-items: center;
@@ -1270,10 +1323,23 @@ a {
 
 .message-composer {
   display: flex;
+  align-items: center;
   gap: 10px;
   padding: 14px;
   border-top: 1px solid var(--line);
   background: rgba(255, 253, 248, 0.92);
+}
+
+.message-composer .n-input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.composer-uploads {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
 .empty-state {
@@ -1385,5 +1451,13 @@ a {
   .message-bubble.assistant {
     max-width: 100%;
     width: 100%;
+  }
+
+  .message-composer {
+    flex-wrap: wrap;
+  }
+
+  .message-composer .n-input {
+    flex-basis: min(320px, 100%);
   }
 }

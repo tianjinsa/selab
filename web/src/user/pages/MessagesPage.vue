@@ -19,7 +19,7 @@
             <strong>{{ conversation.peer?.nickname || '同学' }}</strong>
             <n-badge v-if="conversation.unreadCount" :value="conversation.unreadCount" />
           </n-space>
-          <div class="muted" style="margin-top: 4px;">{{ conversation.lastMessage?.content || '还没有消息' }}</div>
+          <div class="muted" style="margin-top: 4px;">{{ conversationPreview(conversation.lastMessage) }}</div>
         </div>
       </transition-group>
       <div v-if="!conversations.length" class="empty-state">搜索同学后开始第一段私信</div>
@@ -49,14 +49,48 @@
               </n-space>
               <p v-if="item.card.expiredReason" class="muted" style="margin: 8px 0 0;">{{ item.card.expiredReason }}</p>
             </div>
+            <div v-else-if="item.type === 'image' && messageAttachment(item)" class="chat-attachment image">
+              <a :href="messageAttachment(item).url" target="_blank" rel="noreferrer">
+                <img :src="messageAttachment(item).url" :alt="messageAttachment(item).name || '私信图片'" />
+              </a>
+              <p v-if="item.content">{{ item.content }}</p>
+            </div>
+            <a v-else-if="messageAttachment(item)" class="chat-attachment file" :href="messageAttachment(item).url" target="_blank" rel="noreferrer">
+              <FileText :size="22" />
+              <span>
+                <strong>{{ messageAttachment(item).name || '附件' }}</strong>
+                <small>{{ formatFileSize(messageAttachment(item).size) }}</small>
+              </span>
+              <Download :size="17" />
+            </a>
             <div v-else>{{ item.content }}</div>
             <small class="muted">{{ formatTime(item.createdAt) }}</small>
           </div>
           </transition-group>
         </div>
         <div class="message-composer">
+          <div class="composer-uploads">
+            <n-upload
+              accept="image/jpeg,image/png,image/webp"
+              :show-file-list="false"
+              :custom-request="uploadAndSendAttachment"
+            >
+              <n-button secondary circle :loading="uploadingAttachment" :disabled="!activeId || uploadingAttachment">
+                <template #icon><ImagePlus :size="16" /></template>
+              </n-button>
+            </n-upload>
+            <n-upload
+              accept=".jpg,.jpeg,.png,.webp,.pdf,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar"
+              :show-file-list="false"
+              :custom-request="uploadAndSendAttachment"
+            >
+              <n-button secondary circle :loading="uploadingAttachment" :disabled="!activeId || uploadingAttachment">
+                <template #icon><Paperclip :size="16" /></template>
+              </n-button>
+            </n-upload>
+          </div>
           <n-input v-model:value="draft" placeholder="输入消息，Enter 发送" @keyup.enter="send" />
-          <n-button type="primary" :disabled="!draft.trim()" @click="send">
+          <n-button type="primary" :disabled="!draft.trim() || uploadingAttachment" @click="send">
             <template #icon><Send :size="16" /></template>
             发送
           </n-button>
@@ -71,7 +105,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { Send } from '@lucide/vue';
+import { Download, FileText, ImagePlus, Paperclip, Send } from '@lucide/vue';
 import { request, websocketUrl } from '../../shared/http.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
@@ -85,6 +119,7 @@ const draft = ref('');
 const keyword = ref('');
 const searchResults = ref([]);
 const streamRef = ref(null);
+const uploadingAttachment = ref(false);
 let socket = null;
 
 const activeConversation = computed(() => conversations.value.find((item) => item.id === activeId.value));
@@ -137,13 +172,51 @@ async function send() {
   const content = draft.value.trim();
   if (!content || !activeId.value) return;
   draft.value = '';
+  await sendPayload({ content, type: 'text' });
+}
+
+async function sendPayload(payload) {
   if (socket?.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({
       event: 'chat.message.send',
-      payload: { conversationId: activeId.value, content, type: 'text' }
+      payload: { conversationId: activeId.value, ...payload }
     }));
   } else {
-    await request(`/api/conversations/${activeId.value}/messages`, { method: 'POST', body: { content, type: 'text' } });
+    const data = await request(`/api/conversations/${activeId.value}/messages`, { method: 'POST', body: payload });
+    messages.value.push(data.message);
+    await loadConversations();
+    scrollBottom();
+  }
+}
+
+async function uploadAndSendAttachment({ file, onFinish, onError }) {
+  if (!activeId.value) {
+    notice.warning('请先选择一个会话');
+    onError();
+    return;
+  }
+  uploadingAttachment.value = true;
+  try {
+    const body = new FormData();
+    body.append('file', file.file);
+    const data = await request('/api/files/upload-attachment', { method: 'POST', body });
+    const asset = data.asset || {};
+    const kind = asset.kind === 'image' ? 'image' : 'file';
+    const attachment = {
+      url: data.url,
+      kind,
+      name: asset.originalName || file.name || (kind === 'image' ? '图片' : '附件'),
+      mimeType: asset.mimeType || file.file?.type || '',
+      size: asset.size || file.file?.size || 0
+    };
+    await sendPayload({ content: '', type: kind, attachment });
+    notice.success(kind === 'image' ? '图片已发送' : '文件已发送');
+    onFinish();
+  } catch (error) {
+    notice.error(error.message || '上传失败');
+    onError();
+  } finally {
+    uploadingAttachment.value = false;
   }
 }
 
@@ -191,6 +264,38 @@ function scrollBottom() {
 
 function formatTime(value) {
   return new Date(value).toLocaleString();
+}
+
+function messageAttachment(message) {
+  if (message?.attachment?.url) return message.attachment;
+  if (message?.imageUrl) {
+    return {
+      url: message.imageUrl,
+      kind: 'image',
+      name: '图片',
+      mimeType: '',
+      size: 0
+    };
+  }
+  return null;
+}
+
+function conversationPreview(message) {
+  if (!message) return '还没有消息';
+  if (message.content) return message.content;
+  const attachment = messageAttachment(message);
+  if (!attachment) return '还没有消息';
+  return attachment.kind === 'image'
+    ? `[图片] ${attachment.name || ''}`.trim()
+    : `[文件] ${attachment.name || '附件'}`;
+}
+
+function formatFileSize(size = 0) {
+  const value = Number(size || 0);
+  if (!value) return '未知大小';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function cardStatusText(status) {
