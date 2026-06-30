@@ -33,7 +33,7 @@
         </div>
       </div>
       <div class="hero-status">
-        <div class="credit-ring">
+        <div class="credit-ring" :style="{ '--credit-progress': creditProgress }">
           <span>{{ session.user?.creditScore ?? '-' }}</span>
           <small>信用分</small>
         </div>
@@ -151,7 +151,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import {
   ArrowRight,
   Bell,
@@ -176,6 +176,11 @@ const posts = ref([]);
 const products = ref([]);
 const searchText = ref('');
 const searchTarget = ref('ai');
+const creditProgress = computed(() => {
+  const score = Number(session.user?.creditScore ?? 0);
+  const bounded = Math.max(0, Math.min(10, score));
+  return `${bounded * 36}deg`;
+});
 
 const searchOptions = [
   { label: '智能体', value: 'ai' },

@@ -27,7 +27,11 @@ export function createEmptyData() {
       aiConfig: {
         baseUrl: '',
         apiKey: '',
-        model: ''
+        model: '',
+        includeReasoning: false,
+        enableThinking: false,
+        thinkingType: '',
+        reasoningEffort: ''
       }
     }
   };
