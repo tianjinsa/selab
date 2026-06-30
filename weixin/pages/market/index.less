@@ -25,17 +25,31 @@ page {
 }
 
 .search-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14rpx;
+  align-items: center;
   padding: 20rpx;
 }
 
-.category-strip {
-  width: 100%;
-  margin-top: 18rpx;
-  white-space: nowrap;
+.market-search-entry {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+  height: 76rpx;
+  padding: 0 22rpx;
+  border-radius: 999rpx;
+  color: #64748b;
+  background: #f1f5f9;
+  font-size: 26rpx;
+  box-sizing: border-box;
 }
 
-.category {
-  margin-right: 12rpx;
+.market-search-entry text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .price {
@@ -113,4 +127,24 @@ page {
   position: fixed;
   right: 32rpx;
   bottom: 208rpx;
+}
+
+.empty-state {
+  padding: 64rpx 24rpx;
+  border: 1rpx dashed #cbd5e1;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.72);
+  text-align: center;
+}
+
+.empty-title {
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.empty-desc {
+  margin-top: 10rpx;
+  color: #64748b;
+  font-size: 24rpx;
 }

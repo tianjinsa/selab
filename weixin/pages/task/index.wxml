@@ -57,6 +57,10 @@
         </view>
       </view>
     </view>
+    <view wx:if="{{!filteredTasks.length && !loading}}" class="empty-state">
+      <view class="empty-title">暂无匹配任务</view>
+      <view class="empty-desc">换个分类或关键词再看看。</view>
+    </view>
   </view>
 
   <view class="section-title">

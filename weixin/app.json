@@ -7,6 +7,7 @@
     "pages/task/manage/index",
     "pages/task/publish/index",
     "pages/market/index",
+    "pages/market/category/index",
     "pages/market/detail/index",
     "pages/market/manage/index",
     "pages/market/publish/index",

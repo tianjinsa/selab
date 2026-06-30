@@ -1,5 +1,5 @@
 import request from '~/api/request';
-import { listFrom } from '~/utils/api';
+import { getImage, listFrom, unwrap } from '~/utils/api';
 
 const historyKey = 'campus_search_history';
 
@@ -7,11 +7,43 @@ function unique(values) {
   return Array.from(new Set(values.filter(Boolean))).slice(0, 10);
 }
 
+function normalizeGoodsCategories(values, goods) {
+  const categories = (Array.isArray(values) ? values : [])
+    .map((item) => {
+      if (typeof item === 'string') return { name: item, children: [] };
+      return { name: item && item.name, children: Array.isArray(item && item.children) ? item.children : [] };
+    })
+    .filter((item) => item.name);
+  const names = new Set(categories.map((item) => item.name));
+  goods.forEach((item) => {
+    if (item.category && !names.has(item.category)) {
+      categories.push({ name: item.category, children: [] });
+      names.add(item.category);
+    }
+  });
+  return [{ name: '全部', children: [] }].concat(categories);
+}
+
+function matchGoods(item, parent, child, keyword, children = []) {
+  const matchedParent = !parent || parent === '全部' || item.category === parent || children.includes(item.category);
+  const matchedChild = !child || item.category === child;
+  const key = String(keyword || '').trim();
+  const matchedKeyword = !key || `${item.name}${item.category}${item.location}${item.description}`.includes(key);
+  return matchedParent && matchedChild && matchedKeyword;
+}
+
 Page({
   data: {
+    marketMode: false,
     historyWords: [],
     popularWords: [],
     results: [],
+    marketCategories: [{ name: '全部', children: [] }],
+    activeMarketParent: '全部',
+    activeMarketChild: '',
+    activeMarketChildren: [],
+    marketGoods: [],
+    marketResults: [],
     searchValue: '',
     dialog: {
       title: '确认删除当前历史记录',
@@ -25,9 +57,32 @@ Page({
   deleteType: 0,
   deleteIndex: '',
 
+  onLoad(options) {
+    if (options.mode === 'market') this.setData({ marketMode: true });
+  },
+
   onShow() {
     this.setData({ historyWords: wx.getStorageSync(historyKey) || [] });
-    this.queryPopular();
+    if (this.data.marketMode) this.loadMarketSearchData();
+    else this.queryPopular();
+  },
+
+  async loadMarketSearchData() {
+    this.setData({ searching: true });
+    try {
+      const [goodsRes, categoryRes] = await Promise.all([request('/market/goods'), request('/settings/categories').catch(() => null)]);
+      const goods = listFrom(goodsRes).map((item) => ({
+        ...item,
+        cover: getImage(item.images, '/static/home/card2.png'),
+        sellerName: (item.seller && item.seller.nickname) || '卖家',
+      }));
+      const categoryData = unwrap(categoryRes) || {};
+      const marketCategories = normalizeGoodsCategories(categoryData.goodsCategories, goods);
+      this.setData({ marketGoods: goods, marketCategories, searching: false }, this.applyMarketFilter);
+    } catch (error) {
+      this.setData({ searching: false });
+      wx.showToast({ title: '商品加载失败', icon: 'none' });
+    }
   },
 
   async queryPopular() {
@@ -61,7 +116,28 @@ Page({
       searchValue,
       historyWords: nextHistory,
     });
+    if (this.data.marketMode) {
+      this.applyMarketFilter();
+      return;
+    }
     this.searchAll(searchValue);
+  },
+
+  selectMarketParent(event) {
+    this.setData({ activeMarketParent: event.currentTarget.dataset.name, activeMarketChild: '' }, this.applyMarketFilter);
+  },
+
+  selectMarketChild(event) {
+    this.setData({ activeMarketChild: event.currentTarget.dataset.name || '' }, this.applyMarketFilter);
+  },
+
+  applyMarketFilter() {
+    const category = this.data.marketCategories.find((item) => item.name === this.data.activeMarketParent) || { children: [] };
+    const activeMarketChildren = category.children || [];
+    const marketResults = this.data.marketGoods.filter((item) =>
+      matchGoods(item, this.data.activeMarketParent, this.data.activeMarketChild, this.data.searchValue, activeMarketChildren),
+    );
+    this.setData({ activeMarketChildren, marketResults });
   },
 
   async searchAll(keyword) {
@@ -165,6 +241,10 @@ Page({
       searchValue: '',
       results: [],
     });
+    if (this.data.marketMode) {
+      wx.switchTab({ url: '/pages/market/index' });
+      return;
+    }
     wx.switchTab({ url: '/pages/home/index' });
   },
 });

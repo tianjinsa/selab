@@ -1,21 +1,11 @@
 <nav title-text="二手市场" />
 <view class="market-page">
   <view class="search-panel">
-    <t-search placeholder="搜索商品、分类或交易地点" value="{{keyword}}" bind:change="onSearch" />
-    <scroll-view scroll-x class="category-strip" show-scrollbar="{{false}}">
-      <t-tag
-        wx:for="{{categories}}"
-        wx:key="index"
-        class="category"
-        size="large"
-        theme="{{activeCategory === item ? 'primary' : 'default'}}"
-        variant="{{activeCategory === item ? 'dark' : 'light'}}"
-        data-name="{{item}}"
-        bindtap="selectCategory"
-      >
-        {{item}}
-      </t-tag>
-    </scroll-view>
+    <view class="market-search-entry" bindtap="openSearch">
+      <t-icon name="search" size="34rpx" />
+      <text>搜索商品、分类或交易地点</text>
+    </view>
+    <t-button theme="primary" variant="light" icon="view-list" bindtap="openCategoryPage">全部分类</t-button>
   </view>
 
   <view class="section-title">
@@ -49,6 +39,10 @@
           <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{item.id}}" data-name="{{item.name}}">求购</t-button>
         </view>
       </view>
+    </view>
+    <view wx:if="{{!filteredGoods.length && !loading}}" class="empty-state">
+      <view class="empty-title">暂无在售商品</view>
+      <view class="empty-desc">稍后再看看，或先发布你的闲置。</view>
     </view>
   </view>
 

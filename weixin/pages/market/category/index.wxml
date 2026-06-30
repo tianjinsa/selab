@@ -1,0 +1,55 @@
+<t-navbar title="全部分类" left-arrow bind:go-back="goBack" />
+<view class="category-page">
+  <scroll-view scroll-y class="parent-list">
+    <view
+      wx:for="{{categories}}"
+      wx:key="name"
+      class="parent-item {{activeParent === item.name ? 'active' : ''}}"
+      data-name="{{item.name}}"
+      bindtap="selectParent"
+    >
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <scroll-view scroll-y class="category-content">
+    <view wx:if="{{activeChildren.length}}" class="child-panel">
+      <view class="child-title">{{activeParent}} 子分类</view>
+      <view class="child-list">
+        <view class="child-chip {{!activeChild ? 'active' : ''}}" bindtap="selectChild" data-name="">全部</view>
+        <view
+          wx:for="{{activeChildren}}"
+          wx:key="item"
+          class="child-chip {{activeChild === item ? 'active' : ''}}"
+          data-name="{{item}}"
+          bindtap="selectChild"
+        >
+          {{item}}
+        </view>
+      </view>
+    </view>
+
+    <view class="section-title">
+      <text>{{activeChild || activeParent}}</text>
+      <text>{{filteredGoods.length}} 件</text>
+    </view>
+
+    <view wx:for="{{filteredGoods}}" wx:key="id" class="goods-row" data-id="{{item.id}}" bindtap="openDetail">
+      <image src="{{item.cover}}" class="goods-image" mode="aspectFill" />
+      <view class="goods-main">
+        <view class="goods-title">{{item.name}}</view>
+        <view class="goods-meta">{{item.category}} · {{item.condition}} · {{item.tradeMode}}</view>
+        <view class="goods-desc">{{item.description}}</view>
+        <view class="goods-foot">
+          <text class="price">¥{{item.price}}</text>
+          <text>{{item.sellerName}} · {{item.location}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{!filteredGoods.length && !loading}}" class="empty-state">
+      <view class="empty-title">该分类暂无商品</view>
+      <view class="empty-desc">换个分类看看，或稍后再来。</view>
+    </view>
+  </scroll-view>
+</view>

@@ -1,6 +1,13 @@
 import request from '~/api/request';
 import { listFrom, unwrap } from '~/utils/api';
 
+function mergeCategories(configured, tasks) {
+  const values = ['全部']
+    .concat(Array.isArray(configured) ? configured.filter((item) => item !== '全部') : [])
+    .concat(tasks.map((item) => item.type));
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
 Page({
   data: {
     categories: ['全部'],
@@ -23,14 +30,19 @@ Page({
   async loadData() {
     this.setData({ loading: true });
     try {
-      const [taskRes, rankRes] = await Promise.all([request('/tasks'), request('/tasks/leaderboard')]);
+      const [taskRes, rankRes, categoryRes] = await Promise.all([
+        request('/tasks'),
+        request('/tasks/leaderboard'),
+        request('/settings/categories').catch(() => null),
+      ]);
       const tasks = listFrom(taskRes).map((item) => ({
         ...item,
         publisherName: (item.publisher && item.publisher.nickname) || '发布者',
         publisherAvatar: (item.publisher && item.publisher.avatar) || '/static/avatar1.png',
         applicantCount: (item.applicants && item.applicants.length) || 0,
       }));
-      const categories = ['全部', ...Array.from(new Set(tasks.map((item) => item.type)))];
+      const categoryData = unwrap(categoryRes) || {};
+      const categories = mergeCategories(categoryData.taskCategories, tasks);
       const leaderboard = listFrom(rankRes).map((item) => ({
         name: item.user && item.user.nickname,
         level: item.user && item.user.creditLevel,

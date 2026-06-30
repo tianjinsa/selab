@@ -3,9 +3,6 @@ import { getImage, listFrom, unwrap } from '~/utils/api';
 
 Page({
   data: {
-    categories: ['全部'],
-    activeCategory: '全部',
-    keyword: '',
     goods: [],
     filteredGoods: [],
     loading: true,
@@ -29,14 +26,12 @@ Page({
           sellerName: (item.seller && item.seller.nickname) || '卖家',
           sellerCredit: (item.seller && item.seller.creditLevel) || 'A',
         }));
-        const categories = ['全部', ...Array.from(new Set(goods.map((item) => item.category)))];
         this.setData(
           {
             goods,
-            categories,
+            filteredGoods: goods,
             loading: false,
           },
-          this.applyFilter,
         );
       })
       .catch(() => {
@@ -45,23 +40,12 @@ Page({
       });
   },
 
-  selectCategory(event) {
-    this.setData({ activeCategory: event.currentTarget.dataset.name }, this.applyFilter);
+  openSearch() {
+    wx.navigateTo({ url: '/pages/search/index?mode=market' });
   },
 
-  onSearch(event) {
-    this.setData({ keyword: event.detail.value }, this.applyFilter);
-  },
-
-  applyFilter() {
-    const { activeCategory, keyword } = this.data;
-    const key = keyword.trim();
-    const filteredGoods = this.data.goods.filter((item) => {
-      const matchedCategory = activeCategory === '全部' || item.category === activeCategory;
-      const matchedKeyword = !key || `${item.name}${item.category}${item.location}${item.description}`.includes(key);
-      return matchedCategory && matchedKeyword;
-    });
-    this.setData({ filteredGoods });
+  openCategoryPage() {
+    wx.navigateTo({ url: '/pages/market/category/index' });
   },
 
   publishGoods() {

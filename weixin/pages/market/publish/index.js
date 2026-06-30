@@ -1,4 +1,15 @@
 import request from '~/api/request';
+import { unwrap } from '~/utils/api';
+
+function flattenGoodsCategories(values) {
+  return (Array.isArray(values) ? values : [])
+    .reduce((result, item) => {
+      if (typeof item === 'string') return result.concat(item);
+      if (!item || !item.name) return result;
+      return result.concat(item.name, Array.isArray(item.children) ? item.children : []);
+    }, [])
+    .filter(Boolean);
+}
 
 Page({
   data: {
@@ -15,6 +26,20 @@ Page({
     categories: ['数码', '书籍', '服饰', '生活用品'],
     conditions: ['全新', '九成新', '八成新', '七成新'],
     tradeModes: ['校内自提', '同城配送'],
+  },
+
+  onLoad() {
+    request('/settings/categories')
+      .then((res) => {
+        const data = unwrap(res) || {};
+        const categories = Array.from(new Set(flattenGoodsCategories(data.goodsCategories)));
+        if (!categories.length) return;
+        const nextForm = categories.includes(this.data.form.category)
+          ? this.data.form
+          : { ...this.data.form, category: categories[0] };
+        this.setData({ categories, form: nextForm });
+      })
+      .catch(() => {});
   },
 
   goBack() {

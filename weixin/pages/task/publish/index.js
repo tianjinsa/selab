@@ -1,4 +1,5 @@
 import request from '~/api/request';
+import { unwrap } from '~/utils/api';
 
 Page({
   data: {
@@ -14,6 +15,18 @@ Page({
     },
     types: ['跑腿代办', '学业互助', '技能服务'],
     submitting: false,
+  },
+
+  onLoad() {
+    request('/settings/categories')
+      .then((res) => {
+        const data = unwrap(res) || {};
+        const types = (data.taskCategories || []).filter((item) => item && item !== '全部');
+        if (!types.length) return;
+        const nextForm = types.includes(this.data.form.type) ? this.data.form : { ...this.data.form, type: types[0] };
+        this.setData({ types, form: nextForm });
+      })
+      .catch(() => {});
   },
 
   goBack() {
