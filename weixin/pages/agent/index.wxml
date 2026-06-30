@@ -4,7 +4,7 @@
       <view class="nav-icon" bindtap="openHistory">
         <t-icon name="notification" size="34rpx" />
       </view>
-      <view class="nav-title">新会话</view>
+      <view class="nav-title">{{activeAgent.title}}</view>
     </view>
 
     <view class="session-tools" style="padding-right: {{headerRightInset}}px;">
@@ -83,23 +83,83 @@
     </view>
   </view>
 
-  <t-drawer
-    visible="{{historyVisible}}"
-    title="历史对话"
-    placement="left"
-    items="{{historyItems}}"
-    bind:item-click="selectSession"
-    bind:close="closeHistory"
-  >
-    <view wx:if="{{!historyItems.length}}" class="drawer-empty">暂无历史对话</view>
-  </t-drawer>
+  <view wx:if="{{historyVisible}}" class="history-layer">
+    <view class="layer-mask" bindtap="closeHistory"></view>
+    <view class="history-panel" style="padding-top: {{statusHeight}}px;" catchtap="stopTap">
+      <view class="panel-head">
+        <view>
+          <view class="panel-title">历史对话</view>
+          <view class="panel-desc">继续上次的智能体问答</view>
+        </view>
+        <view class="panel-close" bindtap="closeHistory">
+          <t-icon name="close" size="36rpx" />
+        </view>
+      </view>
 
-  <t-drawer
-    visible="{{agentVisible}}"
-    title="切换智能体"
-    placement="right"
-    items="{{agentItems}}"
-    bind:item-click="selectAgent"
-    bind:close="closeAgentSwitcher"
-  />
+      <view wx:if="{{!historyItems.length}}" class="history-empty">
+        <view class="empty-icon">
+          <t-icon name="chat-bubble-history" size="56rpx" />
+        </view>
+        <view class="empty-main">暂无历史对话</view>
+        <view class="empty-sub">发送第一条消息后，会话会自动记录在这里。</view>
+      </view>
+
+      <scroll-view wx:else scroll-y class="history-list">
+        <view wx:for="{{historyItems}}" wx:key="sessionId" class="history-card" data-session-id="{{item.sessionId}}" bindtap="selectSession">
+          <view class="history-main">
+            <view class="history-title">{{item.title}}</view>
+            <view class="history-preview">{{item.preview}}</view>
+            <view class="history-time">{{item.updatedAt}}</view>
+          </view>
+          <view class="history-delete" data-session-id="{{item.sessionId}}" catchtap="deleteSession">
+            <t-icon name="delete" size="34rpx" />
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view wx:if="{{agentVisible}}" class="agent-switch-layer" style="background: {{activeAgent.softColor}};">
+    <view class="agent-switch-mask" bindtap="closeAgentSwitcher"></view>
+    <view class="agent-switch-panel" style="padding-top: {{statusHeight}}px;" catchtap="stopTap">
+      <view class="panel-head">
+        <view>
+          <view class="panel-title">切换智能体</view>
+          <view class="panel-desc">左右滑动，选择不同提示词背景</view>
+        </view>
+        <view class="panel-close" bindtap="closeAgentSwitcher">
+          <t-icon name="close" size="36rpx" />
+        </view>
+      </view>
+
+      <swiper
+        class="agent-swiper"
+        current="{{agentIndex}}"
+        previous-margin="52rpx"
+        next-margin="52rpx"
+        duration="280"
+        bindchange="onAgentSwiperChange"
+      >
+        <swiper-item wx:for="{{agents}}" wx:key="key">
+          <view
+            class="agent-card {{agentIndex === index ? 'is-active' : ''}}"
+            style="background: {{item.softColor}}; border-color: {{item.borderColor}};"
+            data-index="{{index}}"
+            bindtap="selectAgentCard"
+          >
+            <view class="agent-card-icon" style="background: {{item.accent}};">{{item.badge}}</view>
+            <view class="agent-card-title">{{item.title}}</view>
+            <view class="agent-card-desc">{{item.desc}}</view>
+            <view class="agent-card-prompt">{{item.greeting}}</view>
+          </view>
+        </swiper-item>
+      </swiper>
+
+      <view class="agent-dots">
+        <view wx:for="{{agents}}" wx:key="key" class="agent-dot {{agentIndex === index ? 'active' : ''}}"></view>
+      </view>
+
+      <t-button theme="primary" size="large" block shape="round" bindtap="closeAgentSwitcher">使用 {{activeAgent.title}}</t-button>
+    </view>
+  </view>
 </view>

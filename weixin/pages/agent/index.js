@@ -9,6 +9,9 @@ const agents = [
     title: '校园助手',
     short: '校园',
     badge: '校',
+    accent: '#0052d9',
+    softColor: '#edf4ff',
+    borderColor: '#cfe0ff',
     desc: '校园办事、地点流程、平台规则',
     greeting: '你好，我是校园助手。可以帮你查校园办事流程、平台规则和常见问题。',
   },
@@ -17,6 +20,9 @@ const agents = [
     title: '任务助手',
     short: '任务',
     badge: '任',
+    accent: '#176b87',
+    softColor: '#ecf8fb',
+    borderColor: '#caeaf2',
     desc: '跑腿任务、报名沟通、托管结算',
     greeting: '你好，我是任务助手。可以帮你查任务、理解报名和结算流程。',
   },
@@ -25,6 +31,9 @@ const agents = [
     title: '交易助手',
     short: '交易',
     badge: '市',
+    accent: '#2d7d79',
+    softColor: '#edf8f6',
+    borderColor: '#cce9e5',
     desc: '二手商品、担保交易、订单咨询',
     greeting: '你好，我是交易助手。可以帮你查二手商品和担保交易规则。',
   },
@@ -79,20 +88,29 @@ function mapSessionMessage(message, index) {
 }
 
 function mapSessionItem(session) {
+  const messages = session.messages || [];
+  const last = messages[messages.length - 1] || {};
   return {
     title: session.title || '未命名会话',
     sessionId: session.id,
+    preview: last.content || '暂无对话内容',
     updatedAt: formatTime(session.updatedAt || session.createdAt),
   };
+}
+
+function getErrorMessage(error, fallback = '智能体服务暂时不可用，请稍后再试。') {
+  const body = error && error.data;
+  return (body && (body.message || body.detail)) || error.message || fallback;
 }
 
 Page({
   data: {
     statusHeight: 0,
     headerRightInset: 20,
+    agents,
+    agentIndex: 0,
     activeAgentKey: 'campus',
     activeAgent: agents[0],
-    agentItems: agents.map((item) => ({ title: `${item.title} · ${item.desc}`, key: item.key })),
     historyVisible: false,
     agentVisible: false,
     sessions: [],
@@ -141,29 +159,41 @@ Page({
   },
 
   openAgentSwitcher() {
-    this.setData({ agentVisible: true });
+    const agentIndex = agents.findIndex((item) => item.key === this.data.activeAgentKey);
+    this.setData({ agentVisible: true, agentIndex: Math.max(agentIndex, 0) });
   },
 
   closeAgentSwitcher() {
     this.setData({ agentVisible: false });
   },
 
-  selectAgent(event) {
-    const { key } = event.detail.item;
-    const activeAgent = getAgent(key);
+  applyAgent(activeAgent) {
     const shouldResetGreeting = !this.data.sessionId && this.data.messages.length === 1;
     const messages = shouldResetGreeting ? buildGreeting(activeAgent) : this.data.messages;
     this.setData({
-      activeAgentKey: key,
+      activeAgentKey: activeAgent.key,
       activeAgent,
-      agentVisible: false,
       messages,
       isEmptyConversation: isEmptyConversation(messages),
     });
   },
 
+  onAgentSwiperChange(event) {
+    const agentIndex = event.detail.current;
+    const activeAgent = agents[agentIndex] || agents[0];
+    this.setData({ agentIndex });
+    this.applyAgent(activeAgent);
+  },
+
+  selectAgentCard(event) {
+    const index = Number(event.currentTarget.dataset.index || 0);
+    const activeAgent = agents[index] || agents[0];
+    this.setData({ agentIndex: index });
+    this.applyAgent(activeAgent);
+  },
+
   selectSession(event) {
-    const { sessionId } = event.detail.item;
+    const { sessionId } = event.currentTarget.dataset;
     const session = this.data.sessions.find((item) => item.id === sessionId);
     if (!session) return;
     const messages = (session.messages || []).map(mapSessionMessage);
@@ -176,6 +206,31 @@ Page({
     });
     wx.nextTick(() => this.scrollToBottom());
   },
+
+  deleteSession(event) {
+    const { sessionId } = event.currentTarget.dataset;
+    if (!sessionId) return;
+    request(`/agent/sessions/${sessionId}`, 'DELETE')
+      .then(() => {
+        const sessions = this.data.sessions.filter((item) => item.id !== sessionId);
+        const historyItems = sessions.map(mapSessionItem);
+        const nextData = { sessions, historyItems };
+        if (this.data.sessionId === sessionId) {
+          Object.assign(nextData, {
+            sessionId: '',
+            sessionTitle: '新会话',
+            input: '',
+            messages: buildGreeting(this.data.activeAgent),
+            isEmptyConversation: true,
+          });
+        }
+        this.setData(nextData);
+        wx.showToast({ title: '已删除', icon: 'success' });
+      })
+      .catch((error) => wx.showToast({ title: getErrorMessage(error, '删除失败'), icon: 'none' }));
+  },
+
+  stopTap() {},
 
   newConversation() {
     const { activeAgent } = this.data;
@@ -245,7 +300,7 @@ Page({
             {
               id: `error-${Date.now()}`,
               role: 'assistant',
-              text: '智能体服务暂时不可用，请稍后再试。',
+              text: '智能体模型未配置或请求失败，请检查后端 OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL。',
               source: '系统提示',
               tool: 'fallback',
             },

@@ -34,6 +34,7 @@ Page({
       { title: '账号安全', desc: '修改密码、异常登录提醒', icon: 'secured', action: 'setting' },
       { title: '消息免打扰', desc: '会话级提醒设置', icon: 'notification', action: 'message' },
       { title: '客服与举报', desc: '人工介入、纠纷仲裁', icon: 'service', action: 'support' },
+      { title: '退出登录', desc: '清除当前账号登录状态', icon: 'logout', action: 'logout' },
     ],
   },
 
@@ -88,6 +89,17 @@ Page({
     if (action === 'profile') return this.onEditProfile();
     if (action === 'message') return this.onOpenMessage();
     if (action === 'setting') return wx.navigateTo({ url: '/pages/setting/index' });
+    if (action === 'logout') {
+      return wx.showModal({
+        title: '退出登录',
+        content: '退出后需要重新登录才能继续使用账号功能。',
+        confirmText: '退出',
+        confirmColor: '#e34d59',
+        success: (res) => {
+          if (res.confirm) app.logout();
+        },
+      });
+    }
     wx.showToast({ title: '已进入人工服务队列', icon: 'none' });
   },
 

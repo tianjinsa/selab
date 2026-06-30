@@ -1,11 +1,17 @@
-<t-tab-bar value="{{ value }}" theme="tag" split="{{ false }}" bind:change="handleChange">
-  <t-tab-bar-item
+<view class="custom-tab-bar">
+  <view
     wx:for="{{list}}"
     wx:key="value"
-    icon="{{item.displayIcon || item.icon}}"
-    value="{{item.value}}"
-    t-class="{{item.isManageEntry ? 'manage-entry' : ''}}"
+    class="tab-item {{item.value === value ? 'is-active' : ''}}"
+    data-value="{{item.value}}"
+    bindtap="handleTap"
   >
-    {{item.label}}
-  </t-tab-bar-item>
-</t-tab-bar>
+    <view class="tab-icon-shell {{item.isManageEntry ? 'is-manage' : ''}}">
+      <view class="tab-icon-stack {{item.isManageEntry ? 'is-manage' : ''}}">
+        <t-icon class="tab-icon base-icon" name="{{item.icon}}" size="40rpx" />
+        <t-icon class="tab-icon gear-icon" name="setting" size="40rpx" />
+      </view>
+    </view>
+    <view class="tab-label">{{item.label}}</view>
+  </view>
+</view>

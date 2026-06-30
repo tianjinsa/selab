@@ -72,7 +72,10 @@ Page({
       if (this.data.isPasswordLogin) {
         const login = unwrap(await request('/auth/login', 'POST', this.data.passwordInfo));
         wx.setStorageSync('access_token', login.token);
+        wx.removeStorageSync('manual_logout');
         app.globalData.userInfo = login.user;
+        app.getUnreadNum();
+        app.connect();
         wx.switchTab({ url: '/pages/my/index' });
       } else {
         wx.showToast({ title: '演示验证码 123456', icon: 'none' });

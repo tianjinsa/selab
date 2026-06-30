@@ -52,7 +52,10 @@ Page({
     try {
       const login = unwrap(await request('/auth/login', 'POST', { account: this.data.phoneNumber, password: '123456Aa' }));
       wx.setStorageSync('access_token', login.token);
+      wx.removeStorageSync('manual_logout');
       app.globalData.userInfo = login.user;
+      app.getUnreadNum();
+      app.connect();
       wx.switchTab({ url: '/pages/my/index' });
     } catch (error) {
       wx.showToast({ title: '手机号未注册', icon: 'none' });

@@ -17,9 +17,13 @@ App({
       });
     });
 
-    await this.ensureLogin();
-    this.getUnreadNum();
-    this.connect();
+    try {
+      await this.ensureLogin();
+      this.getUnreadNum();
+      this.connect();
+    } catch (error) {
+      this.setUnreadNum(0);
+    }
   },
 
   globalData: {
@@ -42,6 +46,12 @@ App({
       }
     }
 
+    if (wx.getStorageSync('manual_logout')) {
+      const error = new Error('请先登录');
+      error.needLogin = true;
+      throw error;
+    }
+
     const login = unwrap(
       await request('/auth/login', 'POST', {
         account: config.demoAccount,
@@ -56,6 +66,7 @@ App({
   connect() {
     const token = wx.getStorageSync('access_token');
     if (!token) return;
+    if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
     const socket = wx.connectSocket({ url: `${config.socketUrl}?token=${token}` });
     socket.onMessage((event) => {
       const data = JSON.parse(event.data || '{}');
@@ -63,6 +74,16 @@ App({
       this.eventBus.emit('socket-message', data);
     });
     this.globalData.socket = socket;
+  },
+
+  logout() {
+    if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
+    wx.removeStorageSync('access_token');
+    wx.setStorageSync('manual_logout', true);
+    this.globalData.userInfo = null;
+    this.globalData.socket = null;
+    this.setUnreadNum(0);
+    wx.navigateTo({ url: '/pages/login/login' });
   },
 
   getUnreadNum() {

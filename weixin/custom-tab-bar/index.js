@@ -65,14 +65,13 @@ Component({
         value,
         list: tabs.map((item) => ({
           ...item,
-          displayIcon: item.manageUrl && item.value === value ? 'setting' : item.icon,
           isManageEntry: item.manageUrl && item.value === value,
         })),
       });
     },
 
-    handleChange(e) {
-      const { value } = e.detail;
+    handleTap(event) {
+      const { value } = event.currentTarget.dataset;
       const tab = tabs.find((item) => item.value === value);
       if (tab && tab.manageUrl && value === this.data.value) {
         wx.navigateTo({ url: tab.manageUrl });
