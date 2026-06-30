@@ -12,6 +12,7 @@ import TaskFormPage from './pages/tasks/TaskFormPage.vue';
 import TaskPaymentPage from './pages/tasks/TaskPaymentPage.vue';
 import TaskDetailPage from './pages/tasks/TaskDetailPage.vue';
 import TaskRankingPage from './pages/tasks/TaskRankingPage.vue';
+import TaskWorkbenchPage from './pages/tasks/TaskWorkbenchPage.vue';
 import ForumHomePage from './pages/forum/ForumHomePage.vue';
 import ForumCreatePage from './pages/forum/ForumCreatePage.vue';
 import ForumDetailPage from './pages/forum/ForumDetailPage.vue';
@@ -35,6 +36,7 @@ export const userRouter = createRouter({
     { path: '/tasks', component: TaskMarketPage },
     { path: '/tasks/new', component: TaskFormPage },
     { path: '/tasks/ranking', component: TaskRankingPage },
+    { path: '/tasks/workbench', component: TaskWorkbenchPage },
     { path: '/tasks/:id/edit', component: TaskFormPage },
     { path: '/tasks/:id/payment', component: TaskPaymentPage },
     { path: '/tasks/:id', component: TaskDetailPage },

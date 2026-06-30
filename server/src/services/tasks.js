@@ -135,6 +135,72 @@ export function listTasks(store, query = {}, viewerId = '') {
   return tasks.map((task) => decorateTask(store, task, viewerId));
 }
 
+export function taskWorkbench(store, userId) {
+  const tasks = store.collection('tasks');
+  const applications = store.collection('taskApplications');
+  const reviews = store.collection('taskReviews');
+  const paymentFlows = store.collection('paymentFlows');
+  const publishedRaw = tasks.filter((task) => task.publisherId === userId);
+  const assignedRaw = tasks.filter((task) => task.assigneeId === userId);
+  const relatedTaskIds = new Set([...publishedRaw, ...assignedRaw].map((task) => task.id));
+  const myApplications = applications
+    .filter((item) => item.applicantId === userId)
+    .map((item) => ({
+      ...item,
+      task: decorateTask(store, tasks.find((task) => task.id === item.taskId) || {}, userId),
+      publisher: userBrief(store, item.publisherId)
+    }))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const published = publishedRaw
+    .map((task) => decorateTask(store, task, userId))
+    .map((task) => ({
+      ...task,
+      pendingApplicationCount: applications.filter((item) => item.taskId === task.id && item.status === 'pending').length,
+      hasMyReview: reviews.some((item) => item.taskId === task.id && item.reviewerId === userId)
+    }))
+    .sort((a, b) => String(b.updatedAt || b.publishedAt || b.createdAt).localeCompare(String(a.updatedAt || a.publishedAt || a.createdAt)));
+  const assigned = assignedRaw
+    .map((task) => decorateTask(store, task, userId))
+    .map((task) => ({
+      ...task,
+      hasMyReview: reviews.some((item) => item.taskId === task.id && item.reviewerId === userId)
+    }))
+    .sort((a, b) => String(b.updatedAt || b.acceptedAt || b.createdAt).localeCompare(String(a.updatedAt || a.acceptedAt || a.createdAt)));
+  const flows = paymentFlows
+    .filter((flow) => flow.relatedType === 'task' && (flow.userId === userId || relatedTaskIds.has(flow.relatedId)))
+    .map((flow) => ({
+      ...flow,
+      task: decorateTask(store, tasks.find((task) => task.id === flow.relatedId) || {}, userId)
+    }))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const actionItems = buildTaskActionItems(published, assigned, myApplications);
+  const income = flows
+    .filter((flow) => flow.userId === userId && ['task_finish_settlement', 'task_cancel_refund', 'task_timeout_refund'].includes(flow.type))
+    .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
+  const spending = flows
+    .filter((flow) => flow.userId === userId && flow.type === 'task_publish_payment')
+    .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
+
+  return {
+    stats: {
+      publishedTotal: published.length,
+      publishedActive: published.filter((task) => ['editing', 'open', 'accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)).length,
+      publishedCompleted: published.filter((task) => task.status === 'completed').length,
+      assignedActive: assigned.filter((task) => ['accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)).length,
+      assignedCompleted: assigned.filter((task) => task.status === 'completed').length,
+      pendingApplications: myApplications.filter((item) => item.status === 'pending').length,
+      actionCount: actionItems.length,
+      income,
+      spending
+    },
+    actionItems,
+    published,
+    assigned,
+    applications: myApplications,
+    paymentFlows: flows.slice(0, 50)
+  };
+}
+
 export function getTaskDetail(store, taskId, viewerId = '') {
   const task = store.collection('tasks').find((item) => item.id === taskId);
   if (!task) throw notFound('任务不存在');
@@ -468,6 +534,96 @@ export async function scanTaskTimeouts(store) {
   }
   if (changed) await store.saveCollection('tasks');
   return { changed };
+}
+
+function buildTaskActionItems(published, assigned, applications) {
+  const items = [];
+  for (const task of published) {
+    if (task.status === 'editing') {
+      items.push({
+        id: `pay-${task.id}`,
+        type: 'payment',
+        title: '待支付发布',
+        body: `「${task.title}」还未支付，支付后才会进入任务市场。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}/payment`,
+        createdAt: task.updatedAt || task.createdAt
+      });
+    }
+    if (task.status === 'open' && task.pendingApplicationCount > 0) {
+      items.push({
+        id: `applications-${task.id}`,
+        type: 'application',
+        title: '有新的接单申请',
+        body: `「${task.title}」有 ${task.pendingApplicationCount} 个待处理申请。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}`,
+        createdAt: task.updatedAt || task.createdAt
+      });
+    }
+    if (task.status === 'submitted') {
+      items.push({
+        id: `accept-${task.id}`,
+        type: 'acceptance',
+        title: '等待你验收',
+        body: `「${task.title}」已提交交付凭证，请确认或申请介入。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}`,
+        createdAt: task.submittedAt || task.updatedAt || task.createdAt
+      });
+    }
+    if (task.status === 'completed' && !task.hasMyReview) {
+      items.push({
+        id: `review-publisher-${task.id}`,
+        type: 'review',
+        title: '待评价接单者',
+        body: `「${task.title}」已完成，可以补充合作评价。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}`,
+        createdAt: task.completedAt || task.updatedAt || task.createdAt
+      });
+    }
+  }
+  for (const task of assigned) {
+    if (['accepted', 'timeout'].includes(task.status)) {
+      items.push({
+        id: `deliver-${task.id}`,
+        type: 'delivery',
+        title: task.status === 'timeout' ? '任务已超时，尽快补交' : '待提交交付凭证',
+        body: `「${task.title}」需要提交完成说明或凭证。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}`,
+        createdAt: task.updatedAt || task.acceptedAt || task.createdAt
+      });
+    }
+    if (task.status === 'completed' && !task.hasMyReview) {
+      items.push({
+        id: `review-assignee-${task.id}`,
+        type: 'review',
+        title: '待评价发布者',
+        body: `「${task.title}」已结算，可以补充合作评价。`,
+        taskId: task.id,
+        path: `/tasks/${task.id}`,
+        createdAt: task.completedAt || task.updatedAt || task.createdAt
+      });
+    }
+  }
+  for (const application of applications) {
+    if (application.status === 'accepted') {
+      items.push({
+        id: `application-accepted-${application.id}`,
+        type: 'application',
+        title: '申请已通过',
+        body: `你对「${application.task?.title || '任务'}」的申请已通过，可以进入任务沟通交付。`,
+        taskId: application.taskId,
+        path: `/tasks/${application.taskId}`,
+        createdAt: application.updatedAt || application.createdAt
+      });
+    }
+  }
+  return items
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .slice(0, 12);
 }
 
 async function completeTask(store, task, reason) {

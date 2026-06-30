@@ -7,6 +7,7 @@
           <p class="muted">用地点 / 校区替代真实距离，申请后会自动进入发布者私信。</p>
         </div>
         <n-space>
+          <n-button secondary @click="$router.push('/tasks/workbench')">任务工作台</n-button>
           <n-button secondary @click="$router.push('/tasks/ranking')">接单榜</n-button>
           <n-button type="primary" @click="$router.push('/tasks/new')">发布任务</n-button>
         </n-space>
