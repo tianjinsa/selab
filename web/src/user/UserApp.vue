@@ -6,11 +6,11 @@
         <div v-else class="app-shell">
           <aside class="side-nav">
             <div class="brand-block">
-              <div class="brand-title">校园智能生活服务平台</div>
-              <div class="brand-subtitle">任务、社区、二手与智能咨询统一入口</div>
+              <div class="brand-title">校园生活服务</div>
+              <div class="brand-subtitle">互助、交流、闲置与咨询</div>
             </div>
             <nav class="nav-list">
-              <router-link class="nav-item" to="/"><Home :size="18" />工作台</router-link>
+              <router-link class="nav-item" to="/"><Home :size="18" />校园首页</router-link>
               <router-link class="nav-item" to="/tasks"><ClipboardList :size="18" />任务互助</router-link>
               <router-link class="nav-item" to="/forum"><MessagesSquare :size="18" />社区论坛</router-link>
               <router-link class="nav-item" to="/market"><ShoppingBag :size="18" />二手市场</router-link>
@@ -57,7 +57,7 @@ const router = useRouter();
 
 const routeTitle = computed(() => {
   const map = {
-    '/': '服务工作台',
+    '/': '校园首页',
     '/profile': '个人中心',
     '/messages': '统一私信',
     '/notifications': '通知中心',
@@ -66,7 +66,7 @@ const routeTitle = computed(() => {
     '/market': '校园二手市场',
     '/ai': '校园信息智能体'
   };
-  return map[route.path] || map[`/${route.path.split('/')[1]}`] || '服务工作台';
+  return map[route.path] || map[`/${route.path.split('/')[1]}`] || '校园首页';
 });
 
 onMounted(async () => {
