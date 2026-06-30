@@ -61,11 +61,9 @@
             class="message-bubble"
             :class="{ mine: item.role === 'user', assistant: item.role === 'assistant' }"
           >
-          <div class="message-meta">
-            <span>{{ item.role === 'user' ? '我' : '校园智能体' }}</span>
+          <div v-if="messageMetaText(item)" class="message-meta">
             <small class="muted">
-              {{ messageStatusText(item.status) }}
-              <template v-if="item.editedAt"> · 已编辑</template>
+              {{ messageMetaText(item) }}
             </small>
           </div>
 
@@ -96,8 +94,8 @@
               <div class="reasoning-content">{{ item.reasoningContent }}</div>
             </div>
 
-            <div v-if="item.role === 'assistant' && item.toolEvents?.length" class="tool-timeline">
-              <div v-for="event in item.toolEvents" :key="event.id" class="tool-event" :class="event.status">
+            <div v-if="item.role === 'assistant' && visibleToolEvents(item).length" class="tool-timeline">
+              <div v-for="event in visibleToolEvents(item)" :key="event.id" class="tool-event" :class="event.status">
                 <Wrench :size="15" />
                 <div>
                   <strong>{{ event.displayName || event.toolName }}</strong>
@@ -127,7 +125,7 @@
                 <n-button v-if="card.type === 'task'" size="small" @click="$router.push(`/tasks/${card.id}`)">查看任务</n-button>
                 <n-button v-if="card.type === 'product'" size="small" @click="$router.push(`/market/${card.id}`)">查看商品</n-button>
                 <n-button v-if="card.type === 'post'" size="small" @click="$router.push(`/forum/${card.id}`)">查看帖子</n-button>
-                <n-button v-if="card.type === 'task_draft'" size="small" type="primary" @click="$router.push('/tasks/new')">去编辑发布</n-button>
+                <n-button v-if="card.type === 'task_draft'" size="small" type="primary" @click="openTaskDraft(card)">在此发布任务</n-button>
               </div>
             </div>
 
@@ -170,11 +168,62 @@
         </n-button>
       </div>
     </main>
+
+    <n-modal v-model:show="taskDraftVisible" preset="card" class="task-draft-modal" title="发布 AI 生成任务" :bordered="false">
+      <template v-if="publishedTask">
+        <div class="task-publish-result">
+          <Check :size="34" />
+          <div>
+            <h3>{{ publishedTask.title }}</h3>
+            <p class="muted">任务已完成模拟支付并发布到任务市场。</p>
+          </div>
+          <n-space>
+            <n-button secondary @click="taskDraftVisible = false">继续聊天</n-button>
+            <n-button type="primary" @click="$router.push(`/tasks/${publishedTask.id}`)">查看任务</n-button>
+          </n-space>
+        </div>
+      </template>
+      <n-form v-else :model="taskDraftForm" label-placement="top">
+        <n-grid :cols="2" :x-gap="14" responsive="screen">
+          <n-form-item-gi label="任务标题">
+            <n-input v-model:value="taskDraftForm.title" maxlength="40" show-count />
+          </n-form-item-gi>
+          <n-form-item-gi label="任务类型">
+            <n-select v-model:value="taskDraftForm.category" :options="taskCategoryOptions" />
+          </n-form-item-gi>
+          <n-form-item-gi label="地点 / 校区">
+            <n-select v-model:value="taskDraftForm.campusArea" :options="taskAreaOptions" />
+          </n-form-item-gi>
+          <n-form-item-gi label="酬金">
+            <n-input-number v-model:value="taskDraftForm.reward" :min="taskMeta.rewardMin" :max="taskMeta.rewardMax" />
+          </n-form-item-gi>
+          <n-form-item-gi label="截止时间">
+            <n-date-picker v-model:value="taskDraftForm.deadlineValue" type="datetime" clearable />
+          </n-form-item-gi>
+          <n-form-item-gi label="联系方式补充">
+            <n-input v-model:value="taskDraftForm.contactNote" placeholder="例如：到楼下后私信我" />
+          </n-form-item-gi>
+        </n-grid>
+        <n-form-item label="任务详情">
+          <n-input v-model:value="taskDraftForm.detail" type="textarea" :autosize="{ minRows: 4, maxRows: 8 }" />
+        </n-form-item>
+        <n-form-item label="交付要求">
+          <n-input v-model:value="taskDraftForm.deliveryRequirement" type="textarea" :autosize="{ minRows: 2, maxRows: 5 }" />
+        </n-form-item>
+        <n-alert type="info" :show-icon="false" style="margin-bottom: 14px;">
+          发布会在当前页面完成模拟支付，发布后可在任务市场查看。
+        </n-alert>
+        <n-space justify="end">
+          <n-button secondary @click="taskDraftVisible = false">取消</n-button>
+          <n-button type="primary" :loading="taskDraftSubmitting" @click="publishTaskDraft">确认发布并模拟支付</n-button>
+        </n-space>
+      </n-form>
+    </n-modal>
   </section>
 </template>
 
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useDialog, useMessage } from 'naive-ui';
 import { Bot, Brain, Check, Edit3, Plus, RefreshCcw, Send, Trash2, Wrench, X } from '@lucide/vue';
 import { request, websocketUrl } from '../../../shared/http.js';
@@ -192,7 +241,24 @@ const renamingSessionId = ref('');
 const renameTitle = ref('');
 const editingMessageId = ref('');
 const editContent = ref('');
+const taskDraftVisible = ref(false);
+const taskDraftSubmitting = ref(false);
+const publishedTask = ref(null);
+const taskMeta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
+const taskDraftForm = reactive({
+  title: '',
+  category: '',
+  campusArea: '',
+  reward: 10,
+  deadlineValue: Date.now() + 24 * 60 * 60 * 1000,
+  detail: '',
+  deliveryRequirement: '',
+  contactNote: ''
+});
 let socket = null;
+
+const taskCategoryOptions = computed(() => taskMeta.value.categories.map((item) => ({ label: item, value: item })));
+const taskAreaOptions = computed(() => taskMeta.value.areas.map((item) => ({ label: item, value: item })));
 
 onMounted(async () => {
   await loadSessions();
@@ -235,6 +301,7 @@ function connectSocket() {
     if (packet.event === 'ai.run.started') {
       running.value = true;
       if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
+      ensureAssistantMessage(packet.payload);
     }
     if (packet.event === 'ai.token') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
@@ -250,7 +317,8 @@ function connectSocket() {
     }
     if (packet.event === 'ai.tool_call') {
       if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId);
+      const target = messages.value.find((item) => item.id === packet.payload.messageId)
+        || ensureAssistantMessage(packet.payload);
       if (target) mergeToolEvent(target, packet.payload.toolEvent);
       scrollBottom();
     }
@@ -381,6 +449,26 @@ function normalizeMessage(item) {
   };
 }
 
+function ensureAssistantMessage(payload = {}) {
+  const id = payload.assistantMessageId || payload.messageId;
+  if (!id || (payload.sessionId && payload.sessionId !== sessionId.value)) return null;
+  const existing = messages.value.find((item) => item.id === id);
+  if (existing) return existing;
+  const next = normalizeMessage({
+    id,
+    sessionId: payload.sessionId || sessionId.value,
+    role: 'assistant',
+    content: '',
+    status: 'running',
+    cards: [],
+    toolEvents: [],
+    reasoningContent: '',
+    createdAt: new Date().toISOString()
+  });
+  messages.value.push(next);
+  return next;
+}
+
 function mergeToolEvent(message, event) {
   if (!event) return;
   const events = Array.isArray(message.toolEvents) ? [...message.toolEvents] : [];
@@ -388,6 +476,34 @@ function mergeToolEvent(message, event) {
   if (index >= 0) events.splice(index, 1, { ...events[index], ...event });
   else events.push(event);
   message.toolEvents = events;
+}
+
+function visibleToolEvents(message) {
+  const events = Array.isArray(message.toolEvents) ? message.toolEvents : [];
+  if (events.length) return events;
+  const cards = Array.isArray(message.cards) ? message.cards : [];
+  const byType = new Map();
+  for (const card of cards) {
+    if (!['task', 'product', 'post', 'task_draft'].includes(card.type)) continue;
+    const current = byType.get(card.type) || [];
+    current.push(card);
+    byType.set(card.type, current);
+  }
+  const meta = {
+    task: ['公开任务查询', 'search_public_tasks', '返回任务结果'],
+    product: ['公开商品查询', 'search_public_products', '返回商品结果'],
+    post: ['公开帖子查询', 'search_public_posts', '返回帖子结果'],
+    task_draft: ['任务草案生成', 'create_task_draft_card', '已生成任务草案']
+  };
+  return [...byType.entries()].map(([type, items]) => ({
+    id: `card_tool_${message.id}_${type}`,
+    displayName: meta[type][0],
+    toolName: meta[type][1],
+    status: 'done',
+    summary: type === 'task_draft'
+      ? `${meta[type][2]}：${items[0]?.title || '未命名任务'}`
+      : `${meta[type][2]} ${items.length} 条`
+  }));
 }
 
 function scrollBottom() {
@@ -412,6 +528,14 @@ function messageStatusText(status) {
     stopped: '已停止',
     error: '出错'
   }[status] || status || '';
+}
+
+function messageMetaText(message) {
+  const parts = [];
+  const status = messageStatusText(message.status);
+  if (status && message.status !== 'done') parts.push(status);
+  if (message.editedAt) parts.push('已编辑');
+  return parts.join(' · ');
 }
 
 function toolStatusText(status) {
@@ -499,5 +623,58 @@ function escapeHtml(value = '') {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+async function loadTaskMeta() {
+  if (taskMeta.value.categories.length && taskMeta.value.areas.length) return;
+  taskMeta.value = await request('/api/tasks/meta');
+}
+
+async function openTaskDraft(card) {
+  await loadTaskMeta();
+  const categories = taskMeta.value.categories || [];
+  const areas = taskMeta.value.areas || [];
+  Object.assign(taskDraftForm, {
+    title: String(card.title || '').slice(0, 40),
+    category: categories.includes(card.category) ? card.category : categories[0] || '',
+    campusArea: areas.includes(card.campusArea) ? card.campusArea : areas[0] || '',
+    reward: clampNumber(Number(card.reward || 10), taskMeta.value.rewardMin, taskMeta.value.rewardMax),
+    deadlineValue: Date.now() + 24 * 60 * 60 * 1000,
+    detail: String(card.detail || ''),
+    deliveryRequirement: String(card.deliveryRequirement || ''),
+    contactNote: String(card.contactNote || '')
+  });
+  publishedTask.value = null;
+  taskDraftVisible.value = true;
+}
+
+async function publishTaskDraft() {
+  taskDraftSubmitting.value = true;
+  try {
+    const payload = {
+      title: taskDraftForm.title,
+      category: taskDraftForm.category,
+      campusArea: taskDraftForm.campusArea,
+      reward: taskDraftForm.reward,
+      deadlineAt: new Date(taskDraftForm.deadlineValue).toISOString(),
+      detail: taskDraftForm.detail,
+      deliveryRequirement: taskDraftForm.deliveryRequirement,
+      contactNote: taskDraftForm.contactNote,
+      imageUrls: []
+    };
+    const draftData = await request('/api/tasks', { method: 'POST', body: payload });
+    const publishData = await request(`/api/tasks/${draftData.task.id}/pay`, { method: 'POST' });
+    publishedTask.value = publishData.task;
+    notice.success('任务已发布');
+  } catch (error) {
+    notice.error(error.message || '发布任务失败');
+  } finally {
+    taskDraftSubmitting.value = false;
+  }
+}
+
+function clampNumber(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 </script>

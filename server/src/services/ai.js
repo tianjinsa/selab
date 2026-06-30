@@ -329,13 +329,26 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
       for (const call of delta.tool_calls || []) {
         const key = call.index ?? toolCalls.size;
         const existing = toolCalls.get(key) || { id: call.id || `call_${key}`, name: '', argumentsText: '' };
+        const wasNotified = Boolean(existing.notified);
         existing.id = call.id || existing.id;
         existing.name += call.function?.name || '';
         existing.argumentsText += call.function?.arguments || '';
         toolCalls.set(key, existing);
+        if (existing.name && !wasNotified) {
+          existing.notified = true;
+          await recordToolEvent(store, realtime, user.id, assistantMessageId, {
+            id: existing.id,
+            toolName: existing.name,
+            argumentsText: existing.argumentsText,
+            arguments: parseToolArguments(existing.argumentsText),
+            status: 'calling',
+            summary: `正在调用 ${toolDisplayName(existing.name)}`
+          });
+        }
       }
       if (chunk.choices?.[0]?.finish_reason === 'tool_calls') {
         for (const call of toolCalls.values()) {
+          if (call.notified) continue;
           await recordToolEvent(store, realtime, user.id, assistantMessageId, {
             id: call.id,
             toolName: call.name,
@@ -344,6 +357,7 @@ async function callChatCompletions(store, realtime, user, sessionId, assistantMe
             status: 'calling',
             summary: `正在调用 ${toolDisplayName(call.name)}`
           });
+          call.notified = true;
         }
       }
     }
@@ -556,7 +570,15 @@ function createToolDefinitions() {
     tool('get_knowledge_detail', '查询知识库条目详情', { id: 'string' }),
     tool('search_public_tasks', '查询公开任务列表', { keyword: 'string', category: 'string', campusArea: 'string' }),
     tool('get_public_task_detail', '查询公开任务详情', { id: 'string' }),
-    tool('create_task_draft_card', '生成任务发布草案卡片，不能正式发布任务', { title: 'string', detail: 'string', reward: 'number' }),
+    tool('create_task_draft_card', '生成任务发布草案卡片，不能正式发布任务', {
+      title: 'string',
+      detail: 'string',
+      reward: 'number',
+      category: 'string',
+      campusArea: 'string',
+      deliveryRequirement: 'string',
+      contactNote: 'string'
+    }),
     tool('search_public_products', '查询公开商品列表', { keyword: 'string', categoryId: 'string' }),
     tool('get_public_product_detail', '查询公开商品详情', { id: 'string' }),
     tool('search_public_posts', '查询公开帖子列表', { keyword: 'string', tag: 'string' }),
@@ -586,14 +608,16 @@ function tool(name, description, props) {
 
 async function executeAiTool(store, realtime, user, assistantMessageId, call) {
   const args = parseToolArguments(call.argumentsText);
-  await recordToolEvent(store, realtime, user.id, assistantMessageId, {
-    id: call.id,
-    toolName: call.name,
-    arguments: args,
-    argumentsText: call.argumentsText || '{}',
-    status: 'calling',
-    summary: `正在调用 ${toolDisplayName(call.name)}`
-  });
+  if (!call.notified) {
+    await recordToolEvent(store, realtime, user.id, assistantMessageId, {
+      id: call.id,
+      toolName: call.name,
+      arguments: args,
+      argumentsText: call.argumentsText || '{}',
+      status: 'calling',
+      summary: `正在调用 ${toolDisplayName(call.name)}`
+    });
+  }
   try {
     const result = await runTool(store, realtime, user, assistantMessageId, call.name, args);
     await store.insert('aiToolCalls', {
@@ -687,9 +711,18 @@ async function runTool(store, realtime, user, assistantMessageId, name, args) {
   if (name === 'search_public_tasks') return listTasks(store, args, user.id).slice(0, 5);
   if (name === 'get_public_task_detail') return getTaskDetail(store, args.id, user.id);
   if (name === 'create_task_draft_card') {
-    const card = { type: 'task_draft', title: args.title, detail: args.detail, reward: args.reward };
+    const card = {
+      type: 'task_draft',
+      title: args.title,
+      detail: args.detail,
+      reward: args.reward,
+      category: args.category || '',
+      campusArea: args.campusArea || '',
+      deliveryRequirement: args.deliveryRequirement || '',
+      contactNote: args.contactNote || ''
+    };
     await addAiCard(store, realtime, user.id, assistantMessageId, card);
-    return { card, note: '仅草案，用户必须进入任务编辑页确认并模拟支付后才会发布' };
+    return { card, note: '仅草案，用户必须在当前智能体页面确认并模拟支付后才会发布' };
   }
   if (name === 'search_public_products') return listProducts(store, args, user.id).slice(0, 5);
   if (name === 'get_public_product_detail') return getProductDetail(store, args.id, user.id);

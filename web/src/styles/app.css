@@ -919,9 +919,9 @@ a {
 .message-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   font-size: 12px;
   font-weight: 800;
 }
@@ -1101,6 +1101,42 @@ a {
   transform: translateY(-2px);
   border-color: rgba(20, 108, 96, 0.42);
   box-shadow: 0 14px 32px rgba(22, 33, 31, 0.08);
+}
+
+.task-draft-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.task-draft-modal .n-card-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.task-publish-result {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  padding: 22px;
+  text-align: center;
+}
+
+.task-publish-result > svg {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 12px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--brand);
+}
+
+.task-publish-result h3 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.task-publish-result p {
+  margin: 8px 0 0;
 }
 
 .business-card-title {
