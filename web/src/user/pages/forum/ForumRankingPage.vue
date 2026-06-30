@@ -49,15 +49,19 @@ const posts = ref([]);
 const words = ref([]);
 const cloudRef = ref(null);
 let resizeHandler = null;
+let themeHandler = null;
 
 onMounted(async () => {
   await load();
   resizeHandler = () => drawWordCloud();
+  themeHandler = () => drawWordCloud();
   window.addEventListener('resize', resizeHandler);
+  window.addEventListener('campus-theme-change', themeHandler);
 });
 
 onBeforeUnmount(() => {
   if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+  if (themeHandler) window.removeEventListener('campus-theme-change', themeHandler);
 });
 
 watch(words, () => {
@@ -89,13 +93,14 @@ function drawWordCloud() {
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
-  paintCloudBackground(ctx, width, height);
+  const theme = readCanvasTheme();
+  paintCloudBackground(ctx, width, height, theme);
 
   const data = words.value
     .filter((item) => item.text && Number(item.value) > 0)
     .slice(0, 36);
   if (!data.length) {
-    ctx.fillStyle = '#657084';
+    ctx.fillStyle = theme.muted;
     ctx.font = '600 15px "Microsoft YaHei", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('暂无 Tag 数据', width / 2, height / 2);
@@ -104,7 +109,7 @@ function drawWordCloud() {
 
   const max = Math.max(...data.map((item) => Number(item.value)));
   const min = Math.min(...data.map((item) => Number(item.value)));
-  const palette = ['#146c60', '#c9572b', '#2e5fa8', '#b7791f', '#27364f', '#0b4f47'];
+  const palette = [theme.brand, theme.accent, theme.blue, theme.warning, theme.ink, theme.brandStrong];
   const placed = [];
   data.forEach((item, index) => {
     const value = Number(item.value);
@@ -148,13 +153,13 @@ function intersects(a, b) {
   );
 }
 
-function paintCloudBackground(ctx, width, height) {
+function paintCloudBackground(ctx, width, height, theme) {
   const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#fffdf8');
-  gradient.addColorStop(1, '#edf5f2');
+  gradient.addColorStop(0, theme.surface);
+  gradient.addColorStop(1, theme.surface2);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = 'rgba(20, 108, 96, 0.08)';
+  ctx.strokeStyle = theme.line;
   for (let x = 0; x < width; x += 32) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
@@ -167,5 +172,22 @@ function paintCloudBackground(ctx, width, height) {
     ctx.lineTo(width, y);
     ctx.stroke();
   }
+}
+
+function readCanvasTheme() {
+  const styles = getComputedStyle(document.documentElement);
+  const read = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+  return {
+    surface: read('--surface', '#fffdf8'),
+    surface2: read('--surface-2', '#edf5f2'),
+    ink: read('--ink', '#18202f'),
+    muted: read('--muted', '#657084'),
+    line: read('--line', '#ddd7cb'),
+    brand: read('--brand', '#146c60'),
+    brandStrong: read('--brand-strong', '#0b4f47'),
+    accent: read('--accent', '#c9572b'),
+    blue: read('--blue', '#2e5fa8'),
+    warning: read('--warning', '#b7791f')
+  };
 }
 </script>
