@@ -32,6 +32,7 @@ router.post('/register', asyncHandler(async (req, res) => {
     passwordHash: await hashPassword(password),
     nickname: nickname.trim() || `同学${studentId.slice(-4)}`,
     avatarUrl: '',
+    coverUrl: '',
     contact: '',
     bio: '',
     creditScore: 10,
