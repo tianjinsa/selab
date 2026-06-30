@@ -39,7 +39,13 @@ const metrics = computed(() => {
     { label: '封禁账号', value: data.bannedUsers ?? '-' },
     { label: '禁言账号', value: data.mutedUsers ?? '-' },
     { label: '私信会话', value: data.conversations ?? '-' },
-    { label: '消息数', value: data.messages ?? '-' },
+    { label: '任务数', value: data.tasks ?? '-' },
+    { label: '帖子数', value: data.posts ?? '-' },
+    { label: '商品数', value: data.products ?? '-' },
+    { label: '订单数', value: data.orders ?? '-' },
+    { label: '待处理举报', value: data.pendingReports ?? '-' },
+    { label: '待处理纠纷', value: data.pendingDisputes ?? '-' },
+    { label: 'AI 风险报警', value: data.aiRisks ?? '-' },
     { label: '通知数', value: data.notifications ?? '-' }
   ];
 });
