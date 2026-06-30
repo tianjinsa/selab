@@ -57,14 +57,17 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { request } from '../../../shared/http.js';
 
+const route = useRoute();
 const posts = ref([]);
 const words = ref([]);
 const summary = ref(null);
 const filters = reactive({ keyword: '', tag: '', sort: 'new' });
 
 onMounted(async () => {
+  filters.keyword = String(route.query.keyword || '');
   await Promise.all([loadPosts(), loadWordCloud(), loadSummary()]);
 });
 

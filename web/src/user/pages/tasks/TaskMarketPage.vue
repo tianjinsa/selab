@@ -54,9 +54,11 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { request } from '../../../shared/http.js';
 import { formatMoney, taskStatusText, taskStatusType } from './taskFormat.js';
 
+const route = useRoute();
 const meta = ref({ categories: [], areas: [] });
 const tasks = ref([]);
 const filters = reactive({ category: null, campusArea: null, minReward: null, maxReward: null, keyword: '' });
@@ -66,6 +68,7 @@ const areaOptions = computed(() => meta.value.areas.map((item) => ({ label: item
 
 onMounted(async () => {
   meta.value = await request('/api/tasks/meta');
+  filters.keyword = String(route.query.keyword || '');
   await loadTasks();
 });
 

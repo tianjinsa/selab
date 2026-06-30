@@ -45,9 +45,11 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { request } from '../../../shared/http.js';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
+const route = useRoute();
 const meta = ref({ categories: [] });
 const products = ref([]);
 const filters = reactive({ categoryId: null, keyword: '', minPrice: null, maxPrice: null });
@@ -55,6 +57,7 @@ const categoryOptions = computed(() => meta.value.categories.map((item) => ({ la
 
 onMounted(async () => {
   meta.value = await request('/api/market/meta');
+  filters.keyword = String(route.query.keyword || '');
   await load();
 });
 
