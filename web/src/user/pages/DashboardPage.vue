@@ -102,7 +102,13 @@
           <transition-group v-if="posts.length" name="card-flow" tag="div" class="live-list" appear>
             <button v-for="post in posts" :key="post.id" type="button" @click="$router.push(`/forum/${post.id}`)">
               <span>{{ post.title }}</span>
-              <small>{{ post.author?.nickname || '同学' }} · 赞 {{ post.likeCount }} · 评 {{ post.commentCount }}</small>
+              <small class="live-meta">
+                <span>{{ post.author?.nickname || '同学' }}</span>
+                <span class="post-stat" title="点赞"><Heart :size="13" />{{ post.likeCount }}</span>
+                <span class="post-stat" title="评论"><MessageCircle :size="13" />{{ post.commentCount }}</span>
+                <span class="post-stat" title="收藏"><Star :size="13" />{{ post.favoriteCount }}</span>
+                <span class="post-stat" title="分享"><Share2 :size="13" />{{ post.shareCount }}</span>
+              </small>
             </button>
           </transition-group>
           <div v-else class="compact-empty">
@@ -157,12 +163,16 @@ import {
   Bell,
   Bot,
   ClipboardList,
+  Heart,
   Mail,
+  MessageCircle,
   MessagesSquare,
   PenLine,
   Plus,
   Search,
+  Share2,
   ShoppingBag,
+  Star,
   UserRound
 } from '@lucide/vue';
 import { useRouter } from 'vue-router';

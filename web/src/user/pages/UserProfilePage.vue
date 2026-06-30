@@ -55,10 +55,15 @@
           <n-space size="small">
             <n-tag v-for="tag in post.tags" :key="tag" size="small">{{ tag }}</n-tag>
           </n-space>
-          <n-space justify="space-between" style="margin-top: 10px;">
-            <span class="muted">浏览 {{ post.viewCount }}</span>
-            <span class="muted">赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }}</span>
-          </n-space>
+          <div class="post-card-footer">
+            <span class="post-stat" title="浏览"><Eye :size="14" />{{ post.viewCount }}</span>
+            <div class="post-stat-row" aria-label="帖子互动数据">
+              <span class="post-stat" title="点赞"><Heart :size="14" />{{ post.likeCount }}</span>
+              <span class="post-stat" title="评论"><MessageCircle :size="14" />{{ post.commentCount }}</span>
+              <span class="post-stat" title="收藏"><Star :size="14" />{{ post.favoriteCount }}</span>
+              <span class="post-stat" title="分享"><Share2 :size="14" />{{ post.shareCount }}</span>
+            </div>
+          </div>
         </article>
       </transition-group>
       <div v-else class="empty-state">还没有公开帖子</div>
@@ -70,6 +75,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
+import { Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
 import { request } from '../../shared/http.js';
 import { loadUserSession, userSession as session } from '../session.js';
 

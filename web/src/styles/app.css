@@ -509,6 +509,17 @@ a {
   color: var(--muted);
 }
 
+.live-list .live-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.live-list .live-meta span {
+  font-weight: 620;
+}
+
 .compact-empty {
   display: grid;
   place-items: center;
@@ -657,6 +668,69 @@ a {
   box-shadow: 0 18px 42px rgba(22, 33, 31, 0.1);
 }
 
+.post-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.post-stat-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.post-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.post-stat svg {
+  flex: 0 0 auto;
+  stroke-width: 2.15;
+}
+
+.post-action-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(221, 215, 203, 0.72);
+}
+
+.post-action-button {
+  min-width: 124px;
+  transition: transform var(--motion-fast) var(--motion-ease), filter var(--motion-fast) var(--motion-ease);
+}
+
+.post-action-button:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.08);
+}
+
+.post-action-button.active {
+  --n-color: rgba(180, 35, 24, 0.1) !important;
+  --n-color-hover: rgba(180, 35, 24, 0.14) !important;
+  --n-border: 1px solid rgba(180, 35, 24, 0.28) !important;
+  --n-border-hover: 1px solid rgba(180, 35, 24, 0.42) !important;
+  --n-text-color: var(--danger) !important;
+  --n-text-color-hover: var(--danger) !important;
+  color: var(--danger);
+}
+
 .post-cover {
   width: 100%;
   max-height: 260px;
@@ -692,6 +766,21 @@ a {
   background: rgba(255, 253, 248, 0.76);
 }
 
+.post-author-card--detail {
+  align-items: center;
+}
+
+.post-author-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.inline-follow-button {
+  font-weight: 750;
+}
+
 .author-identity,
 .comment-author {
   display: inline-flex;
@@ -717,6 +806,12 @@ a {
 .author-identity:hover strong,
 .comment-author:hover strong {
   color: var(--brand);
+}
+
+.comment-icon-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .upload-field {
@@ -1654,6 +1749,23 @@ a {
   .user-profile-hero {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .post-author-main,
+  .post-card-footer {
+    align-items: flex-start;
+  }
+
+  .post-action-bar {
+    align-items: stretch;
+  }
+
+  .post-author-main {
+    flex-wrap: wrap;
+  }
+
+  .post-action-button {
+    flex: 1 1 138px;
   }
 
   .avatar-upload-row,

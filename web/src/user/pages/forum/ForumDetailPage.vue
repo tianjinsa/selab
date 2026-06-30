@@ -11,20 +11,36 @@
         </div>
         <n-button secondary @click="$router.push('/forum')">返回社区</n-button>
       </n-space>
-      <div class="post-author-card">
-        <button type="button" class="author-identity" @click="$router.push(`/users/${post.authorId}`)">
-          <n-avatar round :size="44" :src="post.author?.avatarUrl || undefined">
-            {{ avatarText(post.author?.nickname) }}
-          </n-avatar>
-          <span>
-            <strong>{{ post.author?.nickname || '同学' }}</strong>
-            <small class="muted">信用分 {{ post.author?.creditScore ?? '-' }}</small>
-          </span>
-        </button>
-        <n-space v-if="post.authorId !== session.user?.id">
-          <n-button secondary @click="followAuthor">{{ post.followedAuthor ? '取消关注' : '关注作者' }}</n-button>
-          <n-button type="primary" @click="startConversation">发私信</n-button>
-        </n-space>
+      <div class="post-author-card post-author-card--detail">
+        <div class="post-author-main">
+          <button type="button" class="author-identity" @click="$router.push(`/users/${post.authorId}`)">
+            <n-avatar round :size="44" :src="post.author?.avatarUrl || undefined">
+              {{ avatarText(post.author?.nickname) }}
+            </n-avatar>
+            <span>
+              <strong>{{ post.author?.nickname || '同学' }}</strong>
+              <small class="muted">信用分 {{ post.author?.creditScore ?? '-' }}</small>
+            </span>
+          </button>
+          <n-button
+            v-if="post.authorId !== session.user?.id"
+            class="inline-follow-button"
+            size="small"
+            round
+            :secondary="post.followedAuthor"
+            :type="post.followedAuthor ? 'default' : 'primary'"
+            @click="followAuthor"
+          >
+            <template #icon>
+              <component :is="post.followedAuthor ? UserCheck : UserPlus" :size="15" />
+            </template>
+            {{ post.followedAuthor ? '已关注' : '关注' }}
+          </n-button>
+        </div>
+        <n-button v-if="post.authorId !== session.user?.id" secondary round @click="startConversation">
+          <template #icon><Send :size="16" /></template>
+          私信
+        </n-button>
       </div>
       <div v-if="post.imageUrls?.length" class="post-image-gallery">
         <img v-for="url in post.imageUrls" :key="url" class="post-cover" :src="url" alt="帖子图片" />
@@ -33,17 +49,33 @@
       <n-space size="small">
         <n-tag v-for="tag in post.tags" :key="tag">{{ tag }}</n-tag>
       </n-space>
-      <n-space style="margin-top: 16px;">
-        <n-button secondary @click="likePost">{{ post.liked ? '取消点赞' : '点赞' }} · {{ post.likeCount }}</n-button>
-        <n-button secondary @click="favoritePost">{{ post.favorited ? '取消收藏' : '收藏' }} · {{ post.favoriteCount }}</n-button>
-        <n-button secondary @click="followAuthor">{{ post.followedAuthor ? '取消关注' : '关注作者' }}</n-button>
-        <n-button secondary @click="sharePost">分享 · {{ post.shareCount }}</n-button>
-      </n-space>
+      <div class="post-action-bar">
+        <n-button class="post-action-button" :class="{ active: post.liked }" secondary round @click="likePost">
+          <template #icon>
+            <Heart :size="18" :fill="post.liked ? 'currentColor' : 'none'" />
+          </template>
+          {{ post.liked ? '已点赞' : '点赞' }} {{ post.likeCount }}
+        </n-button>
+        <n-button class="post-action-button" secondary round @click="focusComment">
+          <template #icon><MessageCircle :size="18" /></template>
+          评论 {{ post.commentCount }}
+        </n-button>
+        <n-button class="post-action-button" :class="{ active: post.favorited }" secondary round @click="favoritePost">
+          <template #icon>
+            <Star :size="18" :fill="post.favorited ? 'currentColor' : 'none'" />
+          </template>
+          {{ post.favorited ? '已收藏' : '收藏' }} {{ post.favoriteCount }}
+        </n-button>
+        <n-button class="post-action-button" secondary round @click="sharePost">
+          <template #icon><Share2 :size="18" /></template>
+          分享 {{ post.shareCount }}
+        </n-button>
+      </div>
     </section>
 
-    <section class="surface panel">
+    <section id="post-comments" class="surface panel">
       <h3 style="margin-top: 0;">评论</h3>
-      <n-input v-model:value="commentText" type="textarea" :autosize="{ minRows: 2 }" placeholder="写下你的评论" />
+      <n-input ref="commentInputRef" v-model:value="commentText" type="textarea" :autosize="{ minRows: 2 }" placeholder="写下你的评论" />
       <n-button style="margin-top: 10px;" type="primary" @click="sendComment('')">发表评论</n-button>
       <n-list v-if="post.comments?.length" style="margin-top: 16px;">
         <n-list-item v-for="comment in post.comments" :key="comment.id">
@@ -56,9 +88,18 @@
                 <strong>{{ comment.author?.nickname || '同学' }}</strong>
               </button>
               <n-space>
-                <n-button text @click="likeComment(comment.id)">赞 {{ comment.likeCount }}</n-button>
-                <n-button text @click="replyTo = replyTo === comment.id ? '' : comment.id">回复</n-button>
-                <n-button text type="warning" @click="report('comment', comment.id)">举报</n-button>
+                <n-button text class="comment-icon-action" @click="likeComment(comment.id)">
+                  <template #icon><Heart :size="15" /></template>
+                  {{ comment.likeCount }}
+                </n-button>
+                <n-button text class="comment-icon-action" @click="replyTo = replyTo === comment.id ? '' : comment.id">
+                  <template #icon><MessageCircle :size="15" /></template>
+                  回复
+                </n-button>
+                <n-button text class="comment-icon-action" type="warning" @click="report('comment', comment.id)">
+                  <template #icon><Flag :size="15" /></template>
+                  举报
+                </n-button>
               </n-space>
             </n-space>
             <p>{{ comment.content }}</p>
@@ -92,9 +133,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
+import { Flag, Heart, MessageCircle, Send, Share2, Star, UserCheck, UserPlus } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 import { loadUserSession, userSession as session } from '../../session.js';
 
@@ -106,6 +148,7 @@ const commentText = ref('');
 const replyText = ref('');
 const replyTo = ref('');
 const reportReason = ref('');
+const commentInputRef = ref(null);
 
 onMounted(async () => {
   if (!session.user) await loadUserSession();
@@ -142,6 +185,12 @@ async function sharePost() {
   await request(`/api/forum/posts/${post.value.id}/share`, { method: 'POST' });
   message.success('分享卡片已生成，链接可在浏览器地址栏复制');
   await load(false);
+}
+
+async function focusComment() {
+  document.getElementById('post-comments')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  await nextTick();
+  commentInputRef.value?.focus?.();
 }
 
 async function sendComment(parentId) {

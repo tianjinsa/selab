@@ -37,15 +37,21 @@
         <n-space size="small">
           <n-tag v-for="tag in post.tags" :key="tag" size="small">{{ tag }}</n-tag>
         </n-space>
-        <n-space justify="space-between" style="margin-top: 10px;">
+        <div class="post-card-footer">
           <button type="button" class="comment-author inline" @click.stop="$router.push(`/users/${post.authorId}`)">
             <n-avatar round :size="24" :src="post.author?.avatarUrl || undefined">
               {{ avatarText(post.author?.nickname) }}
             </n-avatar>
             <strong>{{ post.author?.nickname || '同学' }}</strong>
           </button>
-          <span class="muted">赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }}</span>
-        </n-space>
+          <div class="post-stat-row" aria-label="帖子互动数据">
+            <span class="post-stat" title="浏览"><Eye :size="14" />{{ post.viewCount }}</span>
+            <span class="post-stat" title="点赞"><Heart :size="14" />{{ post.likeCount }}</span>
+            <span class="post-stat" title="评论"><MessageCircle :size="14" />{{ post.commentCount }}</span>
+            <span class="post-stat" title="收藏"><Star :size="14" />{{ post.favoriteCount }}</span>
+            <span class="post-stat" title="分享"><Share2 :size="14" />{{ post.shareCount }}</span>
+          </div>
+        </div>
       </article>
     </transition-group>
     <section v-else class="surface empty-state">当前没有帖子</section>
@@ -55,6 +61,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 
 const route = useRoute();
