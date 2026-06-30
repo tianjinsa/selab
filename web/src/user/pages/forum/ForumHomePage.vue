@@ -1,0 +1,86 @@
+<template>
+  <div class="grid">
+    <section class="surface panel">
+      <n-space justify="space-between" align="center">
+        <div>
+          <h2 style="margin: 0;">校园社区</h2>
+          <p class="muted">图文、求助和经验分享会进入统一通知与互动体系。</p>
+        </div>
+        <n-space>
+          <n-button secondary @click="$router.push('/forum/rankings')">热度榜</n-button>
+          <n-button type="primary" @click="$router.push('/forum/new')">发布帖子</n-button>
+        </n-space>
+      </n-space>
+      <n-grid :cols="4" :x-gap="10" responsive="screen" style="margin-top: 16px;">
+        <n-grid-item><n-input v-model:value="filters.keyword" placeholder="关键词" clearable @keyup.enter="loadPosts" /></n-grid-item>
+        <n-grid-item><n-input v-model:value="filters.tag" placeholder="Tag" clearable @keyup.enter="loadPosts" /></n-grid-item>
+        <n-grid-item>
+          <n-select v-model:value="filters.sort" :options="[{label:'最新发布',value:'new'},{label:'热门优先',value:'hot'}]" />
+        </n-grid-item>
+        <n-grid-item><n-button secondary block @click="loadPosts">筛选</n-button></n-grid-item>
+      </n-grid>
+    </section>
+
+    <section class="surface panel">
+      <n-space justify="space-between" align="start">
+        <div>
+          <h3 style="margin: 0;">词云</h3>
+          <p class="muted">由用户输入 Tag 统计生成，不做 AI 推荐 Tag。</p>
+        </div>
+        <n-space>
+          <n-tag v-for="word in words" :key="word.text" :bordered="false" @click="filters.tag = word.text; loadPosts()">{{ word.text }} · {{ word.value }}</n-tag>
+        </n-space>
+      </n-space>
+      <n-alert style="margin-top: 12px;" type="info" :show-icon="false">{{ summary?.summary || '暂无社区热点总结' }}</n-alert>
+    </section>
+
+    <div v-if="posts.length" class="waterfall">
+      <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
+        <img v-if="post.imageUrls?.[0]" class="post-cover" :src="post.imageUrls[0]" alt="帖子封面" />
+        <n-space justify="space-between" align="center">
+          <strong>{{ post.title }}</strong>
+          <n-tag size="small">{{ post.type }}</n-tag>
+        </n-space>
+        <p class="muted">{{ post.content.slice(0, 90) }}</p>
+        <n-space size="small">
+          <n-tag v-for="tag in post.tags" :key="tag" size="small">{{ tag }}</n-tag>
+        </n-space>
+        <n-space justify="space-between" style="margin-top: 10px;">
+          <span class="muted">{{ post.author?.nickname }}</span>
+          <span class="muted">赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }}</span>
+        </n-space>
+      </article>
+    </div>
+    <section v-else class="surface empty-state">当前没有帖子</section>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, reactive, ref } from 'vue';
+import { request } from '../../../shared/http.js';
+
+const posts = ref([]);
+const words = ref([]);
+const summary = ref(null);
+const filters = reactive({ keyword: '', tag: '', sort: 'new' });
+
+onMounted(async () => {
+  await Promise.all([loadPosts(), loadWordCloud(), loadSummary()]);
+});
+
+async function loadPosts() {
+  const params = new URLSearchParams();
+  if (filters.keyword) params.set('keyword', filters.keyword);
+  if (filters.tag) params.set('tag', filters.tag);
+  if (filters.sort === 'hot') params.set('sort', 'hot');
+  posts.value = (await request(`/api/forum/posts?${params.toString()}`)).posts;
+}
+
+async function loadWordCloud() {
+  words.value = (await request('/api/forum/word-cloud')).words;
+}
+
+async function loadSummary() {
+  summary.value = (await request('/api/forum/summary')).summary;
+}
+</script>
