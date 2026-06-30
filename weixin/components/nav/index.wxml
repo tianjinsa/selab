@@ -2,7 +2,9 @@
   <t-navbar title="{{ navType === 'search' ? '' : titleText }}">
     <view slot="left">
       <view class="home-navbar__left">
-        <t-icon class="home-navbar__icon" bind:tap="openDrawer" name="view-list" size="48rpx" />
+        <view class="home-navbar__message" bindtap="openMessage">
+          <t-icon class="home-navbar__icon" name="chat" size="44rpx" />
+        </view>
         <t-search
           shape="round"
           placeholder="请搜索你想要的内容"
@@ -12,12 +14,4 @@
       </view>
     </view>
   </t-navbar>
-  <t-drawer
-    style="padding-top: {{statusHeight}}px;"
-    visible="{{visible}}"
-    items="{{sidebar}}"
-    placement="left"
-    title="{{drawerTitle}}"
-    bind:item-click="itemClick"
-  />
 </view>

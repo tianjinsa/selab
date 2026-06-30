@@ -158,6 +158,10 @@ Page({
     this.setData({ historyVisible: false });
   },
 
+  goMessageCenter() {
+    wx.navigateTo({ url: '/pages/message/index' });
+  },
+
   openAgentSwitcher() {
     const agentIndex = agents.findIndex((item) => item.key === this.data.activeAgentKey);
     this.setData({ agentVisible: true, agentIndex: Math.max(agentIndex, 0) });

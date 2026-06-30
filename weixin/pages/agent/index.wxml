@@ -1,8 +1,8 @@
 <view class="agent-chat">
   <view class="chat-header">
     <view class="phone-nav" style="padding-top: {{statusHeight}}px; padding-right: {{headerRightInset}}px;">
-      <view class="nav-icon" bindtap="openHistory">
-        <t-icon name="notification" size="34rpx" />
+      <view class="nav-icon" bindtap="goMessageCenter">
+        <t-icon name="chat" size="34rpx" />
       </view>
       <view class="nav-title">{{activeAgent.title}}</view>
     </view>
