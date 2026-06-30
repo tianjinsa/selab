@@ -19,6 +19,7 @@ import {
   submitDelivery,
   taskAreas,
   taskRanking,
+  taskWorkbench,
   taskTendencies,
   updateTaskDraft
 } from '../services/tasks.js';
@@ -47,6 +48,10 @@ router.post('/', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/ranking', requireUser, asyncHandler(async (req, res) => {
   res.json({ ranking: taskRanking(req.store, String(req.query.range || 'week')) });
+}));
+
+router.get('/workbench', requireUser, asyncHandler(async (req, res) => {
+  res.json(taskWorkbench(req.store, req.user.id));
 }));
 
 router.get('/:id', requireUser, asyncHandler(async (req, res) => {

@@ -71,6 +71,7 @@ const routeTitle = computed(() => {
     '/messages': '统一私信',
     '/notifications': '通知中心',
     '/tasks': '校园任务互助',
+    '/tasks/workbench': '任务工作台',
     '/forum': '校园社区论坛',
     '/market': '校园二手市场',
     '/ai': '校园信息智能体'
