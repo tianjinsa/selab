@@ -61,8 +61,8 @@ export class RealtimeHub {
     }
     try {
       if (packet.event === 'chat.message.send') {
-        const { conversationId, content, type, imageUrl, card } = packet.payload || {};
-        const message = await sendMessage(this.store, this, ws.userId, conversationId, { content, type, imageUrl, card });
+        const { conversationId, content, type, imageUrl, attachment, card } = packet.payload || {};
+        const message = await sendMessage(this.store, this, ws.userId, conversationId, { content, type, imageUrl, attachment, card });
         ws.send(JSON.stringify({ event: 'chat.message.sent', payload: { conversationId, message } }));
         return;
       }

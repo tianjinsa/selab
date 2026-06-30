@@ -81,15 +81,18 @@ export async function sendMessage(store, realtime, senderId, conversationId, pay
   const sender = store.collection('users').find((user) => user.id === senderId);
   if (sender?.isMuted) throw forbidden('账号已被禁言，暂不能发送私信');
   const content = String(payload.content || '').trim();
-  const type = payload.type || 'text';
+  const attachment = normalizeAttachment(payload);
+  const type = normalizeMessageType(payload.type, attachment);
   if (type === 'text' && !content) throw badRequest('消息内容不能为空');
+  if ((type === 'image' || type === 'file') && !attachment) throw badRequest('请先上传附件');
 
   const message = await store.insert('messages', {
     conversationId,
     senderId,
     type,
     content,
-    imageUrl: payload.imageUrl || '',
+    imageUrl: type === 'image' ? attachment.url : (payload.imageUrl || ''),
+    attachment,
     card: payload.card || null,
     readBy: [senderId],
     deletedFor: []
@@ -103,7 +106,7 @@ export async function sendMessage(store, realtime, senderId, conversationId, pay
         userId: receiverId,
         type: 'message',
         title: '收到新的私信',
-        body: content || '收到一条新消息',
+        body: messageNotificationBody(message),
         link: `/messages/${conversationId}`,
         sourceId: message.id
       }, realtime);
@@ -112,6 +115,35 @@ export async function sendMessage(store, realtime, senderId, conversationId, pay
   }
   realtime?.sendToUser(senderId, 'chat.message.new', { conversationId, message });
   return message;
+}
+
+function normalizeMessageType(type, attachment) {
+  if (attachment?.kind === 'image') return 'image';
+  if (attachment) return 'file';
+  return type || 'text';
+}
+
+function normalizeAttachment(payload = {}) {
+  const raw = payload.attachment || (payload.imageUrl ? { url: payload.imageUrl, kind: 'image' } : null);
+  if (!raw) return null;
+  const url = String(raw.url || '').trim();
+  if (!url.startsWith('/uploads/')) throw badRequest('附件地址无效');
+  const mimeType = String(raw.mimeType || '').trim();
+  const kind = raw.kind === 'image' || mimeType.startsWith('image/') ? 'image' : 'file';
+  return {
+    url,
+    kind,
+    name: String(raw.name || raw.originalName || (kind === 'image' ? '图片' : '附件')).trim().slice(0, 120),
+    mimeType,
+    size: Number(raw.size || 0)
+  };
+}
+
+function messageNotificationBody(message) {
+  if (message.content) return message.content;
+  if (message.type === 'image') return `收到图片：${message.attachment?.name || '图片'}`;
+  if (message.type === 'file') return `收到文件：${message.attachment?.name || '附件'}`;
+  return '收到一条新消息';
 }
 
 export async function markConversationRead(store, realtime, userId, conversationId) {
