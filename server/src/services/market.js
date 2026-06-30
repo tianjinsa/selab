@@ -410,6 +410,64 @@ export function listMyOrders(store, userId) {
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+export function marketWorkbench(store, userId) {
+  const products = store.collection('products');
+  const orders = store.collection('orders');
+  const reviews = store.collection('orderReviews');
+  const ownedProducts = products
+    .filter((product) => product.sellerId === userId && !product.deletedAt)
+    .map((product) => decorateProduct(store, product, userId))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const buying = orders
+    .filter((order) => order.buyerId === userId)
+    .map((order) => ({
+      ...decorateOrder(store, order),
+      hasMyReview: reviews.some((review) => review.orderId === order.id && review.reviewerId === userId)
+    }))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const selling = orders
+    .filter((order) => order.sellerId === userId)
+    .map((order) => ({
+      ...decorateOrder(store, order),
+      hasMyReview: reviews.some((review) => review.orderId === order.id && review.reviewerId === userId)
+    }))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const relatedOrderIds = new Set([...buying, ...selling].map((order) => order.id));
+  const paymentFlows = store.collection('paymentFlows')
+    .filter((flow) => flow.relatedType === 'order' && (flow.userId === userId || relatedOrderIds.has(flow.relatedId)))
+    .map((flow) => ({
+      ...flow,
+      order: decorateOrder(store, orders.find((order) => order.id === flow.relatedId) || {})
+    }))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const actionItems = buildMarketActionItems(buying, selling);
+  const revenue = paymentFlows
+    .filter((flow) => flow.userId === userId && flow.type === 'product_finish_settlement')
+    .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
+  const spending = paymentFlows
+    .filter((flow) => flow.userId === userId && flow.type === 'product_escrow_payment')
+    .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
+
+  return {
+    stats: {
+      actionCount: actionItems.length,
+      ownedProducts: ownedProducts.length,
+      onSaleProducts: ownedProducts.filter((product) => product.status === 'on_sale').length,
+      buyingActive: buying.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
+      buyingCompleted: buying.filter((order) => order.status === 'completed').length,
+      sellingActive: selling.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
+      sellingCompleted: selling.filter((order) => order.status === 'completed').length,
+      revenue,
+      spending
+    },
+    actionItems,
+    buying,
+    selling,
+    products: ownedProducts,
+    paymentFlows: paymentFlows.slice(0, 50)
+  };
+}
+
 export function listMarketAdmin(store) {
   return {
     products: store.collection('products').map((item) => decorateProduct(store, item, '', true)),
@@ -478,6 +536,113 @@ export async function scanOrderTimeouts(store) {
     await store.saveCollection('products');
   }
   return { changed };
+}
+
+function buildMarketActionItems(buying, selling) {
+  const items = [];
+  for (const order of buying) {
+    if (order.status === 'waiting_payment') {
+      items.push({
+        id: `pay-${order.id}`,
+        type: 'payment',
+        title: '待支付订单',
+        body: `「${order.product?.title || '商品'}」已被卖家同意出售，请完成模拟支付。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.updatedAt || order.acceptedAt || order.createdAt
+      });
+    }
+    if (order.status === 'waiting_receive') {
+      items.push({
+        id: `receive-${order.id}`,
+        type: 'receive',
+        title: '待确认收货',
+        body: `卖家已交付「${order.product?.title || '商品'}」，确认后会完成结算。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.deliveredAt || order.updatedAt || order.createdAt
+      });
+    }
+    if (order.status === 'completed' && !order.hasMyReview) {
+      items.push({
+        id: `review-buyer-${order.id}`,
+        type: 'review',
+        title: '待评价卖家',
+        body: `「${order.product?.title || '商品'}」已完成，可以补充交易评价。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.completedAt || order.updatedAt || order.createdAt
+      });
+    }
+    if (order.status === 'dispute') {
+      items.push({
+        id: `dispute-buyer-${order.id}`,
+        type: 'dispute',
+        title: '订单纠纷处理中',
+        body: `「${order.product?.title || '商品'}」已进入管理员介入流程。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.updatedAt || order.createdAt
+      });
+    }
+  }
+  for (const order of selling) {
+    if (order.status === 'applying') {
+      items.push({
+        id: `accept-${order.id}`,
+        type: 'application',
+        title: '有新的购买申请',
+        body: `${order.buyer?.nickname || '买家'} 想购买「${order.product?.title || '商品'}」。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.updatedAt || order.createdAt
+      });
+    }
+    if (order.status === 'waiting_delivery') {
+      items.push({
+        id: `deliver-${order.id}`,
+        type: 'delivery',
+        title: '待交付商品',
+        body: `买家已支付「${order.product?.title || '商品'}」，请完成交付并标记。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.paidAt || order.updatedAt || order.createdAt
+      });
+    }
+    if (order.status === 'completed' && !order.hasMyReview) {
+      items.push({
+        id: `review-seller-${order.id}`,
+        type: 'review',
+        title: '待评价买家',
+        body: `「${order.product?.title || '商品'}」已完成，可以补充交易评价。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.completedAt || order.updatedAt || order.createdAt
+      });
+    }
+    if (order.status === 'dispute') {
+      items.push({
+        id: `dispute-seller-${order.id}`,
+        type: 'dispute',
+        title: '订单纠纷处理中',
+        body: `「${order.product?.title || '商品'}」已进入管理员介入流程。`,
+        orderId: order.id,
+        productId: order.productId,
+        path: `/market/${order.productId}`,
+        createdAt: order.updatedAt || order.createdAt
+      });
+    }
+  }
+  return items
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .slice(0, 12);
 }
 
 async function completeOrder(store, order, reason) {

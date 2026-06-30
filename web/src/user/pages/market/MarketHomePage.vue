@@ -7,7 +7,7 @@
           <p class="muted">分类由管理员维护，购买申请会进入卖家私信卡片。</p>
         </div>
         <n-space>
-          <n-button secondary @click="$router.push('/market/orders')">我的订单</n-button>
+          <n-button secondary @click="$router.push('/market/orders')">我的交易</n-button>
           <n-button secondary @click="$router.push('/market/grade')">年级推荐</n-button>
           <n-button type="primary" @click="$router.push('/market/new')">发布商品</n-button>
         </n-space>
