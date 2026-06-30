@@ -1,4 +1,4 @@
-<t-navbar title="任务详情" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="任务详情" left-arrow bind:go-back="goBack" />
 <view wx:if="{{task}}" class="detail-page">
   <view class="hero">
     <view>

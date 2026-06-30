@@ -1,6 +1,6 @@
 <wxs src="./index.wxs" module="utils" />
 
-<t-navbar class="nav-bar" title="{{ name }}" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" class="nav-bar" title="{{ name }}" left-arrow bind:go-back="goBack" />
 
 <view class="chat-container">
   <scroll-view class="content" scroll-y scroll-into-view="{{ anchor }}">

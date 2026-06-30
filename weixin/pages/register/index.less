@@ -1,12 +1,17 @@
 @import '/variable.less';
 
 page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
   background: @page-bg;
 }
 
 .register-scroll {
-  height: calc(100vh - 96rpx);
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 .register-page {

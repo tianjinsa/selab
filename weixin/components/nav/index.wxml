@@ -1,5 +1,5 @@
 <view class="home-navbar">
-  <t-navbar title="{{ navType === 'search' ? '' : titleText }}">
+  <t-navbar placeholder="{{true}}" title="{{ navType === 'search' ? '' : titleText }}">
     <view slot="left">
       <view class="home-navbar__left">
         <view class="home-navbar__message" aria-role="button" aria-label="消息中心" bindtap="openMessage">

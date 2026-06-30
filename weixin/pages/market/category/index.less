@@ -1,13 +1,18 @@
 @import '/variable.less';
 
 page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: #eef3f8;
 }
 
 .category-page {
   display: grid;
   grid-template-columns: 174rpx minmax(0, 1fr);
-  height: calc(100vh - 96rpx);
+  flex: 1;
+  min-height: 0;
+  height: auto;
   border-top: 1rpx solid #dbe4ef;
   background: #eef3f8;
 }

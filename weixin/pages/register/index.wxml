@@ -1,4 +1,4 @@
-<t-navbar title="邀请注册" left-arrow />
+<t-navbar placeholder="{{true}}" title="邀请注册" left-arrow />
 <scroll-view class="register-scroll" scroll-y type="list">
   <view class="register-page">
     <view wx:if="{{errorText}}" class="error-banner">{{errorText}}</view>

@@ -1,4 +1,4 @@
-<t-navbar title="账号登录" left-arrow />
+<t-navbar placeholder="{{true}}" title="账号登录" left-arrow />
 <scroll-view class="login-scroll" scroll-y type="list">
   <view class="login-page">
     <view wx:if="{{errorText}}" class="error-banner">{{errorText}}</view>

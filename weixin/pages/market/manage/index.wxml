@@ -1,4 +1,4 @@
-<t-navbar title="我的交易后台" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="我的交易后台" left-arrow bind:go-back="goBack" />
 <view class="manage-page">
   <view class="manage-head">
     <view>

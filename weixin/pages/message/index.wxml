@@ -1,4 +1,4 @@
-<t-navbar class="nav-bar" title="消息中心" left-arrow bind:go-back="goBack">
+<t-navbar placeholder="{{true}}" class="nav-bar" title="消息中心" left-arrow bind:go-back="goBack">
   <t-button slot="right" size="small" theme="light" bindtap="markAllRead">全读</t-button>
 </t-navbar>
 

@@ -1,4 +1,4 @@
-<t-navbar title="发布动态" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="发布动态" left-arrow bind:go-back="goBack" />
 <view class="page">
   <view class="release-panel">
     <view class="field-block">

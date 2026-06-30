@@ -1,4 +1,4 @@
-<t-navbar title="发布闲置" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="发布闲置" left-arrow bind:go-back="goBack" />
 <view class="publish-page">
   <view class="form-card">
     <view class="field-label">商品名称</view>

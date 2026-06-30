@@ -1,11 +1,22 @@
+page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #eef3f7;
+}
+
 .search-input {
   padding: 16rpx 0;
 }
 
 .search-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
   box-sizing: border-box;
   width: 100vw;
-  height: 100vh;
+  height: auto;
   padding: 0 30rpx;
   color: #172033;
   background: #eef3f7;
@@ -26,8 +37,10 @@
 
 .market-search-layout {
   display: grid;
+  flex: 1;
   grid-template-columns: 172rpx minmax(0, 1fr);
-  height: calc(100vh - 150rpx);
+  min-height: 0;
+  height: auto;
   margin: 14rpx -30rpx 0;
   border-top: 1rpx solid #d8e2ed;
 }

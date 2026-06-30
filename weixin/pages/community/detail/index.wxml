@@ -1,4 +1,4 @@
-<t-navbar title="帖子详情" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="帖子详情" left-arrow bind:go-back="goBack" />
 <view class="detail-page">
   <view wx:if="{{loading}}" class="state-box">
     <t-loading theme="circular" size="48rpx" text="加载帖子中" />

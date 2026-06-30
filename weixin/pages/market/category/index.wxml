@@ -1,4 +1,4 @@
-<t-navbar title="全部分类" left-arrow bind:go-back="goBack" />
+<t-navbar placeholder="{{true}}" title="全部分类" left-arrow bind:go-back="goBack" />
 <view class="category-page">
   <scroll-view scroll-y class="parent-list">
     <view
