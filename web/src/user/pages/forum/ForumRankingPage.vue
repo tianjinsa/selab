@@ -26,7 +26,13 @@
     <div v-if="posts.length" class="ranking-list">
       <button v-for="(post, index) in posts" :key="post.id" type="button" class="ranking-item" @click="$router.push(`/forum/${post.id}`)">
         <strong>#{{ index + 1 }} {{ post.title }}</strong>
-        <span>浏览 {{ post.viewCount }} · 赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }} · 分享 {{ post.shareCount }}</span>
+        <span class="post-stat-row">
+          <span class="post-stat" title="浏览"><Eye :size="14" />{{ post.viewCount }}</span>
+          <span class="post-stat" title="点赞"><Heart :size="14" />{{ post.likeCount }}</span>
+          <span class="post-stat" title="评论"><MessageCircle :size="14" />{{ post.commentCount }}</span>
+          <span class="post-stat" title="收藏"><Star :size="14" />{{ post.favoriteCount }}</span>
+          <span class="post-stat" title="分享"><Share2 :size="14" />{{ post.shareCount }}</span>
+        </span>
       </button>
     </div>
     <div v-else class="empty-state">暂无热榜数据</div>
@@ -35,6 +41,7 @@
 
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 
 const range = ref('day');
