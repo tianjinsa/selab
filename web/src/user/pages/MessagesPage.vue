@@ -28,7 +28,21 @@
       <template v-else>
         <div class="message-stream" ref="streamRef">
           <div v-for="item in messages" :key="item.id" class="message-bubble" :class="{ mine: item.senderId === session.user?.id }">
-            <div>{{ item.content }}</div>
+            <div v-if="item.card" class="business-card">
+              <div class="business-card-title">
+                <span>{{ item.card.title }}</span>
+                <n-tag size="small" :type="cardStatusType(item.card.status)">{{ cardStatusText(item.card.status) }}</n-tag>
+              </div>
+              <p style="margin: 8px 0 4px;">{{ item.card.taskTitle || item.content }}</p>
+              <p class="muted" style="margin: 0;">申请人：{{ item.card.applicantName }} · 信用分 {{ item.card.applicantCredit }}</p>
+              <p class="muted" style="margin: 4px 0 0;">酬金：￥{{ item.card.reward }} · 有效期至 {{ formatTime(item.card.expiresAt) }}</p>
+              <n-space v-if="canOperateTaskCard(item.card)" style="margin-top: 10px;">
+                <n-button size="small" type="primary" @click="operateTaskCard(item.card, 'accept')">同意</n-button>
+                <n-button size="small" secondary @click="operateTaskCard(item.card, 'reject')">拒绝</n-button>
+              </n-space>
+              <p v-if="item.card.expiredReason" class="muted" style="margin: 8px 0 0;">{{ item.card.expiredReason }}</p>
+            </div>
+            <div v-else>{{ item.content }}</div>
             <small class="muted">{{ formatTime(item.createdAt) }}</small>
           </div>
         </div>
@@ -145,6 +159,11 @@ function connectSocket() {
       }
       await loadConversations();
     }
+    if (packet.event === 'card.updated') {
+      const target = messages.value.find((item) => item.id === packet.payload.messageId);
+      if (target) target.card = packet.payload.card;
+      await loadConversations();
+    }
     if (packet.event === 'notification.unread_count') {
       session.unreadCount = packet.payload.count;
     }
@@ -162,5 +181,38 @@ function scrollBottom() {
 
 function formatTime(value) {
   return new Date(value).toLocaleString();
+}
+
+function cardStatusText(status) {
+  return {
+    pending: '待处理',
+    accepted: '已同意',
+    rejected: '已拒绝',
+    expired: '已失效'
+  }[status] || status;
+}
+
+function cardStatusType(status) {
+  return {
+    pending: 'warning',
+    accepted: 'success',
+    rejected: 'error',
+    expired: 'default'
+  }[status] || 'default';
+}
+
+function canOperateTaskCard(card) {
+  return card.type === 'task_application'
+    && card.publisherId === session.user?.id
+    && card.status === 'pending';
+}
+
+async function operateTaskCard(card, action) {
+  const path = action === 'accept'
+    ? `/api/tasks/applications/${card.applicationId}/accept`
+    : `/api/tasks/applications/${card.applicationId}/reject`;
+  await request(path, { method: 'POST' });
+  notice.success(action === 'accept' ? '已同意该任务申请' : '已拒绝该任务申请');
+  if (activeId.value) await selectConversation(activeId.value);
 }
 </script>

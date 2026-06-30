@@ -12,12 +12,13 @@
             <nav class="nav-list">
               <router-link class="nav-item" to="/"><Gauge :size="18" />仪表盘</router-link>
               <router-link class="nav-item" to="/users"><UsersRound :size="18" />用户管理</router-link>
+              <router-link class="nav-item" to="/tasks"><ClipboardList :size="18" />任务管理</router-link>
             </nav>
           </aside>
           <main class="main-pane">
             <div class="topbar">
               <div>
-                <h1 class="page-title">{{ $route.path === '/users' ? '用户管理' : '后台仪表盘' }}</h1>
+                <h1 class="page-title">{{ pageTitle }}</h1>
                 <p class="page-desc">管理员操作会写入操作日志，危险操作需要确认。</p>
               </div>
               <n-button secondary @click="logout">
@@ -34,12 +35,17 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Gauge, LogOut, UsersRound } from '@lucide/vue';
+import { ClipboardList, Gauge, LogOut, UsersRound } from '@lucide/vue';
 import { clearAdminSession, loadAdminSession } from './session.js';
 
 const router = useRouter();
+const pageTitle = computed(() => {
+  if (router.currentRoute.value.path === '/users') return '用户管理';
+  if (router.currentRoute.value.path === '/tasks') return '任务管理';
+  return '后台仪表盘';
+});
 
 onMounted(async () => {
   await loadAdminSession().catch(() => {

@@ -4,6 +4,7 @@ import { createStore } from './data/store.js';
 import { seedInitialData } from './services/seed.js';
 import { createApp } from './app.js';
 import { RealtimeHub } from './realtime/realtimeHub.js';
+import { scanTaskTimeouts } from './services/tasks.js';
 
 const store = await createStore();
 await seedInitialData(store);
@@ -17,6 +18,11 @@ server.listen(config.port, () => {
   console.log(`Campus Life Service listening on http://localhost:${config.port}`);
   console.log(store.status.message);
 });
+
+await scanTaskTimeouts(store).catch((error) => console.error('Task timeout scan failed:', error.message));
+setInterval(() => {
+  scanTaskTimeouts(store).catch((error) => console.error('Task timeout scan failed:', error.message));
+}, 60 * 60 * 1000);
 
 process.on('SIGINT', async () => {
   await store.close();

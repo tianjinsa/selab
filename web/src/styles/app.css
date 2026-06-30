@@ -265,6 +265,22 @@ a {
   background: #dceee9;
 }
 
+.business-card {
+  min-width: min(360px, 76vw);
+  padding: 12px;
+  border: 1px solid rgba(20, 108, 96, 0.28);
+  border-radius: var(--radius);
+  background: #fffdf8;
+}
+
+.business-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-weight: 800;
+}
+
 .message-composer {
   display: flex;
   gap: 10px;
