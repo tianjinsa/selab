@@ -13,6 +13,7 @@
               <router-link class="nav-item" to="/"><Gauge :size="18" />仪表盘</router-link>
               <router-link class="nav-item" to="/users"><UsersRound :size="18" />用户管理</router-link>
               <router-link class="nav-item" to="/tasks"><ClipboardList :size="18" />任务管理</router-link>
+              <router-link class="nav-item" to="/forum"><MessagesSquare :size="18" />社区管理</router-link>
             </nav>
           </aside>
           <main class="main-pane">
@@ -37,13 +38,14 @@
 <script setup>
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ClipboardList, Gauge, LogOut, UsersRound } from '@lucide/vue';
+import { ClipboardList, Gauge, LogOut, MessagesSquare, UsersRound } from '@lucide/vue';
 import { clearAdminSession, loadAdminSession } from './session.js';
 
 const router = useRouter();
 const pageTitle = computed(() => {
   if (router.currentRoute.value.path === '/users') return '用户管理';
   if (router.currentRoute.value.path === '/tasks') return '任务管理';
+  if (router.currentRoute.value.path === '/forum') return '社区管理';
   return '后台仪表盘';
 });
 
