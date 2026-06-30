@@ -1,20 +1,5 @@
 <nav title-text="二手市场" />
 <view class="market-page">
-  <view class="market-toolbar">
-    <view>
-      <text class="eyebrow">校园担保交易</text>
-      <view class="page-title">二手市场工作台</view>
-    </view>
-    <t-button theme="primary" icon="add" shape="round" bindtap="publishGoods">发布闲置</t-button>
-  </view>
-
-  <view class="metric-row">
-    <view wx:for="{{metrics}}" wx:key="label" class="metric">
-      <text>{{item.label}}</text>
-      <strong>{{item.value}}</strong>
-    </view>
-  </view>
-
   <view class="search-panel">
     <t-search placeholder="搜索商品、分类或交易地点" value="{{keyword}}" bind:change="onSearch" />
     <scroll-view scroll-x class="category-strip" show-scrollbar="{{false}}">
@@ -31,19 +16,6 @@
         {{item}}
       </t-tag>
     </scroll-view>
-  </view>
-
-  <view wx:if="{{featured}}" class="featured-card" data-id="{{featured.id}}" bindtap="openDetail">
-    <image src="{{featured.cover}}" class="featured-image" mode="aspectFill" />
-    <view class="featured-info">
-      <t-tag size="small" theme="success" variant="light">信用 {{featured.sellerCredit}}</t-tag>
-      <view class="featured-name">{{featured.name}}</view>
-      <view class="featured-desc">{{featured.condition}} · {{featured.tradeMode}} · {{featured.location}}</view>
-      <view class="featured-bottom">
-        <text>¥{{featured.price}}</text>
-        <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{featured.id}}" data-name="{{featured.name}}">求购</t-button>
-      </view>
-    </view>
   </view>
 
   <view class="section-title">
@@ -78,5 +50,9 @@
         </view>
       </view>
     </view>
+  </view>
+
+  <view class="market-release">
+    <t-button theme="primary" size="large" icon="add" shape="round" bindtap="publishGoods">发布闲置</t-button>
   </view>
 </view>

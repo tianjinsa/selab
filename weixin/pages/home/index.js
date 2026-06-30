@@ -57,11 +57,6 @@ Page({
     filteredPosts: [],
     columns: [[], []],
     hotTopics: [],
-    stats: [
-      { label: '今日新帖', value: 0 },
-      { label: '活跃话题', value: 0 },
-      { label: '待回复求助', value: 0 },
-    ],
     loading: true,
     shareVisible: false,
     shareFriends: [],
@@ -88,16 +83,10 @@ Page({
       const posts = listFrom(await request('/community/posts')).map((item, index) => mapPost(item, index, user));
       const topics = posts.reduce((result, post) => result.concat(post.topics || []), []);
       const hotTopics = Array.from(new Set(topics)).slice(0, 8);
-      const today = new Date().toISOString().slice(0, 10);
       this.setData(
         {
           posts,
           hotTopics,
-          stats: [
-            { label: '今日新帖', value: posts.filter((item) => String(item.createdAt || '').startsWith(today)).length },
-            { label: '活跃话题', value: hotTopics.length },
-            { label: '待回复求助', value: posts.filter((item) => item.type === '求助' && !item.commentCount).length },
-          ],
           loading: false,
         },
         this.applyFilter,

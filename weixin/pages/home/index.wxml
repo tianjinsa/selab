@@ -1,19 +1,5 @@
 <nav nav-type="search" />
 <view class="community-page">
-  <view class="community-hero">
-    <view>
-      <text class="eyebrow">校园社区论坛</text>
-      <view class="hero-title">发现同学正在讨论的事</view>
-      <view class="hero-desc">图文分享、求助问答、楼中楼回复、话题检索与互动通知统一汇聚。</view>
-    </view>
-    <view class="hero-stats">
-      <view wx:for="{{stats}}" wx:key="label" class="stat-item">
-        <text class="stat-value">{{item.value}}</text>
-        <text class="stat-label">{{item.label}}</text>
-      </view>
-    </view>
-  </view>
-
   <scroll-view wx:if="{{hotTopics.length}}" scroll-x class="topic-strip" show-scrollbar="{{false}}">
     <t-tag wx:for="{{hotTopics}}" wx:key="index" class="topic" size="large" theme="primary" variant="light">#{{item}}</t-tag>
   </scroll-view>

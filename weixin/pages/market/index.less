@@ -9,45 +9,6 @@ page {
   padding: 20rpx 24rpx calc(@tab-bar-height + 44rpx);
 }
 
-.market-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  padding: 28rpx;
-  border-radius: 16rpx;
-  color: #fff;
-  background: linear-gradient(135deg, #132238 0%, #176b87 56%, #39c5bb 100%);
-}
-
-.eyebrow {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 24rpx;
-}
-
-.page-title {
-  margin-top: 8rpx;
-  font-size: 40rpx;
-  font-weight: 800;
-  line-height: 1.15;
-}
-
-.metric-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12rpx;
-  margin: 18rpx 0;
-}
-
-.metric {
-  padding: 18rpx;
-  border: 1rpx solid #dbe4ef;
-  border-radius: 14rpx;
-  background: #fff;
-}
-
-.metric text,
-.featured-desc,
 .goods-meta,
 .goods-stats,
 .seller-row text {
@@ -56,15 +17,7 @@ page {
   font-size: 23rpx;
 }
 
-.metric strong {
-  display: block;
-  margin-top: 8rpx;
-  color: #111827;
-  font-size: 34rpx;
-}
-
 .search-panel,
-.featured-card,
 .goods-row {
   border: 1rpx solid #dbe4ef;
   border-radius: 16rpx;
@@ -85,45 +38,6 @@ page {
   margin-right: 12rpx;
 }
 
-.featured-card {
-  display: grid;
-  grid-template-columns: 250rpx 1fr;
-  gap: 20rpx;
-  margin-top: 18rpx;
-  padding: 18rpx;
-}
-
-.featured-image {
-  width: 250rpx;
-  height: 230rpx;
-  border-radius: 12rpx;
-}
-
-.featured-info {
-  min-width: 0;
-}
-
-.featured-name {
-  margin-top: 12rpx;
-  color: #111827;
-  font-size: 34rpx;
-  font-weight: 800;
-  line-height: 1.25;
-}
-
-.featured-desc {
-  margin-top: 10rpx;
-  line-height: 1.45;
-}
-
-.featured-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 18rpx;
-}
-
-.featured-bottom text,
 .price {
   color: #d35400;
   font-size: 38rpx;
@@ -193,4 +107,10 @@ page {
 .price {
   margin-right: auto;
   font-size: 34rpx;
+}
+
+.market-release {
+  position: fixed;
+  right: 32rpx;
+  bottom: 208rpx;
 }

@@ -8,12 +8,6 @@ Page({
     keyword: '',
     goods: [],
     filteredGoods: [],
-    featured: null,
-    metrics: [
-      { label: '在售商品', value: 0 },
-      { label: '担保订单', value: 1 },
-      { label: '待审核', value: 0 },
-    ],
     loading: true,
   },
 
@@ -40,12 +34,6 @@ Page({
           {
             goods,
             categories,
-            featured: goods[0] || null,
-            metrics: [
-              { label: '在售商品', value: goods.length },
-              { label: '担保订单', value: 1 },
-              { label: '待审核', value: goods.filter((item) => item.auditStatus === '待审核').length },
-            ],
             loading: false,
           },
           this.applyFilter,
