@@ -35,8 +35,8 @@
   </view>
 
   <view wx:else class="goods-list">
-    <view wx:for="{{filteredGoods}}" wx:key="id" class="goods-row" data-id="{{item.id}}" bindtap="openDetail">
-      <image src="{{item.cover}}" class="goods-image" mode="aspectFill" />
+    <view wx:for="{{filteredGoods}}" wx:key="id" class="goods-row {{item.cover ? '' : 'goods-row--text'}}" data-id="{{item.id}}" bindtap="openDetail">
+      <image wx:if="{{item.cover}}" src="{{item.cover}}" class="goods-image" mode="aspectFill" />
       <view class="goods-main">
         <view class="goods-title">{{item.name}}</view>
         <view class="goods-meta">{{item.category}} · {{item.condition}} · {{item.tradeMode}}</view>

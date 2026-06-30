@@ -34,7 +34,7 @@ function mapPost(item, user = {}) {
     authorName: author.nickname || '同学',
     authorId,
     avatar: author.avatar || '/static/avatar1.png',
-    cover: getImage(item.images, '/static/home/card0.png'),
+    cover: getImage(item.images),
     likeCount: likes.length,
     favoriteCount: favorites.length,
     commentCount: Number(item.commentCount || (item.comments || []).length || 0),

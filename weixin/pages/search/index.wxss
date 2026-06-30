@@ -136,6 +136,11 @@ page {
   padding: 16rpx;
 }
 
+.market-result-card--text {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 20rpx;
+}
+
 .market-result-image {
   width: 150rpx;
   height: 150rpx;

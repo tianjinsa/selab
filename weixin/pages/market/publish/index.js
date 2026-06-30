@@ -21,7 +21,7 @@ Page({
       tradeMode: '校内自提',
       location: '',
       description: '',
-      images: ['/static/home/card2.png'],
+      images: [],
     },
     categories: ['数码', '书籍', '服饰', '生活用品'],
     conditions: ['全新', '九成新', '八成新', '七成新'],

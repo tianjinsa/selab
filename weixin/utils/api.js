@@ -12,9 +12,9 @@ export function listFrom(res) {
   return [];
 }
 
-export function getImage(images, fallback = '/static/home/card0.png') {
-  if (Array.isArray(images) && images.length) return images[0];
-  if (typeof images === 'string' && images) return images;
+export function getImage(images, fallback = '') {
+  if (Array.isArray(images)) return images.find((item) => item) || fallback;
+  if (typeof images === 'string' && images.trim()) return images;
   return fallback;
 }
 

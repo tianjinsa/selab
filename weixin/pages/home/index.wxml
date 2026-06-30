@@ -12,8 +12,8 @@
 
   <view wx:else class="waterfall">
     <view wx:for="{{columns}}" wx:for-item="column" wx:key="index" class="waterfall-column">
-      <view wx:for="{{column}}" wx:key="id" class="post-card" data-id="{{item.id}}" aria-role="button" aria-label="查看帖子详情" bindtap="openDetail">
-        <image class="post-cover" style="height: {{item.coverHeight}}rpx;" src="{{item.cover}}" mode="aspectFill" />
+      <view wx:for="{{column}}" wx:key="id" class="post-card {{item.cover ? '' : 'post-card--text'}}" data-id="{{item.id}}" aria-role="button" aria-label="查看帖子详情" bindtap="openDetail">
+        <image wx:if="{{item.cover}}" class="post-cover" style="height: {{item.coverHeight}}rpx;" src="{{item.cover}}" mode="aspectFill" />
         <view class="post-body">
           <view class="post-title">{{item.title}}</view>
           <view class="post-content">{{item.content}}</view>

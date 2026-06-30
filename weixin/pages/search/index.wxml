@@ -48,8 +48,8 @@
         <t-loading theme="circular" size="44rpx" text="搜索中" />
       </view>
 
-      <view wx:for="{{marketResults}}" wx:key="id" class="market-result-card" data-route="goods" data-id="{{item.id}}" bindtap="openResult">
-        <image src="{{item.cover}}" class="market-result-image" mode="aspectFill" />
+      <view wx:for="{{marketResults}}" wx:key="id" class="market-result-card {{item.cover ? '' : 'market-result-card--text'}}" data-route="goods" data-id="{{item.id}}" bindtap="openResult">
+        <image wx:if="{{item.cover}}" src="{{item.cover}}" class="market-result-image" mode="aspectFill" />
         <view class="market-result-main">
           <view class="market-result-title">{{item.name}}</view>
           <view class="market-result-desc">{{item.category}} · {{item.condition}} · {{item.location}}</view>

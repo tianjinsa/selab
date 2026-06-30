@@ -6,7 +6,7 @@ const app = getApp();
 function mapPost(item) {
   return {
     ...item,
-    cover: getImage(item.images, '/static/home/card0.png'),
+    cover: getImage(item.images),
     time: formatTime(item.createdAt),
     likeCount: (item.likes || []).length,
     favoriteCount: (item.favorites || []).length,

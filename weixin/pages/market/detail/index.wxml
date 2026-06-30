@@ -1,6 +1,6 @@
 <t-navbar placeholder="{{true}}" title="商品详情" left-arrow bind:go-back="goBack" />
-<view wx:if="{{goods}}" class="detail-page">
-  <image src="{{cover}}" class="cover" mode="aspectFill" />
+<view wx:if="{{goods}}" class="detail-page {{cover ? '' : 'detail-page--no-cover'}}">
+  <image wx:if="{{cover}}" src="{{cover}}" class="cover" mode="aspectFill" />
   <view class="main-card">
     <view class="price">¥{{goods.price}}</view>
     <view class="title">{{goods.name}}</view>

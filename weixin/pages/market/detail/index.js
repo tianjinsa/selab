@@ -15,7 +15,7 @@ Page({
     request(`/market/goods/${id}`)
       .then((res) => {
         const goods = unwrap(res);
-        this.setData({ goods, cover: getImage(goods.images, '/static/home/card2.png') });
+        this.setData({ goods, cover: getImage(goods.images) });
       })
       .catch(() => wx.showToast({ title: '商品不存在', icon: 'none' }));
   },

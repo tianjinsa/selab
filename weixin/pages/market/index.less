@@ -141,16 +141,22 @@ page {
 
 .goods-row {
   display: grid;
-  grid-template-columns: 190rpx 1fr;
+  grid-template-columns: 240rpx minmax(0, 1fr);
   gap: 18rpx;
   margin-bottom: 18rpx;
   padding: 18rpx;
 }
 
+.goods-row--text {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 22rpx;
+}
+
 .goods-image {
-  width: 190rpx;
-  height: 190rpx;
+  width: 240rpx;
+  height: 240rpx;
   border-radius: 12rpx;
+  background: @line-color;
 }
 
 .goods-main {
@@ -176,30 +182,25 @@ page {
 }
 
 .goods-actions {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-top: 12rpx;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12rpx;
+  margin-top: 14rpx;
 }
 
 .goods-actions .price {
-  flex: 0 0 auto;
-  margin-right: auto;
-  font-size: 32rpx;
+  font-size: 34rpx;
   line-height: 1;
   white-space: nowrap;
 }
 
 .goods-action-buttons {
-  display: flex;
-  flex: 0 0 316rpx;
-  justify-content: flex-end;
-  gap: 6rpx;
-  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8rpx;
 }
 
 .goods-action-buttons .t-button {
-  flex: 1 1 0;
   width: 100% !important;
   min-width: 0 !important;
   margin: 0 !important;

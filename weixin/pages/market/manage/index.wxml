@@ -27,8 +27,8 @@
   <t-empty wx:elif="{{!currentGoods.length}}" description="{{emptyText}}" />
 
   <view wx:else class="goods-list">
-    <view wx:for="{{currentGoods}}" wx:key="id" class="goods-card" data-id="{{item.id}}" bindtap="openDetail">
-      <image class="goods-cover" src="{{item.cover}}" mode="aspectFill" />
+    <view wx:for="{{currentGoods}}" wx:key="id" class="goods-card {{item.cover ? '' : 'goods-card--text'}}" data-id="{{item.id}}" bindtap="openDetail">
+      <image wx:if="{{item.cover}}" class="goods-cover" src="{{item.cover}}" mode="aspectFill" />
       <view class="goods-main">
         <view class="goods-title">{{item.name}}</view>
         <view class="goods-meta">{{item.category}} · {{item.condition}} · {{item.time}}</view>

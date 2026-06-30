@@ -19,12 +19,13 @@ function mapPost(item, index = 0, user = {}) {
   const favorites = Array.isArray(item.favorites) ? item.favorites : [];
   const following = Array.isArray(user.following) ? user.following : [];
   const authorId = author.id || item.authorId;
+  const cover = getImage(item.images);
   return {
     ...item,
     authorName: author.nickname || '同学',
     authorId,
     avatar: author.avatar || '/static/avatar1.png',
-    cover: getImage(item.images, '/static/home/card0.png'),
+    cover,
     likeCount: likes.length,
     favoriteCount: favorites.length,
     commentCount: Number(item.commentCount || (item.comments || []).length || 0),
@@ -34,7 +35,7 @@ function mapPost(item, index = 0, user = {}) {
     followingAuthor: following.includes(authorId),
     isMine: authorId === user.id,
     publishTime: formatTime(item.createdAt),
-    coverHeight: 220 + ((index % 3) * 42),
+    coverHeight: cover ? 220 + ((index % 3) * 42) : 0,
   };
 }
 

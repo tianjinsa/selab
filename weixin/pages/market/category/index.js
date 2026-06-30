@@ -53,7 +53,7 @@ Page({
       const [goodsRes, categoryRes] = await Promise.all([request('/market/goods'), request('/settings/categories').catch(() => null)]);
       const goods = listFrom(goodsRes).map((item) => ({
         ...item,
-        cover: getImage(item.images, '/static/home/card2.png'),
+        cover: getImage(item.images),
         sellerName: (item.seller && item.seller.nickname) || '卖家',
       }));
       const categoryData = unwrap(categoryRes) || {};

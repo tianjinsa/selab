@@ -8,7 +8,7 @@ function mapGoods(item, orders = []) {
   const favorites = Array.isArray(item.favorites) ? item.favorites : [];
   return {
     ...item,
-    cover: getImage(item.images, '/static/home/card2.png'),
+    cover: getImage(item.images),
     time: formatTime(item.createdAt),
     sellerName: (item.seller && item.seller.nickname) || '卖家',
     favoriteCount: favorites.length,

@@ -19,8 +19,8 @@
   <t-empty wx:elif="{{!currentPosts.length}}" description="暂无社区记录" />
 
   <view wx:else class="post-list">
-    <view wx:for="{{currentPosts}}" wx:key="id" class="post-card" data-id="{{item.id}}" bindtap="openDetail">
-      <image class="post-cover" src="{{item.cover}}" mode="aspectFill" />
+    <view wx:for="{{currentPosts}}" wx:key="id" class="post-card {{item.cover ? '' : 'post-card--text'}}" data-id="{{item.id}}" bindtap="openDetail">
+      <image wx:if="{{item.cover}}" class="post-cover" src="{{item.cover}}" mode="aspectFill" />
       <view class="post-main">
         <view class="post-title">{{item.title}}</view>
         <view class="post-content">{{item.content}}</view>
