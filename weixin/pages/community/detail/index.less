@@ -1,12 +1,31 @@
 @import '/variable.less';
 
 page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
   background: #eef2f7;
 }
 
 .detail-page {
-  min-height: 100vh;
-  padding: 20rpx 24rpx 144rpx;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 0;
+  box-sizing: border-box;
+}
+
+.detail-scroll {
+  flex: 1;
+  min-height: 0;
+  height: 0;
+}
+
+.detail-content {
+  min-height: 100%;
+  padding: 20rpx 24rpx 28rpx;
   box-sizing: border-box;
 }
 
@@ -37,6 +56,13 @@ page {
 
 .author-row {
   gap: 16rpx;
+}
+
+.author-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 10rpx;
+  align-items: center;
 }
 
 .author-main,
@@ -149,10 +175,8 @@ page {
 }
 
 .comment-bar {
-  position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  position: relative;
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: 1fr 156rpx;
   gap: 16rpx;
@@ -167,6 +191,24 @@ page {
   border-radius: 24rpx 24rpx 0 0;
   background: #fff;
   box-sizing: border-box;
+}
+
+.report-sheet {
+  padding: 28rpx 28rpx calc(28rpx + env(safe-area-inset-bottom));
+  border-radius: 24rpx 24rpx 0 0;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 24rpx 0;
+}
+
+.report-textarea {
+  margin-bottom: 22rpx;
 }
 
 .share-head,

@@ -24,6 +24,7 @@ const agentDefinitions = [
 ];
 
 const agentPrompts = Object.fromEntries(agentDefinitions.map((agent) => [agent.key, agent.prompt]));
+const defaultModelTimeoutMs = 45000;
 
 function getAgentTypes() {
   return agentDefinitions.map((agent) => ({
@@ -126,10 +127,12 @@ function buildTools(taxonomy) {
 }
 
 function getConfig() {
+  const timeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || process.env.AGENT_TIMEOUT_MS || defaultModelTimeoutMs);
   return {
     baseUrl: process.env.OPENAI_BASE_URL || process.env.OPENAI_URL || '',
     apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_APIKEY || '',
-    model: process.env.OPENAI_MODEL || ''
+    model: process.env.OPENAI_MODEL || '',
+    timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : defaultModelTimeoutMs
   };
 }
 
@@ -149,6 +152,17 @@ function configurationError(config) {
   const error = new Error(`智能体模型未配置：${missing.join('、')}`);
   error.status = 500;
   return error;
+}
+
+function modelTimeoutError(timeoutMs) {
+  const seconds = Math.ceil(timeoutMs / 1000);
+  const error = new Error(`智能体模型请求超时（${seconds} 秒），请检查模型服务地址、网络或模型响应速度。`);
+  error.status = 504;
+  return error;
+}
+
+function isAbortError(error) {
+  return error && (error.name === 'AbortError' || error.code === 'ABORT_ERR');
 }
 
 function getQuestionTerms(question) {
@@ -261,6 +275,8 @@ async function postChat(messages, options = {}) {
   const config = getConfig();
   const configError = configurationError(config);
   if (configError) throw configError;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), config.timeoutMs);
   const body = {
     model: config.model,
     messages,
@@ -271,21 +287,35 @@ async function postChat(messages, options = {}) {
     body.tools = buildTools(options.taxonomy || { taskCategories: [], taskStatuses: [], goodsCategories: [] });
     body.tool_choice = 'auto';
   }
-  const response = await fetch(normalizeChatUrl(config.baseUrl), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
+  let response;
+  try {
+    response = await fetch(normalizeChatUrl(config.baseUrl), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    clearTimeout(timer);
+    if (isAbortError(error)) throw modelTimeoutError(config.timeoutMs);
+    throw error;
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
+    clearTimeout(timer);
     const error = new Error(body.error?.message || body.message || '智能体模型请求失败');
     error.status = response.status || 502;
     throw error;
   }
-  return { response, model: config.model };
+  return {
+    response,
+    model: config.model,
+    timeoutMs: config.timeoutMs,
+    finish: () => clearTimeout(timer)
+  };
 }
 
 async function readJsonCompletion(response) {
@@ -354,6 +384,17 @@ async function readStreamCompletion(response, onDelta) {
   return { content, toolCalls: toolCalls.filter(Boolean) };
 }
 
+async function readCompletion(chat, stream, onDelta) {
+  try {
+    return stream ? await readStreamCompletion(chat.response, onDelta) : await readJsonCompletion(chat.response);
+  } catch (error) {
+    if (isAbortError(error)) throw modelTimeoutError(chat.timeoutMs || defaultModelTimeoutMs);
+    throw error;
+  } finally {
+    if (chat.finish) chat.finish();
+  }
+}
+
 function parseToolArguments(value) {
   if (!value) return {};
   try {
@@ -382,8 +423,8 @@ async function completeWithTools(data, question, options = {}, onDelta) {
   const toolResults = [];
   const first = await postChat(messages, { stream: Boolean(options.stream), taxonomy });
   const firstResult = options.stream
-    ? await readStreamCompletion(first.response, onDelta)
-    : await readJsonCompletion(first.response);
+    ? await readCompletion(first, true, onDelta)
+    : await readCompletion(first, false);
   const toolCalls = normalizeToolCalls(firstResult.toolCalls);
   if (!toolCalls.length) {
     if (!options.stream && firstResult.content && onDelta) onDelta(firstResult.content);
@@ -418,8 +459,8 @@ async function completeWithTools(data, question, options = {}, onDelta) {
   });
   const final = await postChat(nextMessages, { stream: Boolean(options.stream), includeTools: false, taxonomy });
   const finalResult = options.stream
-    ? await readStreamCompletion(final.response, onDelta)
-    : await readJsonCompletion(final.response);
+    ? await readCompletion(final, true, onDelta)
+    : await readCompletion(final, false);
   return {
     answer: finalResult.content,
     sources: knowledge ? [{ id: knowledge.id, title: knowledge.title, source: knowledge.source }] : [],
@@ -453,6 +494,27 @@ function updateRunResult(runId, userId, updater) {
   updater(data, run, session, assistantMessage);
   store.save(data);
   return { run, session, assistantMessage };
+}
+
+function expireStaleRun(data, run) {
+  if (!run || run.status !== 'running') return false;
+  const createdAt = new Date(run.createdAt || run.updatedAt || 0).getTime();
+  if (!createdAt || Number.isNaN(createdAt)) return false;
+  const staleMs = Math.max(getConfig().timeoutMs * 3, 90000);
+  if (Date.now() - createdAt < staleMs) return false;
+  const session = data.agentSessions.find((item) => item.id === run.sessionId && item.userId === run.userId);
+  const assistantMessage = session?.messages.find((item) => item.id === run.assistantMessageId);
+  const message = '智能体响应超时，请稍后重试。';
+  if (assistantMessage) {
+    assistantMessage.content = message;
+    assistantMessage.status = 'failed';
+    assistantMessage.updatedAt = store.now();
+  }
+  run.status = 'failed';
+  run.error = message;
+  run.completedAt = store.now();
+  if (session) session.updatedAt = store.now();
+  return true;
 }
 
 async function executeRun(runId, userId) {
@@ -534,5 +596,6 @@ module.exports = {
   callTool,
   executeTool,
   ensureAgentData,
+  expireStaleRun,
   executeRun
 };

@@ -45,8 +45,11 @@ router.get('/mine', auth.requireAuth, (req, res) => {
   const publishedGoods = req.data.goods
     .filter((item) => item.sellerId === req.user.id)
     .map((item) => store.publicGoods(req.data, item));
+  const favoriteGoods = req.data.goods
+    .filter((item) => (item.favorites || []).includes(req.user.id))
+    .map((item) => store.publicGoods(req.data, item));
   const orders = req.data.orders.filter((item) => item.buyerId === req.user.id || item.sellerId === req.user.id);
-  return ok(res, { requestedGoods, publishedGoods, orders });
+  return ok(res, { requestedGoods, publishedGoods, favoriteGoods, orders });
 });
 
 router.post('/goods', auth.requireAuth, (req, res) => {
@@ -104,6 +107,7 @@ router.put('/goods/:id', auth.requireAuth, (req, res) => {
 router.post('/goods/:id/favorite', auth.requireAuth, (req, res) => {
   const goods = req.data.goods.find((item) => item.id === req.params.id);
   if (!goods) return fail(res, 404, '商品不存在');
+  if (!Array.isArray(goods.favorites)) goods.favorites = [];
   const index = goods.favorites.indexOf(req.user.id);
   if (index >= 0) goods.favorites.splice(index, 1);
   else goods.favorites.push(req.user.id);

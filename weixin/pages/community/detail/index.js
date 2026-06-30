@@ -72,6 +72,11 @@ Page({
     shareFriends: [],
     shareLoading: false,
     sharing: false,
+    reportVisible: false,
+    reportReasons: ['广告垃圾', '不友善内容', '虚假信息', '违规交易', '其他问题'],
+    reportReason: '',
+    reportDetail: '',
+    reporting: false,
   },
 
   async onLoad(options) {
@@ -180,6 +185,59 @@ Page({
       .catch(() => {
         this.setData({ sharing: false });
         wx.showToast({ title: '转发失败', icon: 'none' });
+      });
+  },
+
+  openReportSheet() {
+    if (!this.data.post || this.data.post.isMine) return;
+    this.setData({
+      reportVisible: true,
+      reportReason: '',
+      reportDetail: '',
+      reporting: false,
+    });
+  },
+
+  closeReportSheet() {
+    this.setData({ reportVisible: false, reporting: false });
+  },
+
+  onReportVisibleChange(event) {
+    const visible = typeof event.detail === 'boolean' ? event.detail : event.detail.visible;
+    if (visible) return;
+    this.closeReportSheet();
+  },
+
+  chooseReportReason(event) {
+    this.setData({ reportReason: event.currentTarget.dataset.reason || '' });
+  },
+
+  onReportDetailChange(event) {
+    this.setData({ reportDetail: event.detail.value || '' });
+  },
+
+  submitReport() {
+    if (this.data.reporting) return;
+    const reason = this.data.reportReason;
+    const detail = this.data.reportDetail.trim();
+    const reportText = detail ? `${reason || '其他问题'}：${detail}` : reason;
+    if (!reportText) {
+      wx.showToast({ title: '请选择或填写举报原因', icon: 'none' });
+      return;
+    }
+    this.setData({ reporting: true });
+    request('/reports', 'POST', {
+      targetType: 'post',
+      targetId: this.data.id,
+      reason: reportText,
+    })
+      .then(() => {
+        this.setData({ reportVisible: false, reportReason: '', reportDetail: '', reporting: false });
+        wx.showToast({ title: '举报已提交', icon: 'success' });
+      })
+      .catch(() => {
+        this.setData({ reporting: false });
+        wx.showToast({ title: '举报失败', icon: 'none' });
       });
   },
 });

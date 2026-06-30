@@ -35,6 +35,44 @@ page {
   line-height: 1.45;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+}
+
+.summary-card {
+  min-width: 0;
+  padding: 20rpx 10rpx;
+  border: 1rpx solid #dbe4ef;
+  border-radius: 16rpx;
+  background: #fff;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.summary-card.active {
+  border-color: #176b87;
+  background: #eef8fb;
+}
+
+.summary-value {
+  color: #111827;
+  font-size: 36rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.summary-label {
+  margin-top: 8rpx;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 23rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .state-box {
   display: flex;
   justify-content: center;

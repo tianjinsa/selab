@@ -1,73 +1,79 @@
 <t-navbar placeholder="{{true}}" title="帖子详情" left-arrow bind:go-back="goBack" />
 <view class="detail-page">
-  <view wx:if="{{loading}}" class="state-box">
-    <t-loading theme="circular" size="48rpx" text="加载帖子中" />
-  </view>
+  <scroll-view class="detail-scroll" scroll-y>
+    <view class="detail-content">
+      <view wx:if="{{loading}}" class="state-box">
+        <t-loading theme="circular" size="48rpx" text="加载帖子中" />
+      </view>
 
-  <block wx:elif="{{post}}">
-    <view class="post-panel">
-      <view class="author-row">
-        <t-avatar image="{{post.avatar}}" size="72rpx" />
-        <view class="author-main">
-          <view class="author-name">{{post.authorName}}</view>
-          <view class="post-meta">{{post.type}} · {{post.publishTime}} · {{post.views}} 浏览</view>
-        </view>
-        <t-button
-          wx:if="{{!post.isMine}}"
-          size="small"
-          theme="{{post.followingAuthor ? 'primary' : 'light'}}"
-          variant="{{post.followingAuthor ? 'light' : 'outline'}}"
-          shape="round"
-          bindtap="toggleFollow"
-        >{{post.followingAuthor ? '已关注' : '关注'}}</t-button>
-      </view>
-      <view class="post-title">{{post.title}}</view>
-      <view class="post-content">{{post.content}}</view>
-      <image wx:if="{{post.cover}}" class="post-cover" src="{{post.cover}}" mode="aspectFill" />
-      <view class="tag-row">
-        <t-tag wx:for="{{post.topics}}" wx:key="index" size="small" variant="outline">#{{item}}</t-tag>
-      </view>
-      <view class="post-actions">
-        <t-button
-          size="small"
-          theme="{{post.liked ? 'primary' : 'default'}}"
-          variant="{{post.liked ? 'light' : 'text'}}"
-          icon="thumb-up"
-          bindtap="likePost"
-        >{{post.likeCount}}</t-button>
-        <t-button size="small" variant="text" icon="chat">{{post.commentCount}}</t-button>
-        <t-button
-          size="small"
-          theme="{{post.favorited ? 'primary' : 'default'}}"
-          variant="{{post.favorited ? 'light' : 'text'}}"
-          icon="star"
-          bindtap="favoritePost"
-        >{{post.favoriteCount}}</t-button>
-        <t-button size="small" variant="text" icon="share" bindtap="sharePost">{{post.shareCount}}</t-button>
-      </view>
-    </view>
-
-    <view class="section-title">全部评论</view>
-    <t-empty wx:if="{{!comments.length}}" description="还没有评论" />
-    <view wx:else class="comment-list">
-      <view wx:for="{{comments}}" wx:key="id" class="comment-item">
-        <t-avatar image="{{item.avatar}}" size="56rpx" />
-        <view class="comment-main">
-          <view class="comment-head">
-            <text class="comment-author">{{item.authorName}}</text>
-            <text class="comment-time">{{item.publishTime}}</text>
+      <block wx:elif="{{post}}">
+        <view class="post-panel">
+          <view class="author-row">
+            <t-avatar image="{{post.avatar}}" size="72rpx" />
+            <view class="author-main">
+              <view class="author-name">{{post.authorName}}</view>
+              <view class="post-meta">{{post.type}} · {{post.publishTime}} · {{post.views}} 浏览</view>
+            </view>
+            <view wx:if="{{!post.isMine}}" class="author-actions">
+              <t-button
+                size="small"
+                theme="{{post.followingAuthor ? 'primary' : 'light'}}"
+                variant="{{post.followingAuthor ? 'light' : 'outline'}}"
+                shape="round"
+                bindtap="toggleFollow"
+              >{{post.followingAuthor ? '已关注' : '关注'}}</t-button>
+              <t-button size="small" theme="light" variant="outline" shape="round" bindtap="openReportSheet">举报</t-button>
+            </view>
           </view>
-          <view class="comment-content">{{item.content}}</view>
-          <view wx:if="{{item.replies.length}}" class="reply-list">
-            <view wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id" class="reply-item">
-              <text class="reply-author">{{reply.authorName}}</text>
-              <text class="reply-content">：{{reply.content}}</text>
+          <view class="post-title">{{post.title}}</view>
+          <view class="post-content">{{post.content}}</view>
+          <image wx:if="{{post.cover}}" class="post-cover" src="{{post.cover}}" mode="aspectFill" />
+          <view class="tag-row">
+            <t-tag wx:for="{{post.topics}}" wx:key="index" size="small" variant="outline">#{{item}}</t-tag>
+          </view>
+          <view class="post-actions">
+            <t-button
+              size="small"
+              theme="{{post.liked ? 'primary' : 'default'}}"
+              variant="{{post.liked ? 'light' : 'text'}}"
+              icon="thumb-up"
+              bindtap="likePost"
+            >{{post.likeCount}}</t-button>
+            <t-button size="small" variant="text" icon="chat">{{post.commentCount}}</t-button>
+            <t-button
+              size="small"
+              theme="{{post.favorited ? 'primary' : 'default'}}"
+              variant="{{post.favorited ? 'light' : 'text'}}"
+              icon="star"
+              bindtap="favoritePost"
+            >{{post.favoriteCount}}</t-button>
+            <t-button size="small" variant="text" icon="share" bindtap="sharePost">{{post.shareCount}}</t-button>
+          </view>
+        </view>
+
+        <view class="section-title">全部评论</view>
+        <t-empty wx:if="{{!comments.length}}" description="还没有评论" />
+        <view wx:else class="comment-list">
+          <view wx:for="{{comments}}" wx:key="id" class="comment-item">
+            <t-avatar image="{{item.avatar}}" size="56rpx" />
+            <view class="comment-main">
+              <view class="comment-head">
+                <text class="comment-author">{{item.authorName}}</text>
+                <text class="comment-time">{{item.publishTime}}</text>
+              </view>
+              <view class="comment-content">{{item.content}}</view>
+              <view wx:if="{{item.replies.length}}" class="reply-list">
+                <view wx:for="{{item.replies}}" wx:for-item="reply" wx:key="id" class="reply-item">
+                  <text class="reply-author">{{reply.authorName}}</text>
+                  <text class="reply-content">：{{reply.content}}</text>
+                </view>
+              </view>
             </view>
           </view>
         </view>
-      </view>
+      </block>
     </view>
-  </block>
+  </scroll-view>
 
   <view class="comment-bar">
     <t-input value="{{input}}" focus="{{focusInput}}" placeholder="写下你的评论" borderless bind:change="onInput" />
@@ -97,6 +103,38 @@
           <t-button size="small" theme="primary" variant="light" loading="{{sharing}}">转发</t-button>
         </view>
       </view>
+    </view>
+  </t-popup>
+
+  <t-popup visible="{{reportVisible}}" placement="bottom" bind:visible-change="onReportVisibleChange">
+    <view class="report-sheet">
+      <view class="share-head">
+        <view>
+          <view class="share-title">举报帖子</view>
+          <view class="share-desc">选择原因并补充必要说明，提交后进入后台审核。</view>
+        </view>
+        <t-button size="small" theme="light" shape="round" bindtap="closeReportSheet">关闭</t-button>
+      </view>
+      <view class="report-reasons">
+        <t-tag
+          wx:for="{{reportReasons}}"
+          wx:key="index"
+          size="large"
+          theme="{{reportReason === item ? 'primary' : 'default'}}"
+          variant="{{reportReason === item ? 'light' : 'outline'}}"
+          data-reason="{{item}}"
+          bindtap="chooseReportReason"
+        >{{item}}</t-tag>
+      </view>
+      <t-textarea
+        class="report-textarea"
+        value="{{reportDetail}}"
+        placeholder="补充说明，例如广告、虚假信息、辱骂或违规交易线索"
+        maxlength="200"
+        indicator
+        bind:change="onReportDetailChange"
+      />
+      <t-button theme="primary" size="large" block loading="{{reporting}}" bindtap="submitReport">提交举报</t-button>
     </view>
   </t-popup>
 </view>

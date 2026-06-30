@@ -115,6 +115,7 @@ Page({
     quickPrompts,
     loading: false,
     anchor: 'bottom',
+    runPollFailCount: 0,
   },
 
   async onLoad() {
@@ -252,6 +253,7 @@ Page({
             messages: buildGreeting(this.data.activeAgent),
             isEmptyConversation: true,
             loading: false,
+            runPollFailCount: 0,
           });
           this.stopRunPolling();
         }
@@ -275,6 +277,7 @@ Page({
       isEmptyConversation: true,
       historyVisible: false,
       loading: false,
+      runPollFailCount: 0,
     });
     this.stopRunPolling();
     wx.nextTick(() => this.scrollToBottom());
@@ -315,6 +318,7 @@ Page({
           activeRunId: data.run.id,
           assistantMessageId: data.run.assistantMessageId,
           loading: true,
+          runPollFailCount: 0,
         });
         this.startRunPolling(data.run.id, data.session.id);
         this.loadSessions();
@@ -378,10 +382,12 @@ Page({
 
   startRunPolling(runId, sessionId) {
     this.stopRunPolling();
+    this.setData({ runPollFailCount: 0 });
     this.runPollTimer = setInterval(() => {
       request(`/agent/runs/${runId}`)
         .then((res) => {
           const run = unwrap(res);
+          this.setData({ runPollFailCount: 0 });
           if (run.status === 'completed') {
             this.stopRunPolling();
             this.setData({ loading: false, activeRunId: '', assistantMessageId: '' });
@@ -392,7 +398,13 @@ Page({
             this.applyAgentError(run.assistantMessageId, run.error || '智能体模型请求失败');
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          const runPollFailCount = this.data.runPollFailCount + 1;
+          this.setData({ runPollFailCount });
+          if (runPollFailCount < 3) return;
+          this.stopRunPolling();
+          this.applyAgentError(this.data.assistantMessageId, '智能体状态同步失败，请检查后端服务或网络连接后重试。');
+        });
     }, 2500);
   },
 

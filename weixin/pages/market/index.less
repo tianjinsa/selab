@@ -20,6 +20,7 @@ page {
 }
 
 .search-panel,
+.mine-panel,
 .goods-row {
   border: 1rpx solid @line-color;
   border-radius: @radius-card;
@@ -52,6 +53,65 @@ page {
 
 .market-search-entry text {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mine-panel {
+  margin-top: 18rpx;
+  padding: 22rpx;
+}
+
+.mine-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.mine-panel__title {
+  color: @text-strong;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.mine-panel__desc {
+  margin-top: 4rpx;
+  color: @text-secondary;
+  font-size: 23rpx;
+}
+
+.mine-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.mine-summary__item {
+  min-width: 0;
+  padding: 18rpx 10rpx;
+  border-radius: 14rpx;
+  color: @primary-color;
+  background: @surface-muted;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.mine-summary__value {
+  margin-top: 6rpx;
+  color: @text-strong;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.mine-summary__label {
+  margin-top: 6rpx;
+  overflow: hidden;
+  color: @text-secondary;
+  font-size: 22rpx;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -116,16 +176,28 @@ page {
 }
 
 .goods-actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8rpx;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12rpx;
   margin-top: 12rpx;
 }
 
 .price {
-  margin-right: auto;
   font-size: 34rpx;
+}
+
+.goods-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8rpx;
+}
+
+.goods-action-buttons .t-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
 }
 
 .state-box {

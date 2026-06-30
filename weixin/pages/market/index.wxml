@@ -8,6 +8,23 @@
     <t-button theme="primary" variant="light" icon="view-list" bindtap="openCategoryPage">全部分类</t-button>
   </view>
 
+  <view class="mine-panel">
+    <view class="mine-panel__head">
+      <view>
+        <view class="mine-panel__title">我的交易</view>
+        <view class="mine-panel__desc">求购、发布和收藏集中管理</view>
+      </view>
+      <t-button size="small" theme="light" shape="round" bindtap="openMine" data-tab="requested">查看全部</t-button>
+    </view>
+    <view class="mine-summary">
+      <view wx:for="{{mineSummary}}" wx:key="tab" class="mine-summary__item" data-tab="{{item.tab}}" bindtap="openMine">
+        <t-icon name="{{item.icon}}" size="34rpx" />
+        <view class="mine-summary__value">{{item.value}}</view>
+        <view class="mine-summary__label">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
   <view class="section-title">
     <text>全部商品</text>
     <text>{{filteredGoods.length}} 件</text>
@@ -30,17 +47,26 @@
         <view class="goods-stats">{{item.views}} 浏览 · {{item.consults}} 次咨询 · {{item.status}}</view>
         <view class="goods-actions">
           <text class="price">¥{{item.price}}</text>
-          <t-button size="small" variant="text" icon="star" data-id="{{item.id}}" catchtap="favoriteGoods">收藏</t-button>
-          <t-button
-            size="small"
-            theme="light"
-            icon="chat"
-            catchtap="consultSeller"
-            data-seller-id="{{item.seller.id}}"
-            data-goods-id="{{item.id}}"
-            data-name="{{item.name}}"
-          >咨询</t-button>
-          <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{item.id}}" data-name="{{item.name}}">求购</t-button>
+          <view class="goods-action-buttons">
+            <t-button
+              size="small"
+              theme="{{item.favorited ? 'primary' : 'default'}}"
+              variant="{{item.favorited ? 'light' : 'text'}}"
+              icon="star"
+              data-id="{{item.id}}"
+              catchtap="favoriteGoods"
+            >{{item.favorited ? '已收藏' : '收藏'}}</t-button>
+            <t-button
+              size="small"
+              theme="light"
+              icon="chat"
+              catchtap="consultSeller"
+              data-seller-id="{{item.seller.id}}"
+              data-goods-id="{{item.id}}"
+              data-name="{{item.name}}"
+            >咨询</t-button>
+            <t-button size="small" theme="primary" catchtap="createOrder" data-id="{{item.id}}" data-name="{{item.name}}">求购</t-button>
+          </view>
         </view>
       </view>
     </view>

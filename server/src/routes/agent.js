@@ -161,6 +161,7 @@ router.get('/runs/:id', auth.requireAuth, (req, res) => {
   agent.ensureAgentData(req.data);
   const run = req.data.agentRuns.find((item) => item.id === req.params.id && item.userId === req.user.id);
   if (!run) return fail(res, 404, '智能体任务不存在');
+  if (agent.expireStaleRun(req.data, run)) store.save(req.data);
   return ok(res, run);
 });
 

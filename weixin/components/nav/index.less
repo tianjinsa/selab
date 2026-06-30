@@ -1,7 +1,16 @@
 @import '/variable.less';
 
 .home-navbar {
+  --td-navbar-background: #ffffff;
+  --td-navbar-bg-color: #ffffff;
+
   .t-navbar {
+    &__content {
+      border-bottom: 1rpx solid @line-color-soft;
+      background: #ffffff !important;
+      box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.04);
+    }
+
     &__left {
       margin-left: 12rpx;
     }
