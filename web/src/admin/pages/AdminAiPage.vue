@@ -8,10 +8,24 @@
           <n-form-item-gi label="API Key"><n-input v-model:value="configForm.apiKey" type="password" show-password-on="click" placeholder="留空表示不修改" /></n-form-item-gi>
           <n-form-item-gi label="Model"><n-input v-model:value="configForm.model" placeholder="gpt-4.1-mini 或兼容模型名" /></n-form-item-gi>
         </n-grid>
+        <n-grid :cols="4" :x-gap="12" responsive="screen">
+          <n-form-item-gi label="Include Reasoning">
+            <n-switch v-model:value="configForm.includeReasoning" />
+          </n-form-item-gi>
+          <n-form-item-gi label="Enable Thinking">
+            <n-switch v-model:value="configForm.enableThinking" />
+          </n-form-item-gi>
+          <n-form-item-gi label="Thinking Type">
+            <n-select v-model:value="configForm.thinkingType" :options="thinkingTypeOptions" clearable placeholder="不发送" />
+          </n-form-item-gi>
+          <n-form-item-gi label="Reasoning Effort">
+            <n-select v-model:value="configForm.reasoningEffort" :options="reasoningEffortOptions" clearable placeholder="不发送" />
+          </n-form-item-gi>
+        </n-grid>
         <n-button type="primary" @click="saveConfig">保存配置</n-button>
       </n-form>
       <n-alert style="margin-top: 12px;" type="info" :show-icon="false">
-        当前状态：Base URL {{ adminData?.config?.baseUrl || '未配置' }}，Model {{ adminData?.config?.model || '未配置' }}，API Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}。
+        当前状态：Base URL {{ adminData?.config?.baseUrl || '未配置' }}，Model {{ adminData?.config?.model || '未配置' }}，API Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}，思考 {{ adminData?.config?.enableThinking || adminData?.config?.includeReasoning ? '已开启' : '未开启' }}。
       </n-alert>
     </section>
 
@@ -70,8 +84,29 @@ import { request } from '../../shared/http.js';
 const message = useMessage();
 const adminData = ref(null);
 const showKnowledgeForm = ref(false);
-const configForm = reactive({ baseUrl: '', apiKey: '', model: '' });
+const configForm = reactive({
+  baseUrl: '',
+  apiKey: '',
+  model: '',
+  includeReasoning: false,
+  enableThinking: false,
+  thinkingType: '',
+  reasoningEffort: ''
+});
 const knowledgeForm = reactive({ title: '', category: '校园办事流程', source: '管理员维护', content: '' });
+
+const thinkingTypeOptions = [
+  { label: 'enabled', value: 'enabled' },
+  { label: 'auto', value: 'auto' },
+  { label: 'disabled', value: 'disabled' }
+];
+
+const reasoningEffortOptions = [
+  { label: 'low', value: 'low' },
+  { label: 'medium', value: 'medium' },
+  { label: 'high', value: 'high' },
+  { label: 'max', value: 'max' }
+];
 
 const riskColumns = [
   { title: '用户', key: 'username' },
@@ -93,6 +128,10 @@ async function load() {
   configForm.baseUrl = adminData.value.config.baseUrl;
   configForm.model = adminData.value.config.model;
   configForm.apiKey = '';
+  configForm.includeReasoning = adminData.value.config.includeReasoning;
+  configForm.enableThinking = adminData.value.config.enableThinking;
+  configForm.thinkingType = adminData.value.config.thinkingType;
+  configForm.reasoningEffort = adminData.value.config.reasoningEffort;
 }
 
 async function saveConfig() {

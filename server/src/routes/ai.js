@@ -6,9 +6,13 @@ import {
   cancelAiRun,
   createAiSession,
   createKnowledgeEntry,
+  deleteAiSession,
   getAiAdminData,
   getAiSession,
   listAiSessions,
+  regenerateAiRun,
+  updateAiSession,
+  updateAiUserMessage,
   updateAiConfig
 } from '../services/ai.js';
 
@@ -25,6 +29,22 @@ router.post('/sessions', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/sessions/:id', requireUser, asyncHandler(async (req, res) => {
   res.json(getAiSession(req.store, req.user.id, req.params.id));
+}));
+
+router.patch('/sessions/:id', requireUser, asyncHandler(async (req, res) => {
+  res.json({ session: await updateAiSession(req.store, req.user.id, req.params.id, req.body) });
+}));
+
+router.delete('/sessions/:id', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteAiSession(req.store, req.user.id, req.params.id));
+}));
+
+router.patch('/sessions/:id/messages/:messageId', requireUser, asyncHandler(async (req, res) => {
+  res.json({ message: await updateAiUserMessage(req.store, req.user.id, req.params.id, req.params.messageId, req.body) });
+}));
+
+router.post('/sessions/:id/regenerate', requireUser, asyncHandler(async (req, res) => {
+  res.json(await regenerateAiRun(req.store, req.realtime, req.user.id, req.params.id, req.body));
 }));
 
 router.post('/sessions/:id/cancel', requireUser, asyncHandler(async (req, res) => {
