@@ -51,10 +51,16 @@ router.post('/prompts', auth.requireAdmin, (req, res) => {
   return ok(res, prompt, '提示词已创建');
 });
 
-router.post('/chat', auth.requireAuth, (req, res) => {
-  const result = agent.answer(req.data, req.body.question);
+router.post('/chat', auth.requireAuth, async (req, res) => {
+  let result;
+  try {
+    result = await agent.answer(req.data, req.body.question, { agentKey: req.body.agentKey });
+  } catch (error) {
+    return fail(res, error.status || 502, error.message || '智能体模型请求失败');
+  }
   const sessionId = req.body.sessionId || store.id('session');
   let session = req.data.agentSessions.find((item) => item.id === sessionId);
+  if (session && session.userId !== req.user.id) return fail(res, 403, '无权访问该会话');
   if (!session) {
     session = { id: sessionId, userId: req.user.id, title: req.body.question || '新会话', messages: [], createdAt: store.now() };
     req.data.agentSessions.unshift(session);
@@ -68,6 +74,14 @@ router.post('/chat', auth.requireAuth, (req, res) => {
 
 router.get('/sessions', auth.requireAuth, (req, res) => {
   return ok(res, req.data.agentSessions.filter((item) => item.userId === req.user.id));
+});
+
+router.delete('/sessions/:id', auth.requireAuth, (req, res) => {
+  const index = req.data.agentSessions.findIndex((item) => item.id === req.params.id && item.userId === req.user.id);
+  if (index < 0) return fail(res, 404, '历史会话不存在');
+  req.data.agentSessions.splice(index, 1);
+  store.save(req.data);
+  return ok(res, null, '历史会话已删除');
 });
 
 router.get('/functions/:tool', auth.requireAuth, (req, res) => {

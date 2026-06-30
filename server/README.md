@@ -49,3 +49,15 @@ npm run check:sqlserver
 ```
 
 如果本机 SQL Server 登录失败，后端仍会使用 JSON 演示仓库保证课程设计页面和 API 可运行。
+
+## 智能体模型配置
+
+智能体使用 OpenAI 兼容的 Chat Completions 请求格式。复制 `.env.example` 为 `.env` 后填写：
+
+```env
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=你的 API Key
+OPENAI_MODEL=gpt-4o-mini
+```
+
+`OPENAI_BASE_URL` 可以填写兼容服务的 `/v1` 地址；如果已经包含 `/chat/completions`，后端会直接使用该地址。未配置完整时，智能体接口会返回明确错误，不再使用本地假回答。
