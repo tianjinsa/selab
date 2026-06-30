@@ -15,6 +15,11 @@ import ForumHomePage from './pages/forum/ForumHomePage.vue';
 import ForumCreatePage from './pages/forum/ForumCreatePage.vue';
 import ForumDetailPage from './pages/forum/ForumDetailPage.vue';
 import ForumRankingPage from './pages/forum/ForumRankingPage.vue';
+import MarketHomePage from './pages/market/MarketHomePage.vue';
+import MarketCreatePage from './pages/market/MarketCreatePage.vue';
+import MarketDetailPage from './pages/market/MarketDetailPage.vue';
+import MarketGradePage from './pages/market/MarketGradePage.vue';
+import MarketOrdersPage from './pages/market/MarketOrdersPage.vue';
 
 export const userRouter = createRouter({
   history: createWebHistory('/'),
@@ -34,7 +39,11 @@ export const userRouter = createRouter({
     { path: '/forum/new', component: ForumCreatePage },
     { path: '/forum/rankings', component: ForumRankingPage },
     { path: '/forum/:id', component: ForumDetailPage },
-    { path: '/market', component: PlaceholderPage, props: { title: '校园二手市场', phase: '阶段 4' } },
+    { path: '/market', component: MarketHomePage },
+    { path: '/market/new', component: MarketCreatePage },
+    { path: '/market/grade', component: MarketGradePage },
+    { path: '/market/orders', component: MarketOrdersPage },
+    { path: '/market/:id', component: MarketDetailPage },
     { path: '/ai', component: PlaceholderPage, props: { title: '校园信息智能体', phase: '阶段 5' } }
   ]
 });
