@@ -19,7 +19,7 @@ export function assertPassword(password) {
 }
 
 export function pickProfilePatch(body) {
-  const allowed = ['avatarUrl', 'nickname', 'phone', 'contact', 'bio'];
+  const allowed = ['avatarUrl', 'coverUrl', 'nickname', 'phone', 'contact', 'bio'];
   const patch = {};
   for (const key of allowed) {
     if (Object.prototype.hasOwnProperty.call(body, key)) {

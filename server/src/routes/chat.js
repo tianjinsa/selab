@@ -42,6 +42,7 @@ router.get('/users/:id', requireUser, asyncHandler(async (req, res) => {
       studentId: target.studentId,
       nickname: target.nickname,
       avatarUrl: target.avatarUrl,
+      coverUrl: target.coverUrl || '',
       contact: target.contact,
       bio: target.bio,
       creditScore: target.creditScore,

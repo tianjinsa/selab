@@ -3,20 +3,41 @@
     <section class="surface panel">
       <h2 style="margin-top: 0;">资料维护</h2>
       <n-form :model="form" label-placement="top">
+        <n-form-item label="主页背景">
+          <div class="profile-cover-editor" :style="coverPreviewStyle">
+            <div class="profile-cover-shade">
+              <strong>主页背景</strong>
+              <span>建议使用横向图片，支持 jpg、png、webp</span>
+            </div>
+            <n-upload
+              accept="image/jpeg,image/png,image/webp"
+              :show-file-list="false"
+              :custom-request="uploadCover"
+            >
+              <n-button secondary :loading="coverUploading">
+                <template #icon><ImagePlus :size="16" /></template>
+                更换背景
+              </n-button>
+            </n-upload>
+          </div>
+        </n-form-item>
         <n-form-item label="头像">
           <div class="avatar-upload-row">
-            <n-avatar round :size="64" :src="form.avatarUrl || undefined">
-              {{ avatarText(form.nickname) }}
-            </n-avatar>
+            <n-upload
+              accept="image/jpeg,image/png,image/webp"
+              :show-file-list="false"
+              :custom-request="uploadAvatar"
+            >
+              <button type="button" class="avatar-upload-trigger" :class="{ loading: avatarUploading }">
+                <n-avatar round :size="72" :src="form.avatarUrl || undefined">
+                  {{ avatarText(form.nickname) }}
+                </n-avatar>
+                <span><Camera :size="15" />点击更换</span>
+              </button>
+            </n-upload>
             <div>
-              <n-upload
-                accept="image/jpeg,image/png,image/webp"
-                :show-file-list="false"
-                :custom-request="uploadAvatar"
-              >
-                <n-button secondary :loading="avatarUploading">上传头像</n-button>
-              </n-upload>
-              <p class="muted">支持 jpg、png、webp，上传后会直接保存为当前头像。</p>
+              <strong>点击头像即可上传</strong>
+              <p class="muted">头像会直接保存并同步到帖子、私信和任务信息中。</p>
             </div>
           </div>
         </n-form-item>
@@ -32,7 +53,13 @@
         <n-form-item label="个人简介">
           <n-input v-model:value="form.bio" type="textarea" />
         </n-form-item>
-        <n-button type="primary" :loading="saving" @click="saveProfile">保存资料</n-button>
+        <n-space>
+          <n-button type="primary" :loading="saving" @click="saveProfile">保存资料</n-button>
+          <n-button secondary @click="$router.push(`/users/${session.user?.id}`)">
+            <template #icon><Eye :size="16" /></template>
+            查看我的主页
+          </n-button>
+        </n-space>
       </n-form>
     </section>
 
@@ -65,8 +92,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useMessage } from 'naive-ui';
+import { Camera, Eye, ImagePlus } from '@lucide/vue';
 import { request } from '../../shared/http.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
@@ -74,12 +102,19 @@ const message = useMessage();
 const saving = ref(false);
 const changing = ref(false);
 const avatarUploading = ref(false);
-const form = reactive({ avatarUrl: '', nickname: '', phone: '', contact: '', bio: '' });
+const coverUploading = ref(false);
+const form = reactive({ avatarUrl: '', coverUrl: '', nickname: '', phone: '', contact: '', bio: '' });
 const passwordForm = reactive({ oldPassword: '', newPassword: '' });
+const coverPreviewStyle = computed(() => (
+  form.coverUrl
+    ? { backgroundImage: `linear-gradient(90deg, rgba(19, 39, 35, 0.62), rgba(19, 39, 35, 0.18)), url("${form.coverUrl}")` }
+    : {}
+));
 
 function syncForm() {
   Object.assign(form, {
     avatarUrl: session.user?.avatarUrl || '',
+    coverUrl: session.user?.coverUrl || '',
     nickname: session.user?.nickname || '',
     phone: session.user?.phone || '',
     contact: session.user?.contact || '',
@@ -93,21 +128,29 @@ onMounted(async () => {
 });
 
 async function uploadAvatar({ file, onFinish, onError }) {
-  avatarUploading.value = true;
+  await uploadProfileImage(file, 'avatarUrl', avatarUploading, '头像已更新', onFinish, onError);
+}
+
+async function uploadCover({ file, onFinish, onError }) {
+  await uploadProfileImage(file, 'coverUrl', coverUploading, '主页背景已更新', onFinish, onError);
+}
+
+async function uploadProfileImage(file, field, loadingRef, successText, onFinish, onError) {
+  loadingRef.value = true;
   try {
     const body = new FormData();
     body.append('file', file.file);
     const uploadData = await request('/api/files/upload', { method: 'POST', body });
-    const profileData = await request('/api/profile', { method: 'PATCH', body: { avatarUrl: uploadData.url } });
+    const profileData = await request('/api/profile', { method: 'PATCH', body: { [field]: uploadData.url } });
     session.user = profileData.user;
     syncForm();
-    message.success('头像已更新');
+    message.success(successText);
     onFinish();
   } catch (error) {
     message.error(error.message || '上传失败');
     onError();
   } finally {
-    avatarUploading.value = false;
+    loadingRef.value = false;
   }
 }
 
