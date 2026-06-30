@@ -28,6 +28,7 @@ setInterval(() => {
 }, 60 * 60 * 1000);
 
 process.on('SIGINT', async () => {
+  realtime.close();
   await store.close();
   process.exit(0);
 });

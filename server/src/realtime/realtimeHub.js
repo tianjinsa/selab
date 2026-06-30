@@ -3,16 +3,20 @@ import { verifyUserToken } from '../services/auth.js';
 import { markConversationRead, sendMessage } from '../services/chat.js';
 import { cancelAiRun, startAiRun } from '../services/ai.js';
 
+const WS_OPEN = 1;
+
 export class RealtimeHub {
   constructor(store) {
     this.store = store;
     this.clients = new Map();
     this.wss = null;
+    this.heartbeatTimer = null;
   }
 
   attach(server) {
     this.wss = new WebSocketServer({ server, path: '/ws' });
     this.wss.on('connection', (ws, req) => this.handleConnection(ws, req));
+    this.heartbeatTimer = setInterval(() => this.pingClients(), 30 * 1000);
   }
 
   sendToUser(userId, event, payload) {
@@ -20,7 +24,7 @@ export class RealtimeHub {
     if (!sockets) return;
     const message = JSON.stringify({ event, payload });
     for (const ws of sockets) {
-      if (ws.readyState === ws.OPEN) ws.send(message);
+      if (ws.readyState === WS_OPEN) ws.send(message);
     }
   }
 
@@ -31,9 +35,13 @@ export class RealtimeHub {
       if (!token) throw new Error('missing token');
       const user = verifyUserToken(token, this.store);
       ws.userId = user.id;
+      ws.isAlive = true;
       if (!this.clients.has(user.id)) this.clients.set(user.id, new Set());
       this.clients.get(user.id).add(ws);
       ws.send(JSON.stringify({ event: 'auth.ok', payload: { userId: user.id } }));
+      ws.on('pong', () => {
+        ws.isAlive = true;
+      });
       ws.on('message', (raw) => this.handleMessage(ws, raw));
       ws.on('close', () => this.removeClient(ws));
       ws.on('error', () => this.removeClient(ws));
@@ -86,5 +94,31 @@ export class RealtimeHub {
     } catch (error) {
       ws.send(JSON.stringify({ event: 'error', payload: { message: error.message || 'WebSocket 操作失败' } }));
     }
+  }
+
+  pingClients() {
+    if (!this.wss) return;
+    for (const ws of this.wss.clients) {
+      if (ws.isAlive === false) {
+        this.removeClient(ws);
+        ws.terminate();
+        continue;
+      }
+      ws.isAlive = false;
+      try {
+        ws.ping();
+      } catch {
+        this.removeClient(ws);
+        ws.terminate();
+      }
+    }
+  }
+
+  close() {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
+    this.wss?.close();
+    this.wss = null;
+    this.clients.clear();
   }
 }
