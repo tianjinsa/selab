@@ -33,7 +33,7 @@
         </div>
       </div>
       <div class="hero-status">
-        <div class="credit-ring" :style="{ '--credit-progress': creditProgress }">
+        <div class="credit-ring" :style="creditRingStyle">
           <span>{{ session.user?.creditScore ?? '-' }}</span>
           <small>信用分</small>
         </div>
@@ -176,10 +176,26 @@ const posts = ref([]);
 const products = ref([]);
 const searchText = ref('');
 const searchTarget = ref('ai');
-const creditProgress = computed(() => {
+const creditScore = computed(() => {
   const score = Number(session.user?.creditScore ?? 0);
-  const bounded = Math.max(0, Math.min(10, score));
-  return `${bounded * 36}deg`;
+  return Math.max(0, Math.min(10, score));
+});
+const creditRingStyle = computed(() => {
+  const score = creditScore.value;
+  const theme = score < 4
+    ? { color: '#ef5a5a', track: 'rgba(239, 90, 90, 0.22)', core: 'rgba(73, 28, 31, 0.94)', glow: 'rgba(239, 90, 90, 0.24)' }
+    : score < 6
+      ? { color: '#f2a93b', track: 'rgba(242, 169, 59, 0.24)', core: 'rgba(72, 48, 22, 0.94)', glow: 'rgba(242, 169, 59, 0.24)' }
+      : score < 8
+        ? { color: '#42b883', track: 'rgba(66, 184, 131, 0.22)', core: 'rgba(21, 58, 49, 0.94)', glow: 'rgba(66, 184, 131, 0.22)' }
+        : { color: '#4dd7c0', track: 'rgba(77, 215, 192, 0.24)', core: 'rgba(18, 53, 47, 0.94)', glow: 'rgba(77, 215, 192, 0.28)' };
+  return {
+    '--credit-progress': `${score * 36}deg`,
+    '--credit-color': theme.color,
+    '--credit-track': theme.track,
+    '--credit-core': theme.core,
+    '--credit-glow': theme.glow
+  };
 });
 
 const searchOptions = [
