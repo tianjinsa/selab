@@ -11,6 +11,10 @@ import TaskFormPage from './pages/tasks/TaskFormPage.vue';
 import TaskPaymentPage from './pages/tasks/TaskPaymentPage.vue';
 import TaskDetailPage from './pages/tasks/TaskDetailPage.vue';
 import TaskRankingPage from './pages/tasks/TaskRankingPage.vue';
+import ForumHomePage from './pages/forum/ForumHomePage.vue';
+import ForumCreatePage from './pages/forum/ForumCreatePage.vue';
+import ForumDetailPage from './pages/forum/ForumDetailPage.vue';
+import ForumRankingPage from './pages/forum/ForumRankingPage.vue';
 
 export const userRouter = createRouter({
   history: createWebHistory('/'),
@@ -26,7 +30,10 @@ export const userRouter = createRouter({
     { path: '/tasks/:id/edit', component: TaskFormPage },
     { path: '/tasks/:id/payment', component: TaskPaymentPage },
     { path: '/tasks/:id', component: TaskDetailPage },
-    { path: '/forum', component: PlaceholderPage, props: { title: '校园社区论坛', phase: '阶段 3' } },
+    { path: '/forum', component: ForumHomePage },
+    { path: '/forum/new', component: ForumCreatePage },
+    { path: '/forum/rankings', component: ForumRankingPage },
+    { path: '/forum/:id', component: ForumDetailPage },
     { path: '/market', component: PlaceholderPage, props: { title: '校园二手市场', phase: '阶段 4' } },
     { path: '/ai', component: PlaceholderPage, props: { title: '校园信息智能体', phase: '阶段 5' } }
   ]

@@ -4,6 +4,7 @@ import AdminLoginPage from './pages/AdminLoginPage.vue';
 import AdminDashboardPage from './pages/AdminDashboardPage.vue';
 import AdminUsersPage from './pages/AdminUsersPage.vue';
 import AdminTasksPage from './pages/AdminTasksPage.vue';
+import AdminForumPage from './pages/AdminForumPage.vue';
 
 export const adminRouter = createRouter({
   history: createWebHistory('/admin'),
@@ -11,7 +12,8 @@ export const adminRouter = createRouter({
     { path: '/login', component: AdminLoginPage, meta: { public: true } },
     { path: '/', component: AdminDashboardPage },
     { path: '/users', component: AdminUsersPage },
-    { path: '/tasks', component: AdminTasksPage }
+    { path: '/tasks', component: AdminTasksPage },
+    { path: '/forum', component: AdminForumPage }
   ]
 });
 

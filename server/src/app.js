@@ -10,6 +10,7 @@ import chatRoutes from './routes/chat.js';
 import notificationRoutes from './routes/notifications.js';
 import fileRoutes from './routes/files.js';
 import taskRoutes from './routes/tasks.js';
+import forumRoutes from './routes/forum.js';
 import { ApiError } from './utils/errors.js';
 
 export function createApp(store, realtime) {
@@ -40,6 +41,7 @@ export function createApp(store, realtime) {
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/files', fileRoutes);
   app.use('/api/tasks', taskRoutes);
+  app.use('/api/forum', forumRoutes);
 
   if (fs.existsSync(config.publicDir)) {
     app.use(express.static(config.publicDir));
