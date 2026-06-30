@@ -10,10 +10,13 @@ coverage/
 
 server/public/
 server/uploads/
+server/data/
 server/.env
 server/.env.*
+!server/.env.example
 web/.env
 web/.env.*
+!web/.env.example
 
 *.log
 npm-debug.log*

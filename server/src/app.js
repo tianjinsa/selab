@@ -1,0 +1,72 @@
+import express from 'express';
+import cors from 'cors';
+import path from 'node:path';
+import fs from 'node:fs';
+import { config } from './config.js';
+import authRoutes from './routes/auth.js';
+import profileRoutes from './routes/profile.js';
+import adminRoutes from './routes/admin.js';
+import chatRoutes from './routes/chat.js';
+import notificationRoutes from './routes/notifications.js';
+import fileRoutes from './routes/files.js';
+import { ApiError } from './utils/errors.js';
+
+export function createApp(store, realtime) {
+  const app = express();
+  app.use(cors());
+  app.use(express.json({ limit: '2mb' }));
+  app.use('/uploads', express.static(config.uploadDir));
+
+  app.use((req, _res, next) => {
+    req.store = store;
+    req.realtime = realtime;
+    next();
+  });
+
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      ok: true,
+      app: 'campus-life-service',
+      db: store.status,
+      time: new Date().toISOString()
+    });
+  });
+
+  app.use('/api/auth', authRoutes);
+  app.use('/api/profile', profileRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api', chatRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/files', fileRoutes);
+
+  if (fs.existsSync(config.publicDir)) {
+    app.use(express.static(config.publicDir));
+    app.get('/admin*', (_req, res) => {
+      res.sendFile(path.join(config.publicDir, 'admin.html'));
+    });
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
+      res.sendFile(path.join(config.publicDir, 'index.html'));
+    });
+  }
+
+  app.use((req, _res, next) => {
+    if (req.path.startsWith('/api')) return next(new ApiError(404, '接口不存在'));
+    next();
+  });
+
+  app.use((error, _req, res, _next) => {
+    const status = error.status || 500;
+    if (status >= 500) {
+      console.error(error);
+    }
+    res.status(status).json({
+      error: {
+        message: error.message || '服务器内部错误',
+        details: error.details || null
+      }
+    });
+  });
+
+  return app;
+}
