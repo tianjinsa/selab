@@ -31,7 +31,7 @@
       <n-button style="margin-top: 12px;" secondary @click="loadTasks">筛选任务</n-button>
     </section>
 
-    <div v-if="tasks.length" class="grid grid-3">
+    <transition-group v-if="tasks.length" name="card-flow" tag="div" class="grid grid-3" appear>
       <article v-for="task in tasks" :key="task.id" class="module-card">
         <div>
           <n-space justify="space-between" align="center">
@@ -47,7 +47,7 @@
           <n-button secondary @click="$router.push(`/tasks/${task.id}`)">查看详情</n-button>
         </n-space>
       </article>
-    </div>
+    </transition-group>
     <section v-else class="surface empty-state">当前筛选条件下没有任务</section>
   </div>
 </template>

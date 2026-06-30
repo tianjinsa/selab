@@ -8,7 +8,7 @@
         </n-button>
       </div>
 
-      <div class="conversation-scroll">
+      <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
         <article
           v-for="item in sessions"
           :key="item.id"
@@ -48,18 +48,19 @@
             </div>
           </template>
         </article>
-        <div v-if="!sessions.length" class="empty-state compact">还没有 AI 会话</div>
-      </div>
+        <div v-if="!sessions.length" key="empty" class="empty-state compact">还没有 AI 会话</div>
+      </transition-group>
     </aside>
 
     <main class="message-board ai-message-board">
       <div class="message-stream ai-message-stream" ref="streamRef">
-        <div
-          v-for="item in messages"
-          :key="item.id"
-          class="message-bubble"
-          :class="{ mine: item.role === 'user', assistant: item.role === 'assistant' }"
-        >
+        <transition-group name="message-flow" tag="div" class="message-flow-list" appear>
+          <div
+            v-for="item in messages"
+            :key="item.id"
+            class="message-bubble"
+            :class="{ mine: item.role === 'user', assistant: item.role === 'assistant' }"
+          >
           <div class="message-meta">
             <span>{{ item.role === 'user' ? '我' : '校园智能体' }}</span>
             <small class="muted">
@@ -145,7 +146,8 @@
               </n-button>
             </div>
           </template>
-        </div>
+          </div>
+        </transition-group>
 
         <div v-if="!messages.length" class="empty-state">
           <Bot :size="34" />
@@ -283,6 +285,7 @@ async function stop() {
   await request(`/api/ai/sessions/${sessionId.value}/cancel`, { method: 'POST' }).catch(() => {});
   running.value = false;
   await loadSessions();
+  notice.success('已停止生成');
 }
 
 function beginRename(item) {
@@ -304,6 +307,7 @@ async function saveRename(item) {
   await request(`/api/ai/sessions/${item.id}`, { method: 'PATCH', body: { title } });
   cancelRename();
   await loadSessions();
+  notice.success('会话已重命名');
 }
 
 function confirmDeleteSession(item) {
@@ -347,19 +351,22 @@ async function saveEdit(item, shouldRegenerate) {
   });
   cancelEdit();
   if (shouldRegenerate) {
-    await regenerate(item);
+    notice.success('已保存修改，正在重新生成');
+    await regenerate(item, true);
   } else {
     await selectSession(sessionId.value);
+    notice.success('消息已保存');
   }
 }
 
-async function regenerate(item) {
+async function regenerate(item, silent = false) {
   if (!sessionId.value || running.value) return;
   running.value = true;
   await request(`/api/ai/sessions/${sessionId.value}/regenerate`, {
     method: 'POST',
     body: { messageId: item.id }
   });
+  if (!silent) notice.success('已开始重新生成');
   await loadSessions();
   await selectSession(sessionId.value);
 }

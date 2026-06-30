@@ -13,13 +13,15 @@
           </div>
         </n-alert>
       </div>
-      <div v-for="conversation in conversations" :key="conversation.id" class="conversation-item" :class="{ active: activeId === conversation.id }" @click="selectConversation(conversation.id)">
-        <n-space justify="space-between">
-          <strong>{{ conversation.peer?.nickname || '同学' }}</strong>
-          <n-badge v-if="conversation.unreadCount" :value="conversation.unreadCount" />
-        </n-space>
-        <div class="muted" style="margin-top: 4px;">{{ conversation.lastMessage?.content || '还没有消息' }}</div>
-      </div>
+      <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
+        <div v-for="conversation in conversations" :key="conversation.id" class="conversation-item" :class="{ active: activeId === conversation.id }" @click="selectConversation(conversation.id)">
+          <n-space justify="space-between">
+            <strong>{{ conversation.peer?.nickname || '同学' }}</strong>
+            <n-badge v-if="conversation.unreadCount" :value="conversation.unreadCount" />
+          </n-space>
+          <div class="muted" style="margin-top: 4px;">{{ conversation.lastMessage?.content || '还没有消息' }}</div>
+        </div>
+      </transition-group>
       <div v-if="!conversations.length" class="empty-state">搜索同学后开始第一段私信</div>
     </aside>
 
@@ -27,6 +29,7 @@
       <div v-if="!activeId" class="empty-state">选择一个会话查看消息</div>
       <template v-else>
         <div class="message-stream" ref="streamRef">
+          <transition-group name="message-flow" tag="div" class="message-flow-list" appear>
           <div v-for="item in messages" :key="item.id" class="message-bubble" :class="{ mine: item.senderId === session.user?.id }">
             <div v-if="item.card" class="business-card">
               <div class="business-card-title">
@@ -49,6 +52,7 @@
             <div v-else>{{ item.content }}</div>
             <small class="muted">{{ formatTime(item.createdAt) }}</small>
           </div>
+          </transition-group>
         </div>
         <div class="message-composer">
           <n-input v-model:value="draft" placeholder="输入消息，Enter 发送" @keyup.enter="send" />
@@ -144,11 +148,13 @@ async function send() {
 }
 
 async function toggleMute() {
+  const nextMuted = !activeConversationMuted.value;
   await request(`/api/conversations/${activeId.value}/mute`, {
     method: 'PATCH',
-    body: { muted: !activeConversationMuted.value }
+    body: { muted: nextMuted }
   });
   await loadConversations();
+  notice.success(nextMuted ? '已开启免打扰' : '已取消免打扰');
 }
 
 function connectSocket() {
