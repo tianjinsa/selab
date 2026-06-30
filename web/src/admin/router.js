@@ -5,6 +5,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage.vue';
 import AdminUsersPage from './pages/AdminUsersPage.vue';
 import AdminTasksPage from './pages/AdminTasksPage.vue';
 import AdminForumPage from './pages/AdminForumPage.vue';
+import AdminMarketPage from './pages/AdminMarketPage.vue';
 
 export const adminRouter = createRouter({
   history: createWebHistory('/admin'),
@@ -13,7 +14,8 @@ export const adminRouter = createRouter({
     { path: '/', component: AdminDashboardPage },
     { path: '/users', component: AdminUsersPage },
     { path: '/tasks', component: AdminTasksPage },
-    { path: '/forum', component: AdminForumPage }
+    { path: '/forum', component: AdminForumPage },
+    { path: '/market', component: AdminMarketPage }
   ]
 });
 
