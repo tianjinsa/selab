@@ -46,16 +46,18 @@
     </view>
 
     <block wx:else>
-      <view wx:for="{{messages}}" wx:key="id" wx:if="{{item.id !== 'welcome'}}" class="message-row {{item.role}}">
-        <view wx:if="{{item.role === 'assistant'}}" class="avatar">{{activeAgent.badge}}</view>
-        <view class="bubble">
-          <view class="message-text">{{item.text}}</view>
-          <view wx:if="{{item.source}}" class="source-row">
-            <t-tag size="small" theme="primary" variant="light">{{item.tool}}</t-tag>
-            <text>{{item.source}}</text>
+      <block wx:for="{{messages}}" wx:key="id">
+        <view wx:if="{{item.id !== 'welcome'}}" class="message-row {{item.role}}">
+          <view wx:if="{{item.role === 'assistant'}}" class="avatar">{{activeAgent.badge}}</view>
+          <view class="bubble">
+            <view class="message-text">{{item.text}}</view>
+            <view wx:if="{{item.source}}" class="source-row">
+              <t-tag size="small" theme="primary" variant="light">{{item.tool}}</t-tag>
+              <text>{{item.source}}</text>
+            </view>
           </view>
         </view>
-      </view>
+      </block>
 
       <view wx:if="{{loading}}" class="message-row assistant">
         <view class="avatar">{{activeAgent.badge}}</view>

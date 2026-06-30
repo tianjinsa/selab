@@ -47,9 +47,11 @@
       <view class="card-header__title"> 交易地点 </view>
     </view>
     <view class="card-content">
-      <view wx:if="{{areaDataList.length}}" class="card-content__item" wx:for="{{areaDataList}}" wx:key="name">
-        <view class="card-content__item--desc"> {{item.name}} </view>
-      </view>
+      <block wx:if="{{areaDataList.length}}">
+        <view class="card-content__item" wx:for="{{areaDataList}}" wx:key="name">
+          <view class="card-content__item--desc"> {{item.name}} </view>
+        </view>
+      </block>
       <t-empty wx:else icon="info-circle-filled" description="暂无地点数据" />
     </view>
   </view>
