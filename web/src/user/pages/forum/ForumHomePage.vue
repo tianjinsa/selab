@@ -34,7 +34,7 @@
       <n-alert style="margin-top: 12px;" type="info" :show-icon="false">{{ summary?.summary || '暂无社区热点总结' }}</n-alert>
     </section>
 
-    <div v-if="posts.length" class="waterfall">
+    <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall" appear>
       <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
         <img v-if="post.imageUrls?.[0]" class="post-cover" :src="post.imageUrls[0]" alt="帖子封面" />
         <n-space justify="space-between" align="center">
@@ -50,7 +50,7 @@
           <span class="muted">赞 {{ post.likeCount }} · 评 {{ post.commentCount }} · 藏 {{ post.favoriteCount }}</span>
         </n-space>
       </article>
-    </div>
+    </transition-group>
     <section v-else class="surface empty-state">当前没有帖子</section>
   </div>
 </template>

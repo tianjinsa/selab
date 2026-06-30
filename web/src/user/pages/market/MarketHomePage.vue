@@ -21,7 +21,7 @@
       </n-grid>
     </section>
 
-    <div v-if="products.length" class="grid grid-3">
+    <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
       <article v-for="product in products" :key="product.id" class="module-card">
         <div>
           <img v-if="product.imageUrls?.[0]" class="post-cover" :src="product.imageUrls[0]" alt="商品图" />
@@ -38,7 +38,7 @@
           <n-button secondary @click="$router.push(`/market/${product.id}`)">查看详情</n-button>
         </n-space>
       </article>
-    </div>
+    </transition-group>
     <section v-else class="surface empty-state">当前筛选下没有商品</section>
   </div>
 </template>

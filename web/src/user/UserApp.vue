@@ -2,7 +2,11 @@
   <n-config-provider>
     <n-message-provider>
       <n-dialog-provider>
-        <router-view v-if="$route.meta.public" />
+        <router-view v-if="$route.meta.public" v-slot="{ Component, route }">
+          <transition name="page-flow" mode="out-in" appear>
+            <component :is="Component" :key="route.fullPath" />
+          </transition>
+        </router-view>
         <div v-else class="app-shell">
           <aside class="side-nav">
             <div class="brand-block">
@@ -38,7 +42,11 @@
                 </n-button>
               </n-space>
             </div>
-            <router-view />
+            <router-view v-slot="{ Component, route }">
+              <transition name="page-flow" mode="out-in" appear>
+                <component :is="Component" :key="route.fullPath" />
+              </transition>
+            </router-view>
           </main>
         </div>
       </n-dialog-provider>

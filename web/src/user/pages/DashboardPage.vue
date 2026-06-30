@@ -54,7 +54,7 @@
       </div>
     </section>
 
-    <section class="service-strip">
+    <transition-group name="card-flow" tag="section" class="service-strip" appear>
       <article v-for="item in services" :key="item.path" class="service-tile" @click="$router.push(item.path)">
         <div class="service-icon"><component :is="item.icon" :size="22" /></div>
         <div>
@@ -63,7 +63,7 @@
         </div>
         <ArrowRight :size="18" />
       </article>
-    </section>
+    </transition-group>
 
     <section class="home-section">
       <div class="section-heading">
@@ -80,13 +80,13 @@
             <strong>新任务</strong>
             <n-button text size="small" @click="$router.push('/tasks')">更多</n-button>
           </div>
-          <div v-if="tasks.length" class="live-list">
+          <transition-group v-if="tasks.length" name="card-flow" tag="div" class="live-list" appear>
             <button v-for="task in tasks" :key="task.id" type="button" @click="$router.push(`/tasks/${task.id}`)">
               <span>{{ task.title }}</span>
               <strong>￥{{ task.reward }}</strong>
               <small>{{ task.campusArea }} · {{ task.category }}</small>
             </button>
-          </div>
+          </transition-group>
           <div v-else class="compact-empty">
             <p>还没有正在招募的任务。</p>
             <n-button size="small" type="primary" @click="$router.push('/tasks/new')">发布第一个任务</n-button>
@@ -99,12 +99,12 @@
             <strong>社区正在聊</strong>
             <n-button text size="small" @click="$router.push('/forum')">更多</n-button>
           </div>
-          <div v-if="posts.length" class="live-list">
+          <transition-group v-if="posts.length" name="card-flow" tag="div" class="live-list" appear>
             <button v-for="post in posts" :key="post.id" type="button" @click="$router.push(`/forum/${post.id}`)">
               <span>{{ post.title }}</span>
               <small>{{ post.author?.nickname || '同学' }} · 赞 {{ post.likeCount }} · 评 {{ post.commentCount }}</small>
             </button>
-          </div>
+          </transition-group>
           <div v-else class="compact-empty">
             <p>社区还没有新内容。</p>
             <n-button size="small" type="primary" @click="$router.push('/forum/new')">分享校园动态</n-button>
@@ -117,13 +117,13 @@
             <strong>二手好物</strong>
             <n-button text size="small" @click="$router.push('/market')">更多</n-button>
           </div>
-          <div v-if="products.length" class="live-list">
+          <transition-group v-if="products.length" name="card-flow" tag="div" class="live-list" appear>
             <button v-for="product in products" :key="product.id" type="button" @click="$router.push(`/market/${product.id}`)">
               <span>{{ product.title }}</span>
               <strong>￥{{ product.price }}</strong>
               <small>{{ product.category?.name || '分类' }} · {{ product.condition }}</small>
             </button>
-          </div>
+          </transition-group>
           <div v-else class="compact-empty">
             <p>暂时没有在售商品。</p>
             <n-button size="small" type="primary" @click="$router.push('/market/new')">发布闲置</n-button>
