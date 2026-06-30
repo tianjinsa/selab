@@ -23,3 +23,24 @@
 - 业务闭环优先于静态展示，关键状态必须可追踪。
 - Mock 数据只用于后台展示类功能，不改变真实业务状态。
 - 每个阶段保持 `main` 可运行、可演示、可继续迭代。
+
+## 运行方式
+
+```bash
+npm install
+npm run build
+npm run start
+```
+
+启动后访问：
+
+- 用户端：`http://localhost:3000/`
+- 管理员端：`http://localhost:3000/admin`
+
+演示账号：
+
+- 普通用户：`202600000001 / 123456`
+- 普通用户：`202600000002 / 123456`
+- 管理员：`admin / 123456`
+
+后端会优先连接本地 SQL Server：`localhost:8887 / CampusLifeService`。如果连接不可用，会自动进入本地演示数据模式，并在 `/api/health` 中显示当前数据模式。
