@@ -1,6 +1,7 @@
 const express = require('express');
 const auth = require('../services/auth');
 const store = require('../services/store');
+const categories = require('../services/categories');
 const { ok, fail } = require('../response');
 
 const router = express.Router();
@@ -29,7 +30,16 @@ router.get('/overview', (req, res) => {
 router.get('/settings', (req, res) => ok(res, req.data.settings));
 
 router.put('/settings', (req, res) => {
-  req.data.settings = { ...req.data.settings, ...req.body };
+  const nextSettings = { ...req.data.settings, ...req.body };
+  if (Object.prototype.hasOwnProperty.call(req.body, 'taskCategories')) {
+    nextSettings.taskCategories = categories
+      .normalizeTaskCategories({ taskCategories: req.body.taskCategories }, [])
+      .filter((item) => item !== '全部');
+  }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'goodsCategories')) {
+    nextSettings.goodsCategories = categories.normalizeGoodsCategories({ goodsCategories: req.body.goodsCategories }, []);
+  }
+  req.data.settings = nextSettings;
   store.audit(req.data, { type: 'admin', title: '更新系统参数', actorId: req.user.id });
   store.save(req.data);
   return ok(res, req.data.settings, '系统参数已更新');

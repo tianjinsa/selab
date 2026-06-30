@@ -187,6 +187,37 @@
                 <el-option v-for="word in settings.sensitiveWords" :key="word" :label="word" :value="word" />
               </el-select>
             </el-form-item>
+            <el-form-item label="任务分类">
+              <div class="category-editor">
+                <div v-for="(category, index) in settings.taskCategories" :key="`task-${index}`" class="category-row">
+                  <el-input v-model="settings.taskCategories[index]" placeholder="任务分类名称" />
+                  <el-button :disabled="index === 0" @click="moveTaskCategory(index, -1)">上移</el-button>
+                  <el-button :disabled="index === settings.taskCategories.length - 1" @click="moveTaskCategory(index, 1)">下移</el-button>
+                  <el-button type="danger" @click="removeTaskCategory(index)">删除</el-button>
+                </div>
+                <el-button type="primary" plain @click="addTaskCategory">新增任务分类</el-button>
+              </div>
+            </el-form-item>
+            <el-form-item label="市场分类">
+              <div class="category-editor">
+                <div v-for="(category, index) in settings.goodsCategories" :key="`goods-${index}`" class="goods-category-box">
+                  <div class="category-row">
+                    <el-input v-model="category.name" placeholder="一级分类名称" />
+                    <el-button :disabled="index === 0" @click="moveGoodsCategory(index, -1)">上移</el-button>
+                    <el-button :disabled="index === settings.goodsCategories.length - 1" @click="moveGoodsCategory(index, 1)">下移</el-button>
+                    <el-button type="danger" @click="removeGoodsCategory(index)">删除</el-button>
+                  </div>
+                  <div class="child-category-list">
+                    <div v-for="(child, childIndex) in category.children" :key="`goods-${index}-${childIndex}`" class="category-row child-row">
+                      <el-input v-model="category.children[childIndex]" placeholder="子分类名称" />
+                      <el-button type="danger" plain @click="removeGoodsChild(index, childIndex)">删除子类</el-button>
+                    </div>
+                    <el-button size="small" plain @click="addGoodsChild(index)">新增子分类</el-button>
+                  </div>
+                </div>
+                <el-button type="primary" plain @click="addGoodsCategory">新增一级分类</el-button>
+              </div>
+            </el-form-item>
             <el-button type="primary" @click="saveSettings">保存参数</el-button>
           </el-form>
         </section>
@@ -214,6 +245,11 @@ const reports = ref([]);
 const knowledge = ref([]);
 const prompts = ref([]);
 const settings = reactive({
+  taskCategories: ['跑腿代办', '学业互助', '技能服务', '其他互助'],
+  goodsCategories: [
+    { name: '数码', children: ['手机平板', '电脑配件', '影音设备'] },
+    { name: '书籍', children: ['教材教辅', '考试资料', '课外读物'] }
+  ],
   taskRewardRange: [1, 300],
   sensitiveWords: [],
   invitationRequired: true,
@@ -243,6 +279,77 @@ const metrics = computed(() => [
   { label: '待审举报', value: overview.value.unreadReports || 0, hint: '人工处理队列' },
   { label: '智能问答', value: overview.value.questionCount || 0, hint: '累计用户提问' }
 ]);
+
+function normalizeGoodsCategory(item) {
+  if (typeof item === 'string') return { name: item, children: [] };
+  return {
+    name: item?.name || '',
+    children: Array.isArray(item?.children) ? item.children : []
+  };
+}
+
+function normalizeSettings(data = {}) {
+  Object.assign(settings, data);
+  if (!Array.isArray(settings.taskCategories)) settings.taskCategories = [];
+  if (!settings.taskCategories.length) settings.taskCategories = ['跑腿代办', '学业互助', '技能服务', '其他互助'];
+  if (!Array.isArray(settings.goodsCategories)) settings.goodsCategories = [];
+  settings.goodsCategories = settings.goodsCategories.map(normalizeGoodsCategory);
+  if (!settings.goodsCategories.length) settings.goodsCategories = [{ name: '数码', children: [] }];
+  if (!Array.isArray(settings.sensitiveWords)) settings.sensitiveWords = [];
+  if (!Array.isArray(settings.taskRewardRange)) settings.taskRewardRange = [1, 300];
+}
+
+function moveItem(list, index, offset) {
+  const nextIndex = index + offset;
+  if (nextIndex < 0 || nextIndex >= list.length) return;
+  const [item] = list.splice(index, 1);
+  list.splice(nextIndex, 0, item);
+}
+
+function addTaskCategory() {
+  settings.taskCategories.push('新任务分类');
+}
+
+function removeTaskCategory(index) {
+  settings.taskCategories.splice(index, 1);
+}
+
+function moveTaskCategory(index, offset) {
+  moveItem(settings.taskCategories, index, offset);
+}
+
+function addGoodsCategory() {
+  settings.goodsCategories.push({ name: '新一级分类', children: [] });
+}
+
+function removeGoodsCategory(index) {
+  settings.goodsCategories.splice(index, 1);
+}
+
+function moveGoodsCategory(index, offset) {
+  moveItem(settings.goodsCategories, index, offset);
+}
+
+function addGoodsChild(index) {
+  settings.goodsCategories[index].children.push('新子分类');
+}
+
+function removeGoodsChild(index, childIndex) {
+  settings.goodsCategories[index].children.splice(childIndex, 1);
+}
+
+function settingsPayload() {
+  return {
+    ...settings,
+    taskCategories: settings.taskCategories.map((item) => String(item || '').trim()).filter(Boolean),
+    goodsCategories: settings.goodsCategories
+      .map((item) => ({
+        name: String(item.name || '').trim(),
+        children: (item.children || []).map((child) => String(child || '').trim()).filter(Boolean)
+      }))
+      .filter((item) => item.name)
+  };
+}
 
 async function login() {
   loading.value = true;
@@ -293,7 +400,7 @@ async function loadAll() {
   reports.value = reportData;
   knowledge.value = knowledgeData;
   prompts.value = promptData;
-  Object.assign(settings, settingsData);
+  normalizeSettings(settingsData);
 }
 
 async function updateTask(row, status) {
@@ -329,7 +436,7 @@ async function handleReport(row, status) {
 }
 
 async function saveSettings() {
-  await api('/admin/settings', { method: 'PUT', body: settings });
+  await api('/admin/settings', { method: 'PUT', body: settingsPayload() });
   ElMessage.success('系统参数已保存');
   await loadAll();
 }
@@ -494,5 +601,38 @@ h2 {
 
 .settings-grid {
   max-width: 760px;
+}
+
+.category-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.category-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.goods-category-box {
+  padding: 12px;
+  border: 1px solid #e1e8f2;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.child-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-left: 24px;
+}
+
+.child-row {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 </style>

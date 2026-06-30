@@ -399,7 +399,12 @@ const settings = {
   communityCategories: ['求助', '经验分享', '校园生活', '活动组队'],
   sensitiveWords: ['违规交易', '代考', '作弊'],
   rankingRefresh: '每小时',
-  goodsCategories: ['数码', '服饰', '书籍', '生活用品'],
+  goodsCategories: [
+    { name: '数码', children: ['手机平板', '电脑配件', '影音设备'] },
+    { name: '书籍', children: ['教材教辅', '考试资料', '课外读物'] },
+    { name: '服饰', children: ['上衣', '鞋包', '配饰'] },
+    { name: '生活用品', children: ['宿舍日用', '运动户外', '小家电'] }
+  ],
   invitationRequired: true
 };
 

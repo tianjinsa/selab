@@ -17,6 +17,7 @@ const messageRoutes = require('./routes/messages');
 const agentRoutes = require('./routes/agent');
 const adminRoutes = require('./routes/admin');
 const reportRoutes = require('./routes/reports');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const server = http.createServer(app);
@@ -39,6 +40,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingsRoutes);
 
 const publicDir = path.resolve(__dirname, '../public');
 app.use('/admin', express.static(publicDir));
