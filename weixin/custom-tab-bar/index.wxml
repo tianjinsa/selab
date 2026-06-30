@@ -1,9 +1,21 @@
+<view wx:if="{{transitionState !== 'idle'}}" class="tab-transition-layer state-{{transitionState}} direction-{{transitionDirection}}">
+  <view class="transition-panel">
+    <view wx:if="{{transitionState === 'source'}}" class="transition-spinner"></view>
+    <view wx:else class="transition-done">{{transitionState === 'failed' ? '!' : '✓'}}</view>
+    <view class="transition-bar"></view>
+    <view class="transition-text">{{transitionText}}</view>
+  </view>
+</view>
+
 <view class="custom-tab-bar">
   <view
     wx:for="{{list}}"
     wx:key="value"
-    class="tab-item {{item.value === value ? 'is-active' : ''}}"
+    class="tab-item {{item.value === value ? 'is-active' : ''}} {{pressedValue === item.value ? 'is-pressing' : ''}}"
     data-value="{{item.value}}"
+    bindtouchstart="handlePressStart"
+    bindtouchcancel="clearPress"
+    bindtouchend="clearPress"
     bindtap="handleTap"
   >
     <view class="tab-icon-shell {{item.isManageEntry ? 'is-manage' : ''}}">

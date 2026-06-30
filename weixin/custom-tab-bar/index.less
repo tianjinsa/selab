@@ -11,6 +11,92 @@
   box-sizing: border-box;
 }
 
+.tab-transition-layer {
+  position: fixed;
+  right: 0;
+  bottom: calc(@tab-bar-height + env(safe-area-inset-bottom) + 18rpx);
+  left: 0;
+  z-index: 10030;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.transition-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100vw - 48rpx);
+  height: 64rpx;
+  gap: 12rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid #d8e5ff;
+  border-radius: 24rpx;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14rpx 36rpx rgba(15, 23, 42, 0.12);
+  box-sizing: border-box;
+  animation: transition-panel-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.transition-spinner {
+  width: 22rpx;
+  height: 22rpx;
+  border: 3rpx solid rgba(0, 82, 217, 0.16);
+  border-top-color: #0052d9;
+  border-radius: 50%;
+  box-sizing: border-box;
+  animation: transition-spin 680ms linear infinite;
+}
+
+.transition-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  color: #0052d9;
+  background: #edf4ff;
+  font-size: 18rpx;
+  font-weight: 900;
+  line-height: 28rpx;
+}
+
+.transition-bar {
+  width: 42rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: #0052d9;
+}
+
+.transition-text {
+  max-width: 360rpx;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 32rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.state-destination .transition-panel {
+  border-color: #cfe0ff;
+  background: #edf4ff;
+}
+
+.state-leaving .transition-panel,
+.state-failed .transition-panel {
+  animation: transition-panel-out 160ms ease-out both;
+}
+
+.state-failed .transition-done,
+.state-failed .transition-bar {
+  color: #e34d59;
+  background: #fff1f2;
+}
+
 .tab-item {
   display: flex;
   flex: 1;
@@ -22,6 +108,11 @@
   gap: 2rpx;
   color: #8a94a6;
   box-sizing: border-box;
+}
+
+.tab-item.is-pressing .tab-icon-shell,
+.tab-item.is-pressing .tab-label {
+  transform: scale(0.94);
 }
 
 .tab-item.is-active {
@@ -46,7 +137,7 @@
   color: #ffffff;
   background: #0052d9;
   box-shadow: 0 12rpx 28rpx rgba(0, 82, 217, 0.22);
-  animation: manage-button-scale-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: manage-button-scale-in 280ms cubic-bezier(0.18, 0.9, 0.22, 1) both;
 }
 
 .tab-icon-stack {
@@ -86,7 +177,7 @@
 .tab-label {
   width: 100%;
   overflow: hidden;
-  font-size: 21rpx;
+  font-size: 20rpx;
   font-weight: 600;
   line-height: 26rpx;
   text-align: center;
@@ -95,20 +186,54 @@
   letter-spacing: 0;
 }
 
-@keyframes manage-button-scale-in {
+@keyframes transition-panel-in {
   0% {
     opacity: 0;
-    transform: scale(0.72);
-  }
-
-  72% {
-    opacity: 1;
-    transform: scale(1.06);
+    transform: translateY(14rpx) scale(0.94);
   }
 
   100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes transition-panel-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(12rpx) scale(0.96);
+  }
+}
+
+@keyframes transition-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes manage-button-scale-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10rpx) scale(0.48);
+  }
+
+  62% {
+    opacity: 1;
+    transform: translateY(-2rpx) scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
