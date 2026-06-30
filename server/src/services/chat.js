@@ -1,5 +1,5 @@
 import { badRequest, forbidden, notFound } from '../utils/errors.js';
-import { createNotification } from './notifications.js';
+import { createNotification, markNotificationsReadByLink } from './notifications.js';
 
 function now() {
   return new Date().toISOString();
@@ -160,8 +160,10 @@ export async function markConversationRead(store, realtime, userId, conversation
     }
   }
   if (changed) await store.saveCollection('messages');
+  const unreadCount = await markNotificationsReadByLink(store, userId, `/messages/${conversationId}`, 'message');
   realtime?.sendToUser(userId, 'chat.message.read', { conversationId });
-  return { ok: true };
+  realtime?.sendToUser(userId, 'notification.unread_count', { count: unreadCount });
+  return { ok: true, unreadCount };
 }
 
 export async function setConversationMuted(store, userId, conversationId, muted) {
