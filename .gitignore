@@ -10,6 +10,7 @@ coverage/
 
 server/public/
 server/uploads/
+server/data/
 server/.env
 server/.env.*
 web/.env
