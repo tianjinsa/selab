@@ -272,19 +272,18 @@ const settings = reactive({
 });
 const loginForm = reactive({ account: 'admin', password: '123456Aa' });
 
-const pageTitle = computed(() => {
-  const map = {
-    overview: '运营概览',
-    tasks: '任务互助管理',
-    community: '社区内容管理',
-    market: '二手市场管理',
-    users: '用户与信用管理',
-    reports: '举报与审核',
-    agent: '智能体知识库',
-    settings: '系统参数配置'
-  };
-  return map[active.value];
-});
+const pageTitles = {
+  overview: '运营概览',
+  tasks: '任务互助管理',
+  community: '社区内容管理',
+  market: '二手市场管理',
+  users: '用户与信用管理',
+  reports: '举报与审核',
+  agent: '智能体知识库',
+  settings: '系统参数配置'
+};
+
+const pageTitle = computed(() => pageTitles[active.value]);
 
 const apiTagType = computed(() => (apiState.value === 'online' ? 'success' : 'danger'));
 
@@ -372,6 +371,10 @@ function settingsPayload() {
   };
 }
 
+function creditLevel(score) {
+  return score >= 90 ? 'A' : 'B';
+}
+
 async function login() {
   loginLoading.value = true;
   try {
@@ -452,7 +455,7 @@ async function auditGoods(row, auditStatus) {
 async function updateUser(row) {
   await api(`/admin/users/${row.id}`, {
     method: 'PUT',
-    body: { muted: row.muted, creditScore: row.creditScore, creditLevel: row.creditScore >= 90 ? 'A' : 'B' }
+    body: { muted: row.muted, creditScore: row.creditScore, creditLevel: creditLevel(row.creditScore) }
   });
   ElMessage.success('用户状态已更新');
 }

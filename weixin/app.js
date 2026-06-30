@@ -3,6 +3,14 @@ import request from './api/request';
 import createBus from './utils/eventBus';
 import { listFrom, unwrap } from './utils/api';
 
+function parseSocketMessage(event) {
+  try {
+    return JSON.parse(event.data || '{}');
+  } catch (error) {
+    return null;
+  }
+}
+
 App({
   async onLaunch() {
     const updateManager = wx.getUpdateManager();
@@ -75,12 +83,8 @@ App({
     if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
     const socket = wx.connectSocket({ url: `${config.socketUrl}?token=${token}` });
     socket.onMessage((event) => {
-      let data = {};
-      try {
-        data = JSON.parse(event.data || '{}');
-      } catch (error) {
-        return;
-      }
+      const data = parseSocketMessage(event);
+      if (!data) return;
       if (data.type === 'message') this.setUnreadNum(this.globalData.unreadNum + 1);
       this.eventBus.emit('socket-message', data);
     });

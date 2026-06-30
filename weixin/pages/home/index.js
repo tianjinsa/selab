@@ -49,6 +49,10 @@ function buildColumns(posts) {
   return columns;
 }
 
+function replacePost(posts, postId, nextPost, user) {
+  return posts.map((item, index) => (item.id === postId ? mapPost(nextPost, index, user) : item));
+}
+
 Page({
   data: {
     tabs: postTabs,
@@ -130,9 +134,7 @@ Page({
     const { id } = event.currentTarget.dataset;
     request(`/community/posts/${id}/like`, 'POST')
       .then((res) => {
-        const postIndex = this.data.posts.findIndex((item) => item.id === id);
-        const nextPost = mapPost(unwrap(res), Math.max(postIndex, 0), app.globalData.userInfo || {});
-        const posts = this.data.posts.map((item) => (item.id === id ? nextPost : item));
+        const posts = replacePost(this.data.posts, id, unwrap(res), app.globalData.userInfo || {});
         this.setData({ posts }, this.applyFilter);
       })
       .catch(() => wx.showToast({ title: '点赞失败', icon: 'none' }));
@@ -142,9 +144,7 @@ Page({
     const { id } = event.currentTarget.dataset;
     request(`/community/posts/${id}/favorite`, 'POST')
       .then((res) => {
-        const postIndex = this.data.posts.findIndex((item) => item.id === id);
-        const nextPost = mapPost(unwrap(res), Math.max(postIndex, 0), app.globalData.userInfo || {});
-        const posts = this.data.posts.map((item) => (item.id === id ? nextPost : item));
+        const posts = replacePost(this.data.posts, id, unwrap(res), app.globalData.userInfo || {});
         this.setData({ posts }, this.applyFilter);
       })
       .catch(() => wx.showToast({ title: '收藏失败', icon: 'none' }));
@@ -195,9 +195,7 @@ Page({
       .then((res) => {
         const data = unwrap(res);
         if (data.post) {
-          const postIndex = this.data.posts.findIndex((item) => item.id === sharePostId);
-          const nextPost = mapPost(data.post, Math.max(postIndex, 0), app.globalData.userInfo || {});
-          const posts = this.data.posts.map((item) => (item.id === sharePostId ? nextPost : item));
+          const posts = replacePost(this.data.posts, sharePostId, data.post, app.globalData.userInfo || {});
           this.setData({ posts }, this.applyFilter);
         }
         this.setData({ shareVisible: false, sharePostId: '', sharing: false });

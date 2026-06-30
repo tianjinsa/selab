@@ -20,14 +20,14 @@ function request(url, method = 'GET', data = {}) {
       url: baseUrl + url,
       method,
       data,
-      dataType: 'json', // 微信官方文档中介绍会对数据进行一次JSON.parse
+      dataType: 'json',
       header,
       success(res) {
         if (isSuccessResponse(res)) resolve(res);
         else reject(res);
       },
-      fail(err) {
-        reject(err);
+      fail(error) {
+        reject(error);
       },
     });
   });

@@ -339,15 +339,21 @@ Page({
 
   handleSocketMessage(data) {
     if (!data || !data.type || data.sessionId !== this.data.sessionId) return;
-    if (data.type === 'agent_delta') this.appendAgentDelta(data.messageId, data.delta || '');
-    if (data.type === 'agent_done') {
-      this.stopRunPolling();
-      this.setData({ loading: false, activeRunId: '', assistantMessageId: '' });
-      this.loadSession(data.sessionId);
-    }
-    if (data.type === 'agent_error') {
-      this.stopRunPolling();
-      this.applyAgentError(data.messageId, data.message || '智能体模型请求失败');
+    switch (data.type) {
+      case 'agent_delta':
+        this.appendAgentDelta(data.messageId, data.delta || '');
+        break;
+      case 'agent_done':
+        this.stopRunPolling();
+        this.setData({ loading: false, activeRunId: '', assistantMessageId: '' });
+        this.loadSession(data.sessionId);
+        break;
+      case 'agent_error':
+        this.stopRunPolling();
+        this.applyAgentError(data.messageId, data.message || '智能体模型请求失败');
+        break;
+      default:
+        break;
     }
   },
 

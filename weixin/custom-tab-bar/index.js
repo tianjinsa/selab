@@ -8,29 +8,34 @@ const tabs = [
     icon: 'root-list',
     value: 'task',
     label: '任务互助',
+    url: '/pages/task/index',
     manageUrl: '/pages/task/manage/index',
   },
   {
     icon: 'shop',
     value: 'market',
     label: '二手市场',
+    url: '/pages/market/index',
     manageUrl: '/pages/market/manage/index',
   },
   {
     icon: 'home',
     value: 'home',
     label: '社区论坛',
+    url: '/pages/home/index',
     manageUrl: '/pages/community/manage/index',
   },
   {
     icon: 'service',
     value: 'agent',
     label: '智能体',
+    url: '/pages/agent/index',
   },
   {
     icon: 'user',
     value: 'my',
     label: '我的',
+    url: '/pages/my/index',
   },
 ];
 
@@ -44,8 +49,8 @@ function clearPendingTransition() {
 
 Component({
   data: {
-    value: '', // 初始值设置为空，避免第一次加载时闪烁
-    unreadNum: 0, // 未读消息数量
+    value: '',
+    unreadNum: 0,
     list: tabs,
     pressedValue: '',
     transitionState: 'idle',
@@ -63,9 +68,7 @@ Component({
       this.refreshActiveTab();
 
       this.setUnreadNum(app.globalData.unreadNum);
-      this.unreadHandler = (unreadNum) => {
-        this.setUnreadNum(unreadNum);
-      };
+      this.unreadHandler = (unreadNum) => this.setUnreadNum(unreadNum);
       app.eventBus.on('unread-num-change', this.unreadHandler);
     },
     detached() {
@@ -133,7 +136,7 @@ Component({
       this.clearTimers();
       this.routeTimer = setTimeout(() => {
         wx.switchTab({
-          url: `/pages/${tab.value}/index`,
+          url: tab.url,
           fail: () => {
             clearPendingTransition();
             this.setData({
@@ -186,7 +189,6 @@ Component({
       this.transitionExitTimer = null;
     },
 
-    /** 设置未读消息数量 */
     setUnreadNum(unreadNum) {
       this.setData({ unreadNum });
     },
