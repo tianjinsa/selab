@@ -1,9 +1,5 @@
 <nav nav-type="search" />
 <view class="community-page">
-  <scroll-view wx:if="{{hotTopics.length}}" scroll-x class="topic-strip" show-scrollbar="{{false}}">
-    <t-tag wx:for="{{hotTopics}}" wx:key="index" class="topic" size="large" theme="primary" variant="light">#{{item}}</t-tag>
-  </scroll-view>
-
   <t-tabs value="{{activeTab}}" bind:change="onTabChange">
     <t-tab-panel wx:for="{{tabs}}" wx:key="item" label="{{item}}" value="{{item}}"></t-tab-panel>
   </t-tabs>
@@ -21,9 +17,6 @@
         <view class="post-body">
           <view class="post-title">{{item.title}}</view>
           <view class="post-content">{{item.content}}</view>
-          <view class="tag-row">
-            <t-tag wx:for="{{item.topics}}" wx:for-item="topic" wx:key="index" size="small" variant="outline">#{{topic}}</t-tag>
-          </view>
           <view class="post-author">
             <t-avatar image="{{item.avatar}}" size="48rpx" />
             <view class="author-info">

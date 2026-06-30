@@ -60,7 +60,6 @@ Page({
     posts: [],
     filteredPosts: [],
     columns: [[], []],
-    hotTopics: [],
     loading: true,
     shareVisible: false,
     shareFriends: [],
@@ -85,12 +84,9 @@ Page({
     try {
       const user = await app.ensureLogin();
       const posts = listFrom(await request('/community/posts')).map((item, index) => mapPost(item, index, user));
-      const topics = posts.reduce((result, post) => result.concat(post.topics || []), []);
-      const hotTopics = Array.from(new Set(topics)).slice(0, 8);
       this.setData(
         {
           posts,
-          hotTopics,
           loading: false,
         },
         this.applyFilter,

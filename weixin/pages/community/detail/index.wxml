@@ -28,9 +28,6 @@
           <view class="post-title">{{post.title}}</view>
           <view class="post-content">{{post.content}}</view>
           <image wx:if="{{post.cover}}" class="post-cover" src="{{post.cover}}" mode="aspectFill" />
-          <view class="tag-row">
-            <t-tag wx:for="{{post.topics}}" wx:key="index" size="small" variant="outline">#{{item}}</t-tag>
-          </view>
           <view class="post-actions">
             <t-button
               size="small"

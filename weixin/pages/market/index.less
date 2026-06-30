@@ -176,23 +176,30 @@ page {
 }
 
 .goods-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   margin-top: 12rpx;
 }
 
-.price {
-  font-size: 34rpx;
+.goods-actions .price {
+  flex: 0 0 auto;
+  margin-right: auto;
+  font-size: 32rpx;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .goods-action-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8rpx;
+  display: flex;
+  flex: 0 0 316rpx;
+  justify-content: flex-end;
+  gap: 6rpx;
+  min-width: 0;
 }
 
 .goods-action-buttons .t-button {
+  flex: 1 1 0;
   width: 100% !important;
   min-width: 0 !important;
   margin: 0 !important;

@@ -25,6 +25,8 @@ const agentDefinitions = [
 
 const agentPrompts = Object.fromEntries(agentDefinitions.map((agent) => [agent.key, agent.prompt]));
 const defaultModelTimeoutMs = 45000;
+const staleRunGraceMs = 10000;
+const minStaleRunMs = 30000;
 
 function getAgentTypes() {
   return agentDefinitions.map((agent) => ({
@@ -500,7 +502,7 @@ function expireStaleRun(data, run) {
   if (!run || run.status !== 'running') return false;
   const createdAt = new Date(run.createdAt || run.updatedAt || 0).getTime();
   if (!createdAt || Number.isNaN(createdAt)) return false;
-  const staleMs = Math.max(getConfig().timeoutMs * 3, 90000);
+  const staleMs = Math.max(getConfig().timeoutMs + staleRunGraceMs, minStaleRunMs);
   if (Date.now() - createdAt < staleMs) return false;
   const session = data.agentSessions.find((item) => item.id === run.sessionId && item.userId === run.userId);
   const assistantMessage = session?.messages.find((item) => item.id === run.assistantMessageId);

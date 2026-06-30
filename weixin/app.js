@@ -39,7 +39,6 @@ App({
     unreadNum: 0,
     socket: null,
     socketReconnectTimer: null,
-    pendingTabTransition: null,
   },
 
   eventBus: createBus(),

@@ -177,6 +177,9 @@ Page({
     const agentIndex = agents.findIndex((item) => item.key === activeAgent.key);
     const messages = (session.messages || []).map(mapSessionMessage);
     const running = messages.find((item) => item.status === 'running');
+    const activeRunId = running ? running.runId : extra.activeRunId || '';
+    const assistantMessageId = running ? running.id : extra.assistantMessageId || '';
+    const loading = Boolean(running || extra.loading);
     this.setData({
       activeAgentKey: activeAgent.key,
       activeAgent,
@@ -185,11 +188,13 @@ Page({
       sessionTitle: session.title || '历史对话',
       messages: messages.length ? messages : buildGreeting(activeAgent),
       isEmptyConversation: !messages.length,
-      activeRunId: running ? running.runId : extra.activeRunId || '',
-      assistantMessageId: running ? running.id : extra.assistantMessageId || '',
-      loading: Boolean(running),
+      activeRunId,
+      assistantMessageId,
+      loading,
       ...extra,
     });
+    if (activeRunId && loading) this.startRunPolling(activeRunId, session.id);
+    else this.stopRunPolling();
     wx.nextTick(() => this.scrollToBottom());
   },
 
@@ -320,7 +325,6 @@ Page({
           loading: true,
           runPollFailCount: 0,
         });
-        this.startRunPolling(data.run.id, data.session.id);
         this.loadSessions();
       })
       .catch((error) => {
@@ -381,11 +385,15 @@ Page({
   },
 
   startRunPolling(runId, sessionId) {
+    if (!runId) return;
+    if (this.runPollTimer && this.pollingRunId === runId) return;
     this.stopRunPolling();
+    this.pollingRunId = runId;
     this.setData({ runPollFailCount: 0 });
-    this.runPollTimer = setInterval(() => {
+    const poll = () => {
       request(`/agent/runs/${runId}`)
         .then((res) => {
+          if (this.pollingRunId !== runId) return;
           const run = unwrap(res);
           this.setData({ runPollFailCount: 0 });
           if (run.status === 'completed') {
@@ -399,19 +407,22 @@ Page({
           }
         })
         .catch(() => {
+          if (this.pollingRunId !== runId) return;
           const runPollFailCount = this.data.runPollFailCount + 1;
           this.setData({ runPollFailCount });
           if (runPollFailCount < 3) return;
           this.stopRunPolling();
           this.applyAgentError(this.data.assistantMessageId, '智能体状态同步失败，请检查后端服务或网络连接后重试。');
         });
-    }, 2500);
+    };
+    poll();
+    this.runPollTimer = setInterval(poll, 2500);
   },
 
   stopRunPolling() {
-    if (!this.runPollTimer) return;
-    clearInterval(this.runPollTimer);
+    if (this.runPollTimer) clearInterval(this.runPollTimer);
     this.runPollTimer = null;
+    this.pollingRunId = '';
   },
 
   scrollToBottom() {
