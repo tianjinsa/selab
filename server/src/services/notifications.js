@@ -40,6 +40,27 @@ export async function markNotificationRead(store, userId, id) {
   return store.update('notifications', id, { isRead: true, readAt: now() });
 }
 
+export async function markNotificationsReadByLink(store, userId, link, type = '') {
+  const notifications = store.collection('notifications');
+  let changed = false;
+  for (const item of notifications) {
+    if (
+      item.userId === userId
+      && !item.deletedAt
+      && !item.isRead
+      && item.link === link
+      && (!type || item.type === type)
+    ) {
+      item.isRead = true;
+      item.readAt = now();
+      item.updatedAt = now();
+      changed = true;
+    }
+  }
+  if (changed) await store.saveCollection('notifications');
+  return countUnread(store, userId);
+}
+
 export async function markAllNotificationsRead(store, userId, type = '') {
   const notifications = store.collection('notifications');
   let changed = false;

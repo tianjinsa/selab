@@ -146,7 +146,8 @@ async function selectConversation(id) {
   router.replace(`/messages/${id}`);
   const data = await request(`/api/conversations/${id}/messages`);
   messages.value = data.messages;
-  await request(`/api/conversations/${id}/read`, { method: 'PATCH' });
+  const readData = await request(`/api/conversations/${id}/read`, { method: 'PATCH' });
+  if (readData.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
   await loadConversations();
   scrollBottom();
 }
@@ -237,7 +238,8 @@ function connectSocket() {
     if (packet.event === 'chat.message.new') {
       if (packet.payload.conversationId === activeId.value) {
         messages.value.push(packet.payload.message);
-        await request(`/api/conversations/${activeId.value}/read`, { method: 'PATCH' }).catch(() => {});
+        const readData = await request(`/api/conversations/${activeId.value}/read`, { method: 'PATCH' }).catch(() => null);
+        if (readData?.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
         scrollBottom();
       }
       await loadConversations();
