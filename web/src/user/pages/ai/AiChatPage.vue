@@ -6,6 +6,10 @@
           <template #icon><Plus :size="16" /></template>
           新咨询
         </n-button>
+        <div class="realtime-status" :class="realtimeStatusClass">
+          <span class="realtime-dot"></span>
+          <small>{{ realtimeStatusText }}</small>
+        </div>
       </div>
 
       <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
@@ -241,6 +245,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'v
 import { useDialog, useMessage } from 'naive-ui';
 import { Bot, Brain, Check, Edit3, Plus, RefreshCcw, Send, Trash2, Wrench, X } from '@lucide/vue';
 import { request, websocketUrl } from '../../../shared/http.js';
+import { createReconnectableWebSocket } from '../../../shared/realtimeSocket.js';
 import { userSession as session } from '../../session.js';
 
 const notice = useMessage();
@@ -251,6 +256,8 @@ const messages = ref([]);
 const draft = ref('');
 const running = ref(false);
 const streamRef = ref(null);
+const realtimeStatus = ref('idle');
+const realtimeQueued = ref(0);
 const renamingSessionId = ref('');
 const renameTitle = ref('');
 const editingMessageId = ref('');
@@ -270,9 +277,23 @@ const taskDraftForm = reactive({
   contactNote: ''
 });
 let socket = null;
+let reconnectNoticeShown = false;
 
 const taskCategoryOptions = computed(() => taskMeta.value.categories.map((item) => ({ label: item, value: item })));
 const taskAreaOptions = computed(() => taskMeta.value.areas.map((item) => ({ label: item, value: item })));
+const realtimeStatusClass = computed(() => `is-${realtimeStatus.value}`);
+const realtimeStatusText = computed(() => {
+  if (realtimeStatus.value === 'connected') return '实时连接正常';
+  if (realtimeStatus.value === 'connecting') return '正在连接实时服务';
+  if (realtimeStatus.value === 'reconnecting') {
+    return realtimeQueued.value
+      ? `实时连接恢复中，${realtimeQueued.value} 条消息待发送`
+      : '实时连接断开，正在自动重连';
+  }
+  if (realtimeStatus.value === 'closed') return '实时连接已关闭';
+  if (realtimeStatus.value === 'error') return '实时连接异常';
+  return '实时连接准备中';
+});
 
 onMounted(async () => {
   await loadSessions();
@@ -281,7 +302,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (socket) socket.close();
+  socket?.close();
 });
 
 async function loadSessions() {
@@ -304,86 +325,113 @@ async function selectSession(id) {
 }
 
 function connectSocket() {
-  socket = new WebSocket(websocketUrl(session.token));
-  socket.onmessage = async (event) => {
-    const packet = JSON.parse(event.data);
-    if (packet.event === 'ai.message.accepted') {
-      sessionId.value = packet.payload.sessionId;
-      await loadSessions();
-      await selectSession(sessionId.value);
-    }
-    if (packet.event === 'ai.run.started') {
-      running.value = true;
-      if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
-      const target = ensureAssistantMessage(packet.payload);
-      if (target) target.runState = 'requesting';
-    }
-    if (packet.event === 'ai.token') {
-      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId)
-        || ensureAssistantMessage(packet.payload);
-      if (target) {
-        target.content = `${target.content || ''}${packet.payload.delta}`;
-        target.runState = packet.payload.runState || 'responding';
-        mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'content', packet.payload.delta);
+  socket?.close();
+  socket = createReconnectableWebSocket({
+    url: () => websocketUrl(session.token),
+    onMessage: handleSocketMessage,
+    onOpen: async ({ reconnected }) => {
+      if (!reconnected) return;
+      reconnectNoticeShown = false;
+      await refreshCurrentSession();
+      notice.success('实时连接已恢复');
+    },
+    onStatusChange: ({ status, queued }) => {
+      realtimeStatus.value = status;
+      realtimeQueued.value = queued || 0;
+      if (status === 'reconnecting' && !reconnectNoticeShown) {
+        reconnectNoticeShown = true;
+        notice.warning('实时连接已断开，正在自动重连');
       }
-      scrollBottom();
     }
-    if (packet.event === 'ai.reasoning') {
-      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId)
-        || ensureAssistantMessage(packet.payload);
-      if (target) {
-        target.reasoningContent = `${target.reasoningContent || ''}${packet.payload.delta}`;
-        target.runState = packet.payload.runState || 'responding';
-        mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'reasoning', packet.payload.delta);
-      }
-      scrollBottom();
+  });
+  socket.connect();
+}
+
+async function handleSocketMessage(event) {
+  const packet = JSON.parse(event.data);
+  if (packet.event === 'ai.message.accepted') {
+    sessionId.value = packet.payload.sessionId;
+    await loadSessions();
+    await selectSession(sessionId.value);
+  }
+  if (packet.event === 'ai.run.started') {
+    running.value = true;
+    if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
+    const target = ensureAssistantMessage(packet.payload);
+    if (target) target.runState = 'requesting';
+  }
+  if (packet.event === 'ai.token') {
+    if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+    const target = messages.value.find((item) => item.id === packet.payload.messageId)
+      || ensureAssistantMessage(packet.payload);
+    if (target) {
+      target.content = `${target.content || ''}${packet.payload.delta}`;
+      target.runState = packet.payload.runState || 'responding';
+      mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'content', packet.payload.delta);
     }
-    if (packet.event === 'ai.tool_call') {
-      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId)
-        || ensureAssistantMessage(packet.payload);
-      if (target) {
-        target.runState = packet.payload.runState || target.runState;
-        mergeToolEvent(target, packet.payload.toolEvent);
-      }
-      scrollBottom();
+    scrollBottom();
+  }
+  if (packet.event === 'ai.reasoning') {
+    if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+    const target = messages.value.find((item) => item.id === packet.payload.messageId)
+      || ensureAssistantMessage(packet.payload);
+    if (target) {
+      target.reasoningContent = `${target.reasoningContent || ''}${packet.payload.delta}`;
+      target.runState = packet.payload.runState || 'responding';
+      mergeTextPart(target, packet.payload.partId, packet.payload.channel || 'reasoning', packet.payload.delta);
     }
-    if (packet.event === 'ai.message_state') {
-      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId)
-        || ensureAssistantMessage(packet.payload);
-      if (target) target.runState = packet.payload.runState;
+    scrollBottom();
+  }
+  if (packet.event === 'ai.tool_call') {
+    if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+    const target = messages.value.find((item) => item.id === packet.payload.messageId)
+      || ensureAssistantMessage(packet.payload);
+    if (target) {
+      target.runState = packet.payload.runState || target.runState;
+      mergeToolEvent(target, packet.payload.toolEvent);
     }
-    if (packet.event === 'ai.cards') {
-      if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
-      const target = messages.value.find((item) => item.id === packet.payload.messageId);
-      if (target) target.cards = packet.payload.cards;
-    }
-    if (packet.event === 'ai.run.done' || packet.event === 'ai.run.error') {
-      running.value = false;
-      await loadSessions();
-      if (sessionId.value) await selectSession(sessionId.value);
-    }
-    if (packet.event === 'error') notice.error(packet.payload.message);
-  };
+    scrollBottom();
+  }
+  if (packet.event === 'ai.message_state') {
+    if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+    const target = messages.value.find((item) => item.id === packet.payload.messageId)
+      || ensureAssistantMessage(packet.payload);
+    if (target) target.runState = packet.payload.runState;
+  }
+  if (packet.event === 'ai.cards') {
+    if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
+    const target = messages.value.find((item) => item.id === packet.payload.messageId);
+    if (target) target.cards = packet.payload.cards;
+  }
+  if (packet.event === 'ai.run.done' || packet.event === 'ai.run.error') {
+    running.value = false;
+    await loadSessions();
+    if (sessionId.value) await selectSession(sessionId.value);
+  }
+  if (packet.event === 'error') notice.error(packet.payload.message);
+}
+
+async function refreshCurrentSession() {
+  await loadSessions();
+  if (sessionId.value) await selectSession(sessionId.value);
 }
 
 async function send() {
   const content = draft.value.trim();
   if (!content) return;
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    notice.error('WebSocket 未连接，请稍后重试');
+  if (!socket) connectSocket();
+  const result = socket?.send({ event: 'ai.message.send', payload: { sessionId: sessionId.value, content } }, { queue: true });
+  if (!result?.sent && !result?.queued) {
+    notice.error('实时连接暂不可用，请稍后重试');
     return;
   }
   draft.value = '';
-  socket.send(JSON.stringify({ event: 'ai.message.send', payload: { sessionId: sessionId.value, content } }));
+  if (result.queued) notice.warning('实时连接正在恢复，消息会在重连后自动发送');
 }
 
 async function stop() {
   if (!sessionId.value) return;
-  socket?.send(JSON.stringify({ event: 'ai.run.cancel', payload: { sessionId: sessionId.value } }));
+  socket?.send({ event: 'ai.run.cancel', payload: { sessionId: sessionId.value } });
   await request(`/api/ai/sessions/${sessionId.value}/cancel`, { method: 'POST' }).catch(() => {});
   running.value = false;
   await loadSessions();

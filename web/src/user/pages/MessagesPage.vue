@@ -4,6 +4,10 @@
       <div style="padding: 14px;">
         <n-input v-model:value="keyword" placeholder="搜索同学：昵称 / 学号 / 手机号" clearable @keyup.enter="searchUsers" />
         <n-button block secondary style="margin-top: 8px;" @click="searchUsers">查找并发起私信</n-button>
+        <div class="realtime-status" :class="realtimeStatusClass">
+          <span class="realtime-dot"></span>
+          <small>{{ realtimeStatusText }}</small>
+        </div>
       </div>
       <div v-if="searchResults.length" style="padding: 0 14px 12px;">
         <n-alert type="info" :show-icon="false">
@@ -107,6 +111,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { Download, FileText, ImagePlus, Paperclip, Send } from '@lucide/vue';
 import { request, websocketUrl } from '../../shared/http.js';
+import { createReconnectableWebSocket } from '../../shared/realtimeSocket.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const route = useRoute();
@@ -120,10 +125,21 @@ const keyword = ref('');
 const searchResults = ref([]);
 const streamRef = ref(null);
 const uploadingAttachment = ref(false);
+const realtimeStatus = ref('idle');
 let socket = null;
+let reconnectNoticeShown = false;
 
 const activeConversation = computed(() => conversations.value.find((item) => item.id === activeId.value));
 const activeConversationMuted = computed(() => activeConversation.value?.mutedBy?.includes(session.user?.id));
+const realtimeStatusClass = computed(() => `is-${realtimeStatus.value}`);
+const realtimeStatusText = computed(() => {
+  if (realtimeStatus.value === 'connected') return '实时连接正常';
+  if (realtimeStatus.value === 'connecting') return '正在连接实时服务';
+  if (realtimeStatus.value === 'reconnecting') return '实时连接断开，正在自动重连';
+  if (realtimeStatus.value === 'closed') return '实时连接已关闭';
+  if (realtimeStatus.value === 'error') return '实时连接异常';
+  return '实时连接准备中';
+});
 
 onMounted(async () => {
   await loadUserSession();
@@ -133,7 +149,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  if (socket) socket.close();
+  socket?.close();
 });
 
 async function loadConversations() {
@@ -177,12 +193,11 @@ async function send() {
 }
 
 async function sendPayload(payload) {
-  if (socket?.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify({
-      event: 'chat.message.send',
-      payload: { conversationId: activeId.value, ...payload }
-    }));
-  } else {
+  const result = socket?.send({
+    event: 'chat.message.send',
+    payload: { conversationId: activeId.value, ...payload }
+  });
+  if (!result?.sent) {
     const data = await request(`/api/conversations/${activeId.value}/messages`, { method: 'POST', body: payload });
     messages.value.push(data.message);
     await loadConversations();
@@ -232,30 +247,61 @@ async function toggleMute() {
 }
 
 function connectSocket() {
-  socket = new WebSocket(websocketUrl(session.token));
-  socket.onmessage = async (event) => {
-    const packet = JSON.parse(event.data);
-    if (packet.event === 'chat.message.new') {
-      if (packet.payload.conversationId === activeId.value) {
-        messages.value.push(packet.payload.message);
-        const readData = await request(`/api/conversations/${activeId.value}/read`, { method: 'PATCH' }).catch(() => null);
-        if (readData?.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
-        scrollBottom();
+  socket?.close();
+  socket = createReconnectableWebSocket({
+    url: () => websocketUrl(session.token),
+    onMessage: handleSocketMessage,
+    onOpen: async ({ reconnected }) => {
+      if (!reconnected) return;
+      reconnectNoticeShown = false;
+      await refreshCurrentConversation();
+      notice.success('实时连接已恢复');
+    },
+    onStatusChange: ({ status }) => {
+      realtimeStatus.value = status;
+      if (status === 'reconnecting' && !reconnectNoticeShown) {
+        reconnectNoticeShown = true;
+        notice.warning('实时连接已断开，正在自动重连');
       }
-      await loadConversations();
     }
-    if (packet.event === 'card.updated') {
-      const target = messages.value.find((item) => item.id === packet.payload.messageId);
-      if (target) target.card = packet.payload.card;
-      await loadConversations();
+  });
+  socket.connect();
+}
+
+async function handleSocketMessage(event) {
+  const packet = JSON.parse(event.data);
+  if (packet.event === 'chat.message.new') {
+    if (packet.payload.conversationId === activeId.value) {
+      upsertMessage(packet.payload.message);
+      const readData = await request(`/api/conversations/${activeId.value}/read`, { method: 'PATCH' }).catch(() => null);
+      if (readData?.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
+      scrollBottom();
     }
-    if (packet.event === 'notification.unread_count') {
-      session.unreadCount = packet.payload.count;
-    }
-    if (packet.event === 'error') {
-      notice.error(packet.payload.message);
-    }
-  };
+    await loadConversations();
+  }
+  if (packet.event === 'card.updated') {
+    const target = messages.value.find((item) => item.id === packet.payload.messageId);
+    if (target) target.card = packet.payload.card;
+    await loadConversations();
+  }
+  if (packet.event === 'notification.unread_count') {
+    session.unreadCount = packet.payload.count;
+  }
+  if (packet.event === 'error') {
+    notice.error(packet.payload.message);
+  }
+}
+
+async function refreshCurrentConversation() {
+  await loadConversations();
+  if (activeId.value) await selectConversation(activeId.value);
+}
+
+function upsertMessage(message) {
+  if (!message?.id) return;
+  const index = messages.value.findIndex((item) => item.id === message.id);
+  if (index >= 0) messages.value.splice(index, 1, message);
+  else messages.value.push(message);
 }
 
 function scrollBottom() {

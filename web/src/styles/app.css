@@ -1384,6 +1384,81 @@ a {
   font-size: 12px;
 }
 
+.realtime-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-weight: 760;
+}
+
+.realtime-status small {
+  line-height: 1.35;
+}
+
+.realtime-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--muted);
+  box-shadow: 0 0 0 4px rgba(101, 112, 132, 0.12);
+}
+
+.realtime-status.is-connected {
+  color: var(--brand);
+}
+
+.realtime-status.is-connected .realtime-dot {
+  background: var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-tint);
+}
+
+.realtime-status.is-connecting,
+.realtime-status.is-reconnecting {
+  color: var(--warning);
+  border-color: rgba(183, 121, 31, 0.28);
+  background: rgba(183, 121, 31, 0.08);
+}
+
+.realtime-status.is-connecting .realtime-dot,
+.realtime-status.is-reconnecting .realtime-dot {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(183, 121, 31, 0.16);
+  animation: realtime-pulse 1.2s var(--motion-ease) infinite;
+}
+
+.realtime-status.is-error,
+.realtime-status.is-closed {
+  color: var(--danger);
+  border-color: rgba(180, 35, 24, 0.24);
+  background: rgba(180, 35, 24, 0.08);
+}
+
+.realtime-status.is-error .realtime-dot,
+.realtime-status.is-closed .realtime-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.14);
+}
+
+@keyframes realtime-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.72);
+    opacity: 0.58;
+  }
+}
+
 .auth-page {
   min-height: 100vh;
   display: grid;
