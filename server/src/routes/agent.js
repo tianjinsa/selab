@@ -72,21 +72,100 @@ router.post('/chat', auth.requireAuth, async (req, res) => {
   return ok(res, { sessionId, ...result });
 });
 
+router.post('/runs', auth.requireAuth, (req, res) => {
+  agent.ensureAgentData(req.data);
+  const question = String(req.body.question || '').trim();
+  if (!question) return fail(res, 400, '请输入问题');
+  const sessionId = req.body.sessionId || store.id('session');
+  let session = req.data.agentSessions.find((item) => item.id === sessionId);
+  if (session && session.userId !== req.user.id) return fail(res, 403, '无权访问该会话');
+  if (!session) {
+    session = {
+      id: sessionId,
+      userId: req.user.id,
+      agentKey: req.body.agentKey || 'campus',
+      title: question,
+      messages: [],
+      createdAt: store.now(),
+      updatedAt: store.now()
+    };
+    req.data.agentSessions.unshift(session);
+  }
+
+  const runId = store.id('run');
+  const userMessage = {
+    id: store.id('agent_msg'),
+    runId,
+    agentKey: req.body.agentKey || session.agentKey || 'campus',
+    role: 'user',
+    content: question,
+    status: 'completed',
+    createdAt: store.now()
+  };
+  const assistantMessage = {
+    id: store.id('agent_msg'),
+    runId,
+    agentKey: userMessage.agentKey,
+    role: 'assistant',
+    content: '',
+    status: 'running',
+    sources: [],
+    toolCall: null,
+    toolResults: [],
+    createdAt: store.now()
+  };
+  const run = {
+    id: runId,
+    userId: req.user.id,
+    sessionId: session.id,
+    userMessageId: userMessage.id,
+    assistantMessageId: assistantMessage.id,
+    agentKey: userMessage.agentKey,
+    question,
+    status: 'running',
+    createdAt: store.now(),
+    updatedAt: store.now()
+  };
+  session.agentKey = userMessage.agentKey;
+  session.messages.push(userMessage, assistantMessage);
+  session.updatedAt = run.updatedAt;
+  req.data.agentRuns.unshift(run);
+  store.save(req.data);
+  setImmediate(() => agent.executeRun(run.id, req.user.id));
+  return ok(res, { run, session }, '智能体任务已创建');
+});
+
 router.get('/sessions', auth.requireAuth, (req, res) => {
+  agent.ensureAgentData(req.data);
   return ok(res, req.data.agentSessions.filter((item) => item.userId === req.user.id));
 });
 
+router.get('/sessions/:id', auth.requireAuth, (req, res) => {
+  agent.ensureAgentData(req.data);
+  const session = req.data.agentSessions.find((item) => item.id === req.params.id && item.userId === req.user.id);
+  if (!session) return fail(res, 404, '历史会话不存在');
+  return ok(res, session);
+});
+
 router.delete('/sessions/:id', auth.requireAuth, (req, res) => {
+  agent.ensureAgentData(req.data);
   const index = req.data.agentSessions.findIndex((item) => item.id === req.params.id && item.userId === req.user.id);
   if (index < 0) return fail(res, 404, '历史会话不存在');
+  req.data.agentRuns = req.data.agentRuns.filter((item) => item.sessionId !== req.params.id || item.userId !== req.user.id);
   req.data.agentSessions.splice(index, 1);
   store.save(req.data);
   return ok(res, null, '历史会话已删除');
 });
 
+router.get('/runs/:id', auth.requireAuth, (req, res) => {
+  agent.ensureAgentData(req.data);
+  const run = req.data.agentRuns.find((item) => item.id === req.params.id && item.userId === req.user.id);
+  if (!run) return fail(res, 404, '智能体任务不存在');
+  return ok(res, run);
+});
+
 router.get('/functions/:tool', auth.requireAuth, (req, res) => {
-  const question = req.query.q || req.params.tool;
-  const result = agent.callTool(req.data, question);
+  const result = agent.callTool(req.data, req.params.tool, req.query);
   return ok(res, result || { tool: req.params.tool, result: [] });
 });
 

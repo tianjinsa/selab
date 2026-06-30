@@ -30,6 +30,7 @@ App({
     userInfo: null,
     unreadNum: 0,
     socket: null,
+    socketReconnectTimer: null,
   },
 
   eventBus: createBus(),
@@ -66,6 +67,10 @@ App({
   connect() {
     const token = wx.getStorageSync('access_token');
     if (!token) return;
+    if (this.globalData.socketReconnectTimer) {
+      clearTimeout(this.globalData.socketReconnectTimer);
+      this.globalData.socketReconnectTimer = null;
+    }
     if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
     const socket = wx.connectSocket({ url: `${config.socketUrl}?token=${token}` });
     socket.onMessage((event) => {
@@ -73,10 +78,19 @@ App({
       if (data.type === 'message') this.setUnreadNum(this.globalData.unreadNum + 1);
       this.eventBus.emit('socket-message', data);
     });
+    socket.onClose(() => {
+      if (this.globalData.socket !== socket) return;
+      if (!wx.getStorageSync('access_token') || wx.getStorageSync('manual_logout')) return;
+      this.globalData.socketReconnectTimer = setTimeout(() => this.connect(), 1600);
+    });
     this.globalData.socket = socket;
   },
 
   logout() {
+    if (this.globalData.socketReconnectTimer) {
+      clearTimeout(this.globalData.socketReconnectTimer);
+      this.globalData.socketReconnectTimer = null;
+    }
     if (this.globalData.socket && this.globalData.socket.close) this.globalData.socket.close({});
     wx.removeStorageSync('access_token');
     wx.setStorageSync('manual_logout', true);

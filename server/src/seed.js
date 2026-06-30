@@ -434,6 +434,7 @@ module.exports = {
   prompts,
   settings,
   invitations,
+  agentRuns: [],
   agentSessions: [],
   audits: [
     {

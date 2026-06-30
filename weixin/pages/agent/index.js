@@ -61,39 +61,29 @@ function isEmptyConversation(messages) {
   return messages.length === 1 && messages[0].id === 'welcome';
 }
 
-function mapAnswer(data) {
-  const sources = data.sources || [];
-  const source = sources.length ? sources[0] : {};
-  const toolCall = data.toolCall || {};
-  return {
-    id: `assistant-${Date.now()}`,
-    role: 'assistant',
-    text: data.answer || '暂时没有找到答案，请换个说法再试。',
-    source: source.title ? `${source.title} · ${source.source || '知识库'}` : '平台知识库',
-    tool: toolCall.tool || 'knowledge.search',
-  };
-}
-
 function mapSessionMessage(message, index) {
   const sources = message.sources || [];
   const source = sources.length ? sources[0] : {};
   const toolCall = message.toolCall || {};
   return {
-    id: `${message.role}-${index}`,
+    id: message.id || `${message.role}-${index}`,
+    runId: message.runId || '',
+    status: message.status || 'completed',
     role: message.role,
-    text: message.content,
+    text: message.content || '',
     source: source.title ? `${source.title} · ${source.source || '知识库'}` : '',
-    tool: toolCall.tool || '',
+    tool: toolCall.tool || (message.toolResults && message.toolResults[0] && message.toolResults[0].tool) || '',
   };
 }
 
 function mapSessionItem(session) {
   const messages = session.messages || [];
   const last = messages[messages.length - 1] || {};
+  const preview = last.content || (last.status === 'running' ? '正在生成回复...' : '暂无对话内容');
   return {
     title: session.title || '未命名会话',
     sessionId: session.id,
-    preview: last.content || '暂无对话内容',
+    preview,
     updatedAt: formatTime(session.updatedAt || session.createdAt),
   };
 }
@@ -117,6 +107,8 @@ Page({
     historyItems: [],
     sessionId: '',
     sessionTitle: '新会话',
+    activeRunId: '',
+    assistantMessageId: '',
     input: '',
     messages: buildGreeting(agents[0]),
     isEmptyConversation: true,
@@ -132,11 +124,19 @@ Page({
     if (menuButton && menuButton.left) headerRightInset = Math.max(20, windowInfo.windowWidth - menuButton.left + 8);
     this.setData({ statusHeight: windowInfo.statusBarHeight, headerRightInset });
     await app.ensureLogin();
+    this.socketMessageHandler = this.handleSocketMessage.bind(this);
+    app.eventBus.on('socket-message', this.socketMessageHandler);
     this.loadSessions();
   },
 
+  onUnload() {
+    if (this.socketMessageHandler) app.eventBus.off('socket-message', this.socketMessageHandler);
+    this.stopRunPolling();
+  },
+
   onShow() {
-    this.loadSessions();
+    if (this.data.sessionId && !this.data.loading) this.loadSession(this.data.sessionId);
+    else this.loadSessions();
   },
 
   loadSessions() {
@@ -167,6 +167,38 @@ Page({
     this.setData({ agentVisible: false });
   },
 
+  renderSession(session, extra = {}) {
+    const activeAgent = getAgent(session.agentKey || this.data.activeAgentKey);
+    const agentIndex = agents.findIndex((item) => item.key === activeAgent.key);
+    const messages = (session.messages || []).map(mapSessionMessage);
+    const running = messages.find((item) => item.status === 'running');
+    this.setData({
+      activeAgentKey: activeAgent.key,
+      activeAgent,
+      agentIndex: Math.max(agentIndex, 0),
+      sessionId: session.id,
+      sessionTitle: session.title || '历史对话',
+      messages: messages.length ? messages : buildGreeting(activeAgent),
+      isEmptyConversation: !messages.length,
+      activeRunId: running ? running.runId : extra.activeRunId || '',
+      assistantMessageId: running ? running.id : extra.assistantMessageId || '',
+      loading: Boolean(running),
+      ...extra,
+    });
+    wx.nextTick(() => this.scrollToBottom());
+  },
+
+  loadSession(sessionId) {
+    return request(`/agent/sessions/${sessionId}`)
+      .then((res) => {
+        const session = unwrap(res);
+        this.renderSession(session, { historyVisible: false });
+        this.loadSessions();
+        return session;
+      })
+      .catch(() => wx.showToast({ title: '会话加载失败', icon: 'none' }));
+  },
+
   applyAgent(activeAgent) {
     const shouldResetGreeting = !this.data.sessionId && this.data.messages.length === 1;
     const messages = shouldResetGreeting ? buildGreeting(activeAgent) : this.data.messages;
@@ -194,17 +226,8 @@ Page({
 
   selectSession(event) {
     const { sessionId } = event.currentTarget.dataset;
-    const session = this.data.sessions.find((item) => item.id === sessionId);
-    if (!session) return;
-    const messages = (session.messages || []).map(mapSessionMessage);
-    this.setData({
-      sessionId: session.id,
-      sessionTitle: session.title || '历史对话',
-      messages: messages.length ? messages : buildGreeting(this.data.activeAgent),
-      isEmptyConversation: !messages.length,
-      historyVisible: false,
-    });
-    wx.nextTick(() => this.scrollToBottom());
+    if (!sessionId) return;
+    this.loadSession(sessionId);
   },
 
   deleteSession(event) {
@@ -219,10 +242,14 @@ Page({
           Object.assign(nextData, {
             sessionId: '',
             sessionTitle: '新会话',
+            activeRunId: '',
+            assistantMessageId: '',
             input: '',
             messages: buildGreeting(this.data.activeAgent),
             isEmptyConversation: true,
+            loading: false,
           });
+          this.stopRunPolling();
         }
         this.setData(nextData);
         wx.showToast({ title: '已删除', icon: 'success' });
@@ -237,11 +264,15 @@ Page({
     this.setData({
       sessionId: '',
       sessionTitle: '新会话',
+      activeRunId: '',
+      assistantMessageId: '',
       input: '',
       messages: buildGreeting(activeAgent),
       isEmptyConversation: true,
       historyVisible: false,
+      loading: false,
     });
+    this.stopRunPolling();
     wx.nextTick(() => this.scrollToBottom());
   },
 
@@ -262,56 +293,103 @@ Page({
   },
 
   ask(question) {
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text: question,
-      source: '',
-      tool: '',
-    };
     this.setData({
       input: '',
       loading: true,
-      messages: this.data.messages.concat([userMessage]),
       isEmptyConversation: false,
     });
     wx.nextTick(() => this.scrollToBottom());
 
-    request('/agent/chat', 'POST', {
+    request('/agent/runs', 'POST', {
       question,
       sessionId: this.data.sessionId,
       agentKey: this.data.activeAgentKey,
     })
       .then((res) => {
         const data = unwrap(res);
-        const messages = this.data.messages.concat([mapAnswer(data)]);
-        this.setData({
-          sessionId: data.sessionId || this.data.sessionId,
-          sessionTitle: this.data.sessionId ? this.data.sessionTitle : question,
-          messages,
-          isEmptyConversation: false,
+        this.renderSession(data.session, {
+          activeRunId: data.run.id,
+          assistantMessageId: data.run.assistantMessageId,
+          loading: true,
         });
+        this.startRunPolling(data.run.id, data.session.id);
         this.loadSessions();
-        wx.nextTick(() => this.scrollToBottom());
       })
-      .catch(() => {
+      .catch((error) => {
         this.setData({
           messages: this.data.messages.concat([
             {
               id: `error-${Date.now()}`,
               role: 'assistant',
-              text: '智能体模型未配置或请求失败，请检查后端 OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL。',
+              text: getErrorMessage(error, '智能体模型未配置或请求失败，请检查后端 OPENAI_BASE_URL、OPENAI_API_KEY、OPENAI_MODEL。'),
               source: '系统提示',
               tool: 'fallback',
             },
           ]),
           isEmptyConversation: false,
+          loading: false,
         });
-      })
-      .finally(() => {
-        this.setData({ loading: false });
         wx.nextTick(() => this.scrollToBottom());
       });
+  },
+
+  handleSocketMessage(data) {
+    if (!data || !data.type || data.sessionId !== this.data.sessionId) return;
+    if (data.type === 'agent_delta') this.appendAgentDelta(data.messageId, data.delta || '');
+    if (data.type === 'agent_done') {
+      this.stopRunPolling();
+      this.setData({ loading: false, activeRunId: '', assistantMessageId: '' });
+      this.loadSession(data.sessionId);
+    }
+    if (data.type === 'agent_error') {
+      this.stopRunPolling();
+      this.applyAgentError(data.messageId, data.message || '智能体模型请求失败');
+    }
+  },
+
+  appendAgentDelta(messageId, delta) {
+    if (!delta) return;
+    const messages = this.data.messages.map((item) => {
+      if (item.id !== messageId) return item;
+      return { ...item, text: `${item.text || ''}${delta}`, status: 'running' };
+    });
+    this.setData({ messages, isEmptyConversation: false });
+    wx.nextTick(() => this.scrollToBottom());
+  },
+
+  applyAgentError(messageId, message) {
+    const messages = this.data.messages.map((item) => {
+      if (item.id !== messageId) return item;
+      return { ...item, text: message, status: 'failed', source: '系统提示', tool: 'error' };
+    });
+    this.setData({ messages, loading: false, activeRunId: '', assistantMessageId: '' });
+    wx.nextTick(() => this.scrollToBottom());
+  },
+
+  startRunPolling(runId, sessionId) {
+    this.stopRunPolling();
+    this.runPollTimer = setInterval(() => {
+      request(`/agent/runs/${runId}`)
+        .then((res) => {
+          const run = unwrap(res);
+          if (run.status === 'completed') {
+            this.stopRunPolling();
+            this.setData({ loading: false, activeRunId: '', assistantMessageId: '' });
+            this.loadSession(sessionId);
+          }
+          if (run.status === 'failed') {
+            this.stopRunPolling();
+            this.applyAgentError(run.assistantMessageId, run.error || '智能体模型请求失败');
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+  },
+
+  stopRunPolling() {
+    if (!this.runPollTimer) return;
+    clearInterval(this.runPollTimer);
+    this.runPollTimer = null;
   },
 
   scrollToBottom() {
