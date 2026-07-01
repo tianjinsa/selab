@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { listTasks, getTaskDetail } from './tasks.js';
 import { listProducts, getProductDetail } from './market.js';
 import { listPosts, getPostDetail } from './forum.js';
+import { searchKnowledgeVectors } from './vectorAi.js';
 
 const activeRuns = new Map();
 const categories = [
@@ -77,6 +78,7 @@ function sanitizeAiConfig(settings) {
   return {
     baseUrl: config.baseUrl || '',
     model: config.model || '',
+    embeddingModel: config.embeddingModel || 'text-embedding-3-small',
     hasApiKey: Boolean(config.apiKey),
     includeReasoning: Boolean(config.includeReasoning),
     enableThinking: Boolean(config.enableThinking),
@@ -516,8 +518,8 @@ async function runLocalFallback(store, realtime, user, sessionId, assistantMessa
     cards.push(...posts.map((post) => ({ type: 'post', title: post.title, id: post.id })));
     answer += posts.length ? ` 找到 ${posts.length} 个相关帖子。` : ' 暂未找到相关帖子。';
   } else if (lower.includes('help') || userContent.includes('怎么')) {
-    const knowledge = await runLocalTool(store, realtime, user, assistantMessageId, 'search_knowledge', { keyword: userContent }, () => (
-      searchKnowledge(store, userContent).slice(0, 3)
+    const knowledge = await runLocalTool(store, realtime, user, assistantMessageId, 'search_knowledge', { keyword: userContent }, async () => (
+      (await searchKnowledge(store, userContent)).slice(0, 3)
     ));
     answer += knowledge.length ? ` 知识库来源：${knowledge.map((item) => item.title).join('、')}。` : ' 知识库暂未匹配到明确条目。';
   }
@@ -956,7 +958,7 @@ function previewToolResult(result) {
 
 async function runTool(store, realtime, user, assistantMessageId, name, args) {
   if (name === 'search_knowledge') return searchKnowledge(store, args.keyword);
-  if (name === 'get_knowledge_detail') return store.collection('knowledgeEntries').find((item) => item.id === args.id) || null;
+  if (name === 'get_knowledge_detail') return store.collection('knowledgeEntries').find((item) => item.id === args.id && !item.deletedAt) || null;
   if (name === 'search_public_tasks') return listTasks(store, args, user.id).slice(0, 5);
   if (name === 'get_public_task_detail') return getTaskDetail(store, args.id, user.id);
   if (name === 'create_task_draft_card') {
@@ -997,9 +999,16 @@ function replaceAssistantCards(store, messageId, cards) {
   message.updatedAt = now();
 }
 
-function searchKnowledge(store, keyword = '') {
+async function searchKnowledge(store, keyword = '') {
   const q = String(keyword || '').trim();
+  const vectorMatches = await searchKnowledgeVectors(store, q).catch(() => []);
+  if (vectorMatches.length) return vectorMatches;
+  const enabledBaseIds = new Set(store.collection('knowledgeBases')
+    .filter((base) => !base.deletedAt && base.enabled !== false)
+    .map((base) => base.id));
   return store.collection('knowledgeEntries')
+    .filter((item) => !item.deletedAt)
+    .filter((item) => !item.knowledgeBaseId || !enabledBaseIds.size || enabledBaseIds.has(item.knowledgeBaseId))
     .filter((item) => !q || `${item.title} ${item.category} ${item.content}`.includes(q))
     .slice(0, 8)
     .map((item) => ({ id: item.id, title: item.title, category: item.category, source: item.source, content: item.content.slice(0, 120) }));
@@ -1046,13 +1055,20 @@ async function reportRisk(store, user, messageId, level = '中风险', reason = 
 }
 
 export function getAiAdminData(store) {
+  const knowledgeBases = decoratedKnowledgeBases(store);
   return {
     config: sanitizeAiConfig(store.collection('settings')),
     sessions: store.collection('aiSessions').length,
     stats: store.collection('aiConsultationStats'),
     risks: store.collection('aiRiskAlerts').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
     toolCalls: store.collection('aiToolCalls').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 100),
+    knowledgeBases,
     knowledgeEntries: store.collection('knowledgeEntries')
+      .filter((item) => !item.deletedAt)
+      .map((item) => ({
+        ...item,
+        knowledgeBase: knowledgeBases.find((base) => base.id === knowledgeBaseIdForEntry(item)) || knowledgeBases[0] || null
+      }))
   };
 }
 
@@ -1063,6 +1079,7 @@ export async function updateAiConfig(store, body) {
     baseUrl: body.baseUrl ?? current.baseUrl ?? '',
     apiKey: body.apiKey === undefined || body.apiKey === '' ? current.apiKey || '' : body.apiKey,
     model: body.model ?? current.model ?? '',
+    embeddingModel: body.embeddingModel ?? current.embeddingModel ?? 'text-embedding-3-small',
     includeReasoning: Boolean(body.includeReasoning),
     enableThinking: Boolean(body.enableThinking),
     thinkingType: body.thinkingType ?? current.thinkingType ?? '',
@@ -1076,10 +1093,102 @@ export async function createKnowledgeEntry(store, body) {
   const title = String(body.title || '').trim();
   const content = String(body.content || '').trim();
   if (!title || !content) throw badRequest('知识库标题和内容不能为空');
+  const base = resolveKnowledgeBase(store, body.knowledgeBaseId);
   return store.insert('knowledgeEntries', {
     title,
-    category: String(body.category || '平台使用说明').trim(),
+    knowledgeBaseId: base.id,
+    category: String(body.category || base.name || '平台使用说明').trim(),
     content,
     source: String(body.source || '管理员维护').trim()
   });
+}
+
+export async function updateKnowledgeEntry(store, entryId, body) {
+  const entry = store.collection('knowledgeEntries').find((item) => item.id === entryId && !item.deletedAt);
+  if (!entry) throw notFound('知识库条目不存在');
+  const title = String(body.title ?? entry.title ?? '').trim();
+  const content = String(body.content ?? entry.content ?? '').trim();
+  if (!title || !content) throw badRequest('知识库标题和内容不能为空');
+  const base = resolveKnowledgeBase(store, body.knowledgeBaseId || entry.knowledgeBaseId);
+  return store.update('knowledgeEntries', entry.id, {
+    title,
+    knowledgeBaseId: base.id,
+    category: String(body.category ?? entry.category ?? base.name).trim(),
+    content,
+    source: String(body.source ?? entry.source ?? '管理员维护').trim()
+  });
+}
+
+export async function deleteKnowledgeEntry(store, entryId) {
+  const entry = store.collection('knowledgeEntries').find((item) => item.id === entryId && !item.deletedAt);
+  if (!entry) throw notFound('知识库条目不存在');
+  await store.update('knowledgeEntries', entry.id, { deletedAt: now() });
+  return { ok: true };
+}
+
+export async function createKnowledgeBase(store, body) {
+  const name = String(body.name || '').trim();
+  if (!name) throw badRequest('知识库名称不能为空');
+  if (decoratedKnowledgeBases(store).some((item) => item.name === name)) throw badRequest('知识库名称已存在');
+  return store.insert('knowledgeBases', {
+    name,
+    description: String(body.description || '').trim(),
+    enabled: body.enabled !== false
+  });
+}
+
+export async function updateKnowledgeBase(store, baseId, body) {
+  const base = store.collection('knowledgeBases').find((item) => item.id === baseId && !item.deletedAt);
+  if (!base) throw notFound('知识库不存在');
+  const name = String(body.name ?? base.name ?? '').trim();
+  if (!name) throw badRequest('知识库名称不能为空');
+  return store.update('knowledgeBases', base.id, {
+    name,
+    description: String(body.description ?? base.description ?? '').trim(),
+    enabled: body.enabled !== false
+  });
+}
+
+export async function deleteKnowledgeBase(store, baseId) {
+  const base = store.collection('knowledgeBases').find((item) => item.id === baseId && !item.deletedAt);
+  if (!base) throw notFound('知识库不存在');
+  const hasEntries = store.collection('knowledgeEntries')
+    .some((item) => !item.deletedAt && knowledgeBaseIdForEntry(item) === base.id);
+  if (hasEntries) throw badRequest('请先删除或移动该知识库下的条目');
+  await store.update('knowledgeBases', base.id, { deletedAt: now(), enabled: false });
+  return { ok: true };
+}
+
+function decoratedKnowledgeBases(store) {
+  const bases = store.collection('knowledgeBases').filter((item) => !item.deletedAt);
+  if (bases.length) return bases;
+  const categories = [...new Set(store.collection('knowledgeEntries')
+    .filter((item) => !item.deletedAt)
+    .map((item) => item.category || '默认知识库'))];
+  if (categories.length) {
+    return categories.map((name, index) => ({
+      id: index === 0 ? 'default' : `legacy-${index}`,
+      name,
+      description: '由旧知识库分类自动映射',
+      enabled: true,
+      legacy: true
+    }));
+  }
+  return [{
+    id: 'default',
+    name: '默认知识库',
+    description: '平台默认知识库',
+    enabled: true,
+    legacy: true
+  }];
+}
+
+function knowledgeBaseIdForEntry(entry) {
+  if (entry.knowledgeBaseId) return entry.knowledgeBaseId;
+  return 'default';
+}
+
+function resolveKnowledgeBase(store, baseId = '') {
+  const bases = decoratedKnowledgeBases(store);
+  return bases.find((item) => item.id === baseId) || bases[0] || { id: 'default', name: '默认知识库' };
 }

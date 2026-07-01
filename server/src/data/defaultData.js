@@ -9,6 +9,7 @@ export function createEmptyData() {
     walletTransactions: [],
     fileAssets: [],
     adminLogs: [],
+    knowledgeBases: [],
     settings: {
       taskCategories: ['跑腿代办', '学业互助', '技能服务', '其他互助'],
       productCategories: [
@@ -30,6 +31,7 @@ export function createEmptyData() {
         baseUrl: '',
         apiKey: '',
         model: '',
+        embeddingModel: 'text-embedding-3-small',
         includeReasoning: false,
         enableThinking: false,
         thinkingType: '',
@@ -54,6 +56,7 @@ export const collectionNames = [
   'taskDeliveries',
   'taskReviews',
   'taskDisputes',
+  'taskCategoryRequests',
   'taskKeywords',
   'paymentFlows',
   'posts',
@@ -71,6 +74,7 @@ export const collectionNames = [
   'orderReviews',
   'orderDisputes',
   'reports',
+  'knowledgeBases',
   'knowledgeEntries',
   'aiSessions',
   'aiMessages',

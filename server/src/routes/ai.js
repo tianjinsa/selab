@@ -4,8 +4,11 @@ import { requireAdmin, requireUser } from '../services/auth.js';
 import {
   aiCategories,
   cancelAiRun,
+  createKnowledgeBase,
   createAiSession,
   createKnowledgeEntry,
+  deleteKnowledgeBase,
+  deleteKnowledgeEntry,
   deleteAiSession,
   getAiAdminData,
   getAiSession,
@@ -13,7 +16,9 @@ import {
   regenerateAiRun,
   updateAiSession,
   updateAiUserMessage,
-  updateAiConfig
+  updateAiConfig,
+  updateKnowledgeBase,
+  updateKnowledgeEntry
 } from '../services/ai.js';
 
 const router = express.Router();
@@ -66,6 +71,27 @@ router.patch('/admin/config', requireAdmin, asyncHandler(async (req, res) => {
 router.post('/admin/knowledge', requireAdmin, asyncHandler(async (req, res) => {
   const entry = await createKnowledgeEntry(req.store, req.body);
   res.status(201).json({ entry });
+}));
+
+router.patch('/admin/knowledge/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ entry: await updateKnowledgeEntry(req.store, req.params.id, req.body) });
+}));
+
+router.delete('/admin/knowledge/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(await deleteKnowledgeEntry(req.store, req.params.id));
+}));
+
+router.post('/admin/knowledge-bases', requireAdmin, asyncHandler(async (req, res) => {
+  const base = await createKnowledgeBase(req.store, req.body);
+  res.status(201).json({ base });
+}));
+
+router.patch('/admin/knowledge-bases/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ base: await updateKnowledgeBase(req.store, req.params.id, req.body) });
+}));
+
+router.delete('/admin/knowledge-bases/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(await deleteKnowledgeBase(req.store, req.params.id));
 }));
 
 export default router;

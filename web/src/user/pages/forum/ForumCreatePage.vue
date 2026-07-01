@@ -7,6 +7,7 @@
       </div>
       <n-button secondary @click="$router.push('/forum')">返回社区</n-button>
     </n-space>
+    <n-spin :show="aiChecking" description="AI 正在检测标签相似度...">
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-form-item label="标题">
         <n-input v-model:value="form.title" maxlength="60" show-count />
@@ -18,7 +19,12 @@
         <n-input v-model:value="form.content" type="textarea" :autosize="{ minRows: 6 }" />
       </n-form-item>
       <n-form-item label="Tag">
-        <n-dynamic-tags v-model:value="form.tags" :max="5" />
+        <div class="tag-ai-field">
+          <n-dynamic-tags v-model:value="form.tags" :max="5" />
+          <n-button secondary :loading="generatingTags" @click="generateTags">
+            AI 帮我写标签
+          </n-button>
+        </div>
       </n-form-item>
       <n-form-item label="图片">
         <div class="upload-field">
@@ -44,20 +50,24 @@
       </n-form-item>
       <n-button type="primary" :loading="saving" @click="submit">发布</n-button>
     </n-form>
+    </n-spin>
   </section>
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, h, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useMessage } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui';
 import { X } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 import { uploadFile } from '../../../shared/uploadManager.js';
 
 const router = useRouter();
 const message = useMessage();
+const dialog = useDialog();
 const saving = ref(false);
+const aiChecking = ref(false);
+const generatingTags = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
 const typeOptions = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item }));
@@ -65,15 +75,117 @@ const form = reactive({ title: '', content: '', type: '经验分享帖', tags: [
 
 async function submit() {
   saving.value = true;
+  aiChecking.value = true;
   try {
-    const data = await request('/api/forum/posts', { method: 'POST', body: { ...form, imageUrls: form.imageUrls } });
+    await supplementTagsIfNeeded();
+    const similarity = await checkSimilarity(form.tags);
+    const decision = await resolveSimilarity(similarity);
+    if (!decision) return;
+    const data = await request('/api/forum/posts', {
+      method: 'POST',
+      body: {
+        ...form,
+        imageUrls: form.imageUrls,
+        tagReplacements: decision.replacements,
+        confirmSimilarTags: decision.confirmSimilarTags
+      }
+    });
     message.success('帖子已发布');
     router.push(`/forum/${data.post.id}`);
   } catch (error) {
-    message.error(error.message || '发布失败');
+    if (error.details?.similar?.length) {
+      const decision = await resolveSimilarity(error.details.similar);
+      if (decision) {
+        try {
+          const data = await request('/api/forum/posts', {
+            method: 'POST',
+            body: {
+              ...form,
+              imageUrls: form.imageUrls,
+              tagReplacements: decision.replacements,
+              confirmSimilarTags: decision.confirmSimilarTags
+            }
+          });
+          message.success('帖子已发布');
+          router.push(`/forum/${data.post.id}`);
+          return;
+        } catch (retryError) {
+          message.error(retryError.message || '发布失败');
+        }
+      }
+    } else {
+      message.error(error.message || '发布失败');
+    }
   } finally {
+    aiChecking.value = false;
     saving.value = false;
   }
+}
+
+async function generateTags() {
+  if (!form.title.trim() && !form.content.trim()) {
+    message.warning('请先填写标题或正文');
+    return;
+  }
+  generatingTags.value = true;
+  aiChecking.value = true;
+  try {
+    const data = await request('/api/tags/ai-generate', { method: 'POST', body: { title: form.title, content: form.content } });
+    mergeTags(data.tags || []);
+    const decision = await resolveSimilarity(data.similarity || []);
+    if (decision?.replacements) applyTagReplacements(decision.replacements);
+    message.success('AI 标签已生成');
+  } catch (error) {
+    message.error(error.message || 'AI 标签生成失败');
+  } finally {
+    generatingTags.value = false;
+    aiChecking.value = false;
+  }
+}
+
+async function supplementTagsIfNeeded() {
+  if (form.tags.length >= 3 || (!form.title.trim() && !form.content.trim())) return;
+  const data = await request('/api/tags/ai-generate', { method: 'POST', body: { title: form.title, content: form.content } });
+  mergeTags(data.tags || []);
+}
+
+async function checkSimilarity(tags) {
+  const data = await request('/api/tags/check-similarity', { method: 'POST', body: { tags } });
+  return data.similarity || [];
+}
+
+function resolveSimilarity(similarity = []) {
+  const conflicts = similarity.filter((item) => item.matches?.length);
+  if (!conflicts.length) return Promise.resolve({ replacements: {}, confirmSimilarTags: false });
+  return new Promise((resolve) => {
+    const replacements = Object.fromEntries(conflicts.map((item) => [item.input, item.matches[0].label]));
+    dialog.warning({
+      title: '检测到相似标签',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', '建议替换为已有标签以便归类话题，也可以坚持发布新标签。'),
+        ...conflicts.map((item) => h('div', { class: 'similarity-row' }, [
+          h('strong', `#${item.input}`),
+          h('span', ` 相似已有标签：#${item.matches[0].label}（相似度 ${Math.round(item.matches[0].similarity * 100)}%）`)
+        ]))
+      ]),
+      positiveText: '使用已有标签替换',
+      negativeText: '坚持发布',
+      onPositiveClick: () => {
+        applyTagReplacements(replacements);
+        resolve({ replacements, confirmSimilarTags: false });
+      },
+      onNegativeClick: () => resolve({ replacements: {}, confirmSimilarTags: true }),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function mergeTags(tags = []) {
+  form.tags = [...new Set([...form.tags, ...tags.map((item) => String(item || '').trim()).filter(Boolean)])].slice(0, 5);
+}
+
+function applyTagReplacements(replacements = {}) {
+  form.tags = [...new Set(form.tags.map((item) => replacements[item] || item))].slice(0, 5);
 }
 
 async function uploadPostImage({ file, onFinish, onError }) {

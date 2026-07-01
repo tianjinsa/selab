@@ -27,6 +27,8 @@ import {
 } from '../services/forum.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
 import { paginateItems } from '../utils/pagination.js';
+import { badRequest } from '../utils/errors.js';
+import { normalizeLabelsBySimilarity } from '../services/vectorAi.js';
 
 const router = express.Router();
 
@@ -36,7 +38,16 @@ router.get('/posts', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.post('/posts', requireUser, asyncHandler(async (req, res) => {
-  const post = await createPost(req.store, req.user, req.body);
+  const normalized = await normalizeLabelsBySimilarity(
+    req.store,
+    'forumTag',
+    req.body.tags || [],
+    req.body.tagReplacements || {}
+  );
+  if (normalized.similar.length && !req.body.confirmSimilarTags) {
+    throw badRequest('检测到相似标签，请确认是否替换或坚持发布', { similar: normalized.similar });
+  }
+  const post = await createPost(req.store, req.user, { ...req.body, tags: normalized.labels });
   await enqueueContentModeration(req.store, req.realtime, 'post', post.id);
   res.status(201).json({ post });
 }));

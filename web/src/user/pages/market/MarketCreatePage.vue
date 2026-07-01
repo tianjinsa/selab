@@ -13,7 +13,12 @@
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-grid :cols="2" :x-gap="14" responsive="screen">
         <n-form-item-gi label="商品名称"><n-input v-model:value="form.title" /></n-form-item-gi>
-        <n-form-item-gi label="分类"><n-select v-model:value="form.categoryId" :options="categoryOptions" /></n-form-item-gi>
+        <n-form-item-gi label="分类">
+          <div class="category-ai-field">
+            <n-select v-model:value="form.categoryId" :options="categoryOptions" />
+            <n-button secondary :loading="classifying" @click="classifyProduct">AI 推荐</n-button>
+          </div>
+        </n-form-item-gi>
         <n-form-item-gi label="价格"><n-input-number v-model:value="form.price" :min="0.01" /></n-form-item-gi>
         <n-form-item-gi label="成色"><n-select v-model:value="form.condition" :options="conditionOptions" /></n-form-item-gi>
         <n-form-item-gi label="交易方式"><n-select v-model:value="form.tradeMethod" :options="tradeOptions" /></n-form-item-gi>
@@ -55,16 +60,16 @@
       <n-form :model="categoryRequest" label-placement="top">
         <n-form-item label="分类名称"><n-input v-model:value="categoryRequest.name" /></n-form-item>
         <n-form-item label="申请理由"><n-input v-model:value="categoryRequest.reason" type="textarea" /></n-form-item>
-        <n-button secondary @click="submitCategoryRequest">提交申请</n-button>
+        <n-button secondary :loading="categoryChecking" @click="submitCategoryRequest">提交申请</n-button>
       </n-form>
     </n-card>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useMessage } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui';
 import { ImagePlus, X } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 import { uploadFile } from '../../../shared/uploadManager.js';
@@ -72,9 +77,12 @@ import { uploadFile } from '../../../shared/uploadManager.js';
 const router = useRouter();
 const route = useRoute();
 const message = useMessage();
+const dialog = useDialog();
 const productId = computed(() => route.params.id);
 const meta = ref({ categories: [], conditions: [], tradeMethods: [] });
 const saving = ref(false);
+const classifying = ref(false);
+const categoryChecking = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
 const showCategoryRequest = ref(false);
@@ -137,6 +145,31 @@ async function submit() {
   }
 }
 
+async function classifyProduct() {
+  if (!form.title.trim() && !form.detail.trim()) {
+    message.warning('请先填写商品名称或详情');
+    return;
+  }
+  classifying.value = true;
+  try {
+    const data = await request('/api/products/ai-classify', {
+      method: 'POST',
+      body: { title: form.title, detail: form.detail }
+    });
+    const first = data.categories?.[0];
+    if (first?.id) {
+      form.categoryId = first.id;
+      message.success(`已推荐分类：${first.label}`);
+    } else {
+      message.warning('暂未找到合适分类');
+    }
+  } catch (error) {
+    message.error(error.message || 'AI 分类失败');
+  } finally {
+    classifying.value = false;
+  }
+}
+
 async function uploadProductImage({ file, onFinish, onError }) {
   if (form.imageUrls.length + uploadingCount.value >= 9) {
     message.warning('最多上传 9 张图片');
@@ -162,10 +195,69 @@ function removeImage(url) {
 }
 
 async function submitCategoryRequest() {
-  await request('/api/market/category-requests', { method: 'POST', body: categoryRequest });
+  categoryChecking.value = true;
+  try {
+    const result = await request('/api/categories/request-new', { method: 'POST', body: categoryRequest });
+    if (result.status === 'duplicate') {
+      message.error(`分类已存在：${result.matches?.[0]?.label || categoryRequest.name}`);
+      return;
+    }
+    if (result.status === 'similar') {
+      showSimilarCategoryDialog(result);
+      return;
+    }
+    clearCategoryRequest();
+    message.success('分类申请已提交，请等待管理员处理');
+  } catch (error) {
+    message.error(error.message || '分类申请失败');
+  } finally {
+    categoryChecking.value = false;
+  }
+}
+
+function showSimilarCategoryDialog(result) {
+  const first = result.matches?.[0];
+  dialog.warning({
+    title: '检测到高度相似分类',
+    content: () => h('div', { class: 'similarity-dialog-content' }, [
+      h('p', `你申请的「${categoryRequest.name}」与已有分类较相似。`),
+      first ? h('p', `已有分类：${first.label}，相似度 ${Math.round(first.similarity * 100)}%。`) : null,
+      h('p', '建议直接使用已有分类；如确实不是同义分类，可以申请 AI 仲裁。')
+    ]),
+    positiveText: first ? '使用已有分类' : '关闭',
+    negativeText: '申请 AI 仲裁',
+    onPositiveClick: () => {
+      if (first?.entityId) form.categoryId = first.entityId;
+      clearCategoryRequest();
+      showCategoryRequest.value = false;
+    },
+    onNegativeClick: async () => {
+      categoryChecking.value = true;
+      try {
+        const arbitration = await request('/api/categories/ai-arbitrate', {
+          method: 'POST',
+          body: { requestId: result.request?.id }
+        });
+        if (arbitration.approved) {
+          meta.value.categories.push(arbitration.category);
+          form.categoryId = arbitration.category.id;
+          clearCategoryRequest();
+          showCategoryRequest.value = false;
+          message.success('AI 仲裁通过，分类已创建');
+        } else {
+          message.error(`AI 仲裁未通过：${arbitration.reason}`);
+        }
+      } catch (error) {
+        message.error(error.message || 'AI 仲裁失败');
+      } finally {
+        categoryChecking.value = false;
+      }
+    }
+  });
+}
+
+function clearCategoryRequest() {
   categoryRequest.name = '';
   categoryRequest.reason = '';
-  showCategoryRequest.value = false;
-  message.success('分类申请已提交，请等待管理员处理');
 }
 </script>

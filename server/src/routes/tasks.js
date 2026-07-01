@@ -31,6 +31,7 @@ import {
 import { badRequest } from '../utils/errors.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
 import { paginateItems } from '../utils/pagination.js';
+import { normalizeLabelsBySimilarity } from '../services/vectorAi.js';
 
 const router = express.Router();
 
@@ -50,7 +51,8 @@ router.get('/', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.post('/', requireUser, asyncHandler(async (req, res) => {
-  const task = await createTaskDraft(req.store, req.user, req.body);
+  const body = await normalizeTaskTagsForRequest(req);
+  const task = await createTaskDraft(req.store, req.user, body);
   res.status(201).json({ task });
 }));
 
@@ -75,12 +77,14 @@ router.get('/:id', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.patch('/:id', requireUser, asyncHandler(async (req, res) => {
-  const task = await updateTaskDraft(req.store, req.user, req.params.id, req.body);
+  const body = await normalizeTaskTagsForRequest(req);
+  const task = await updateTaskDraft(req.store, req.user, req.params.id, body);
   res.json({ task });
 }));
 
 router.patch('/:id/resubmit', requireUser, asyncHandler(async (req, res) => {
-  const task = await resubmitRejectedTask(req.store, req.user, req.params.id, req.body);
+  const body = await normalizeTaskTagsForRequest(req);
+  const task = await resubmitRejectedTask(req.store, req.user, req.params.id, body);
   res.json({ task });
 }));
 
@@ -215,5 +219,18 @@ router.post('/admin/scan-timeouts', requireAdmin, asyncHandler(async (req, res) 
   const result = await scanTaskTimeouts(req.store);
   res.json(result);
 }));
+
+async function normalizeTaskTagsForRequest(req) {
+  const normalized = await normalizeLabelsBySimilarity(
+    req.store,
+    'taskTag',
+    req.body.tags || [],
+    req.body.tagReplacements || {}
+  );
+  if (normalized.similar.length && !req.body.confirmSimilarTags) {
+    throw badRequest('检测到相似任务标签，请确认后再提交', { similar: normalized.similar });
+  }
+  return { ...req.body, tags: normalized.labels };
+}
 
 export default router;

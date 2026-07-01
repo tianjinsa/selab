@@ -13,13 +13,17 @@
     <n-alert v-if="isResubmitMode" type="error" :show-icon="false" style="margin-top: 14px;">
       该任务此前已退款。修改后需要重新完成模拟支付，支付成功后才会再次进入审核。
     </n-alert>
+    <n-spin :show="aiChecking" description="AI 正在检测任务分类与标签相似度...">
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-grid :cols="2" :x-gap="16" responsive="screen">
         <n-form-item-gi label="任务标题">
           <n-input v-model:value="form.title" maxlength="40" show-count />
         </n-form-item-gi>
         <n-form-item-gi label="任务类型">
-          <n-select v-model:value="form.category" :options="categoryOptions" />
+          <div class="category-ai-field">
+            <n-select v-model:value="form.category" :options="categoryOptions" />
+            <n-button secondary :loading="categoryChecking" @click="showCategoryRequest = !showCategoryRequest">申请新分类</n-button>
+          </div>
         </n-form-item-gi>
         <n-form-item-gi label="地点 / 校区">
           <n-select v-model:value="form.campusArea" :options="areaOptions" />
@@ -36,6 +40,12 @@
       </n-grid>
       <n-form-item label="任务详情">
         <n-input v-model:value="form.detail" type="textarea" :autosize="{ minRows: 4 }" />
+      </n-form-item>
+      <n-form-item label="任务标签">
+        <div class="tag-ai-field">
+          <n-dynamic-tags v-model:value="form.tags" :max="5" />
+          <span class="muted">最多 5 个，每个最长 20 个字符；发布前会自动检测相似标签。</span>
+        </div>
       </n-form-item>
       <n-form-item label="交付要求">
         <n-input v-model:value="form.deliveryRequirement" type="textarea" :autosize="{ minRows: 2 }" />
@@ -70,13 +80,22 @@
       </n-alert>
       <n-button type="primary" :loading="saving" @click="submit">{{ submitText }}</n-button>
     </n-form>
+    </n-spin>
+
+    <n-card v-if="showCategoryRequest" title="任务分类新增申请" style="margin-top: 18px;">
+      <n-form :model="categoryRequest" label-placement="top">
+        <n-form-item label="分类名称"><n-input v-model:value="categoryRequest.name" /></n-form-item>
+        <n-form-item label="申请理由"><n-input v-model:value="categoryRequest.reason" type="textarea" /></n-form-item>
+        <n-button secondary :loading="categoryChecking" @click="submitCategoryRequest">提交申请</n-button>
+      </n-form>
+    </n-card>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useMessage } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui';
 import { ImagePlus, X } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 import { uploadFile } from '../../../shared/uploadManager.js';
@@ -84,10 +103,14 @@ import { uploadFile } from '../../../shared/uploadManager.js';
 const route = useRoute();
 const router = useRouter();
 const message = useMessage();
+const dialog = useDialog();
 const taskId = computed(() => route.params.id);
 const loadedTask = ref(null);
 const meta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
 const saving = ref(false);
+const aiChecking = ref(false);
+const categoryChecking = ref(false);
+const showCategoryRequest = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
 const deadlineValue = ref(Date.now() + 24 * 60 * 60 * 1000);
@@ -100,8 +123,10 @@ const form = reactive({
   detail: '',
   deliveryRequirement: '',
   contactNote: '',
+  tags: [],
   imageUrls: []
 });
+const categoryRequest = reactive({ name: '', reason: '' });
 
 const categoryOptions = computed(() => meta.value.categories.map((item) => ({ label: item, value: item })));
 const areaOptions = computed(() => meta.value.areas.map((item) => ({ label: item, value: item })));
@@ -125,6 +150,7 @@ onMounted(async () => {
     const data = await request(`/api/tasks/${taskId.value}`);
     loadedTask.value = data.task;
     Object.assign(form, data.task);
+    form.tags = Array.isArray(data.task.tags) ? data.task.tags : [];
     form.imageUrls = Array.isArray(data.task.imageUrls) ? data.task.imageUrls : [];
     deadlineValue.value = new Date(data.task.deadlineAt).getTime();
   }
@@ -132,9 +158,15 @@ onMounted(async () => {
 
 async function submit() {
   saving.value = true;
+  aiChecking.value = true;
   try {
+    const decision = await resolveTagSimilarity(await checkTaskTagSimilarity(form.tags));
+    if (!decision) return;
     const payload = {
       ...form,
+      tags: applyTagReplacements(form.tags, decision.replacements),
+      tagReplacements: decision.replacements,
+      confirmSimilarTags: decision.confirmSimilarTags,
       deadlineAt: new Date(deadlineValue.value).toISOString()
     };
     if (isResubmitMode.value) {
@@ -150,8 +182,120 @@ async function submit() {
   } catch (error) {
     message.error(error.message || '提交失败');
   } finally {
+    aiChecking.value = false;
     saving.value = false;
   }
+}
+
+async function checkTaskTagSimilarity(tags) {
+  const cleaned = [...new Set((Array.isArray(tags) ? tags : [])
+    .map((item) => String(item || '').trim())
+    .filter(Boolean))]
+    .slice(0, 5);
+  if (!cleaned.length) return [];
+  const data = await request('/api/task-tags/check-similarity', { method: 'POST', body: { tags: cleaned } });
+  return data.similarity || [];
+}
+
+function resolveTagSimilarity(similarity = []) {
+  const conflicts = similarity.filter((item) => item.matches?.length);
+  if (!conflicts.length) return Promise.resolve({ replacements: {}, confirmSimilarTags: false });
+  return new Promise((resolve) => {
+    const replacements = Object.fromEntries(conflicts.map((item) => [item.input, item.matches[0].label]));
+    dialog.warning({
+      title: '检测到相似任务标签',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', '建议替换为已有标签以便任务倾向统计更准确，也可以坚持使用新标签。'),
+        ...conflicts.map((item) => h('div', { class: 'similarity-row' }, [
+          h('strong', `#${item.input}`),
+          h('span', ` 相似已有标签：#${item.matches[0].label}（相似度 ${Math.round(item.matches[0].similarity * 100)}%）`)
+        ]))
+      ]),
+      positiveText: '使用已有标签替换',
+      negativeText: '坚持使用',
+      onPositiveClick: () => {
+        form.tags = applyTagReplacements(form.tags, replacements);
+        resolve({ replacements, confirmSimilarTags: false });
+      },
+      onNegativeClick: () => resolve({ replacements: {}, confirmSimilarTags: true }),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function applyTagReplacements(tags = [], replacements = {}) {
+  return [...new Set(tags
+    .map((item) => String(replacements[item] || item || '').replace(/^#/, '').trim())
+    .filter(Boolean)
+    .map((item) => item.slice(0, 20)))]
+    .slice(0, 5);
+}
+
+async function submitCategoryRequest() {
+  categoryChecking.value = true;
+  try {
+    const result = await request('/api/task-categories/request-new', { method: 'POST', body: categoryRequest });
+    if (result.status === 'duplicate') {
+      message.error(`任务分类已存在：${result.matches?.[0]?.label || categoryRequest.name}`);
+      return;
+    }
+    if (result.status === 'similar') {
+      showSimilarCategoryDialog(result);
+      return;
+    }
+    clearCategoryRequest();
+    message.success('任务分类申请已提交，请等待管理员处理');
+  } catch (error) {
+    message.error(error.message || '任务分类申请失败');
+  } finally {
+    categoryChecking.value = false;
+  }
+}
+
+function showSimilarCategoryDialog(result) {
+  const first = result.matches?.[0];
+  dialog.warning({
+    title: '检测到高度相似任务分类',
+    content: () => h('div', { class: 'similarity-dialog-content' }, [
+      h('p', `你申请的「${categoryRequest.name}」与已有任务分类较相似。`),
+      first ? h('p', `已有分类：${first.label}，相似度 ${Math.round(first.similarity * 100)}%。`) : null,
+      h('p', '建议直接使用已有分类；如确实不是同义分类，可以申请 AI 仲裁。')
+    ]),
+    positiveText: first ? '使用已有分类' : '关闭',
+    negativeText: '申请 AI 仲裁',
+    onPositiveClick: () => {
+      if (first?.label) form.category = first.label;
+      clearCategoryRequest();
+      showCategoryRequest.value = false;
+    },
+    onNegativeClick: async () => {
+      categoryChecking.value = true;
+      try {
+        const arbitration = await request('/api/task-categories/ai-arbitrate', {
+          method: 'POST',
+          body: { requestId: result.request?.id }
+        });
+        if (arbitration.approved) {
+          meta.value.categories.push(arbitration.category);
+          form.category = arbitration.category;
+          clearCategoryRequest();
+          showCategoryRequest.value = false;
+          message.success('AI 仲裁通过，任务分类已创建');
+        } else {
+          message.error(`AI 仲裁未通过：${arbitration.reason}`);
+        }
+      } catch (error) {
+        message.error(error.message || 'AI 仲裁失败');
+      } finally {
+        categoryChecking.value = false;
+      }
+    }
+  });
+}
+
+function clearCategoryRequest() {
+  categoryRequest.name = '';
+  categoryRequest.reason = '';
 }
 
 async function uploadTaskImage({ file, onFinish, onError }) {

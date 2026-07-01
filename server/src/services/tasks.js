@@ -87,8 +87,17 @@ function assertTaskPayload(store, body) {
     deadlineAt: deadlineAt.toISOString(),
     deliveryRequirement: String(body.deliveryRequirement || '').trim(),
     contactNote: String(body.contactNote || '').trim(),
+    tags: normalizeTaskTags(body.tags),
     imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.slice(0, 6) : []
   };
+}
+
+function normalizeTaskTags(tags) {
+  return [...new Set((Array.isArray(tags) ? tags : [])
+    .map((item) => String(item || '').replace(/^#/, '').trim())
+    .filter(Boolean)
+    .map((item) => item.slice(0, 20)))]
+    .slice(0, 5);
 }
 
 export function taskAreas() {
@@ -843,7 +852,10 @@ async function changeCredit(store, userId, change, reason) {
 }
 
 async function writeTaskKeywords(store, task) {
-  const keywords = extractTaskKeywords(`${task.title} ${task.detail} ${task.category}`);
+  const keywords = [...new Set([
+    ...extractTaskKeywords(`${task.title} ${task.detail} ${task.category}`),
+    ...(Array.isArray(task.tags) ? task.tags : [])
+  ])];
   const existing = store.collection('taskKeywords').filter((item) => item.taskId !== task.id);
   const next = keywords.map((keyword) => ({
     id: randomUUID(),

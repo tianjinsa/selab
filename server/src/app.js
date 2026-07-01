@@ -14,6 +14,7 @@ import forumRoutes from './routes/forum.js';
 import marketRoutes from './routes/market.js';
 import aiRoutes from './routes/ai.js';
 import walletRoutes from './routes/wallet.js';
+import semanticRoutes from './routes/semantic.js';
 import { ApiError } from './utils/errors.js';
 import { collectionNames } from './data/defaultData.js';
 
@@ -40,6 +41,7 @@ const TASK_COLLECTIONS = [
   'taskDeliveries',
   'taskReviews',
   'taskDisputes',
+  'taskCategoryRequests',
   'taskKeywords',
   'paymentFlows',
   'reports',
@@ -68,6 +70,7 @@ const AI_COLLECTIONS = [
   'aiToolCalls',
   'aiRiskAlerts',
   'aiConsultationStats',
+  'knowledgeBases',
   'knowledgeEntries',
   'tasks',
   'products',
@@ -86,8 +89,12 @@ function collectionsForRequest(req) {
   if (pathName.startsWith('/api/files')) return [...BASE_COLLECTIONS, 'fileAssets'];
   if (pathName.startsWith('/api/wallet')) return [...BASE_COLLECTIONS, 'walletTransactions'];
   if (pathName.startsWith('/api/forum')) return [...BASE_COLLECTIONS, ...FORUM_COLLECTIONS];
+  if (pathName.startsWith('/api/tags')) return [...BASE_COLLECTIONS, ...FORUM_COLLECTIONS];
   if (pathName.startsWith('/api/tasks')) return [...BASE_COLLECTIONS, ...TASK_COLLECTIONS];
   if (pathName.startsWith('/api/market')) return [...BASE_COLLECTIONS, ...MARKET_COLLECTIONS];
+  if (pathName.startsWith('/api/products') || pathName.startsWith('/api/categories') || pathName.startsWith('/api/task-categories') || pathName.startsWith('/api/task-tags')) {
+    return [...BASE_COLLECTIONS, ...TASK_COLLECTIONS, ...MARKET_COLLECTIONS, ...FORUM_COLLECTIONS];
+  }
   if (pathName.startsWith('/api/ai')) return [...BASE_COLLECTIONS, ...AI_COLLECTIONS, ...TASK_COLLECTIONS, ...MARKET_COLLECTIONS, ...FORUM_COLLECTIONS];
   if (pathName.startsWith('/api/users')) {
     return [...BASE_COLLECTIONS, ...CHAT_COLLECTIONS, ...FORUM_COLLECTIONS, ...TASK_COLLECTIONS, ...MARKET_COLLECTIONS];
@@ -133,6 +140,7 @@ export function createApp(store, realtime) {
   app.use('/api/tasks', taskRoutes);
   app.use('/api/forum', forumRoutes);
   app.use('/api/market', marketRoutes);
+  app.use('/api', semanticRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/wallet', walletRoutes);
 
