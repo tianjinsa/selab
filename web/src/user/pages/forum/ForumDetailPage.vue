@@ -40,15 +40,10 @@
           </template>
           <div v-else class="forum-text-stage" aria-label="帖子文字封面">
             <div class="forum-text-quote">“</div>
-            <p class="forum-text-copy">
-              <span
-                v-for="(segment, index) in posterTextSegments"
-                :key="`${segment.text}-${index}`"
-                :class="{ highlight: segment.highlight }"
-              >
-                {{ segment.text }}
-              </span>
-            </p>
+            <div class="forum-text-copy">
+              <strong class="forum-text-title">{{ posterTitle }}</strong>
+              <span v-if="posterContent" class="forum-text-body">{{ posterContent }}</span>
+            </div>
             <div class="forum-text-mark"></div>
           </div>
         </div>
@@ -219,7 +214,8 @@ const commentInputRef = ref(null);
 const currentImageIndex = ref(0);
 const imageUrls = computed(() => Array.isArray(post.value?.imageUrls) ? post.value.imageUrls : []);
 const currentImage = computed(() => assetUrl(imageUrls.value[currentImageIndex.value] || imageUrls.value[0] || ''));
-const posterTextSegments = computed(() => buildPosterTextSegments(post.value));
+const posterTitle = computed(() => posterTitleText(post.value));
+const posterContent = computed(() => posterContentText(post.value));
 
 onMounted(async () => {
   if (!session.user) await loadUserSession();
@@ -300,20 +296,16 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : '-';
 }
 
-function buildPosterTextSegments(item) {
-  const text = posterText(item);
-  const parts = text.match(/[\s\S]{1,7}/g) || [];
-  return parts.map((part, index) => ({
-    text: part,
-    highlight: index > 0 && index % 3 === 1 && part.trim().length > 1
-  }));
-}
-
-function posterText(item) {
+function posterTitleText(item) {
   const title = String(item?.title || '').trim();
   const content = String(item?.content || '').trim();
-  const joined = [title, content].filter(Boolean).join('，').replace(/\s+/g, ' ');
-  if (joined.length <= 60) return joined || '分享一段校园生活';
-  return `${joined.slice(0, 60)}...`;
+  return title || content || '分享一段校园生活';
+}
+
+function posterContentText(item) {
+  const title = String(item?.title || '').trim();
+  const content = String(item?.content || '').replace(/\s+/g, ' ').trim();
+  if (!content || content === title) return '';
+  return content.length <= 44 ? content : `${content.slice(0, 44)}...`;
 }
 </script>
