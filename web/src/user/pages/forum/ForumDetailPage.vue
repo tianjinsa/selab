@@ -38,10 +38,18 @@
               ></button>
             </div>
           </template>
-          <div v-else class="forum-text-stage">
-            <n-tag :bordered="false">{{ post.type }}</n-tag>
-            <h2>{{ post.title }}</h2>
-            <p>{{ post.content }}</p>
+          <div v-else class="forum-text-stage" aria-label="帖子文字封面">
+            <div class="forum-text-quote">“</div>
+            <p class="forum-text-copy">
+              <span
+                v-for="(segment, index) in posterTextSegments"
+                :key="`${segment.text}-${index}`"
+                :class="{ highlight: segment.highlight }"
+              >
+                {{ segment.text }}
+              </span>
+            </p>
+            <div class="forum-text-mark"></div>
           </div>
         </div>
       </div>
@@ -211,6 +219,7 @@ const commentInputRef = ref(null);
 const currentImageIndex = ref(0);
 const imageUrls = computed(() => Array.isArray(post.value?.imageUrls) ? post.value.imageUrls : []);
 const currentImage = computed(() => assetUrl(imageUrls.value[currentImageIndex.value] || imageUrls.value[0] || ''));
+const posterTextSegments = computed(() => buildPosterTextSegments(post.value));
 
 onMounted(async () => {
   if (!session.user) await loadUserSession();
@@ -289,5 +298,22 @@ function showNextImage() {
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : '-';
+}
+
+function buildPosterTextSegments(item) {
+  const text = posterText(item);
+  const parts = text.match(/[\s\S]{1,7}/g) || [];
+  return parts.map((part, index) => ({
+    text: part,
+    highlight: index > 0 && index % 3 === 1 && part.trim().length > 1
+  }));
+}
+
+function posterText(item) {
+  const title = String(item?.title || '').trim();
+  const content = String(item?.content || '').trim();
+  const joined = [title, content].filter(Boolean).join('，').replace(/\s+/g, ' ');
+  if (joined.length <= 60) return joined || '分享一段校园生活';
+  return `${joined.slice(0, 60)}...`;
 }
 </script>

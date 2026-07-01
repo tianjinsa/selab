@@ -1399,9 +1399,8 @@ a:focus-visible,
 
 .forum-detail-viewer.no-images .forum-media-pane {
   background:
-    linear-gradient(135deg, rgba(20, 108, 96, 0.08), transparent 46%),
-    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(238, 245, 242, 0.72)),
-    var(--surface);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(239, 232, 255, 0.72)),
+    #f2edff;
 }
 
 .forum-detail-close {
@@ -1522,39 +1521,69 @@ a:focus-visible,
 }
 
 .forum-text-stage {
+  position: relative;
   display: grid;
   align-content: center;
-  gap: 14px;
-  width: min(620px, 86%);
-  min-height: 420px;
-  padding: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: calc(var(--radius) + 8px);
-  color: #f8fbf7;
-  background: rgba(255, 255, 255, 0.06);
+  width: min(620px, 88%);
+  max-height: calc(100% - 52px);
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  padding: 76px 62px 70px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 32px;
+  color: #47414f;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.46), transparent 34%),
+    linear-gradient(180deg, #f1ecff 0%, #ebe5fa 100%);
+  box-shadow: 0 24px 68px rgba(64, 52, 102, 0.14);
 }
 
 .forum-detail-viewer.no-images .forum-text-stage {
-  border-color: rgba(20, 108, 96, 0.16);
-  color: var(--ink);
-  background: rgba(255, 253, 248, 0.82);
-  box-shadow: 0 20px 60px rgba(22, 33, 31, 0.08);
+  color: #47414f;
 }
 
-.forum-text-stage h2 {
+.forum-text-quote {
+  position: absolute;
+  top: 48px;
+  left: 62px;
+  color: rgba(164, 126, 214, 0.28);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 104px;
+  font-weight: 900;
+  line-height: 0.8;
+  pointer-events: none;
+}
+
+.forum-text-copy {
   margin: 0;
-  font-size: 32px;
+  color: #48424f;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.55;
+  word-break: break-word;
 }
 
-.forum-text-stage p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.8;
-  white-space: pre-wrap;
+.forum-text-copy span {
+  position: relative;
 }
 
-.forum-detail-viewer.no-images .forum-text-stage p {
-  color: var(--muted);
+.forum-text-copy .highlight {
+  padding: 0 0.04em;
+  background: linear-gradient(180deg, transparent 56%, #a7f15b 56%, #a7f15b 88%, transparent 88%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.forum-text-mark {
+  position: absolute;
+  right: 72px;
+  bottom: 70px;
+  width: 58px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(202, 177, 229, 0.76);
 }
 
 .forum-info-pane {
@@ -3822,19 +3851,20 @@ a:focus-visible,
 
 :root[data-theme="dark"] .forum-detail-viewer.no-images .forum-media-pane {
   background:
-    linear-gradient(180deg, rgba(255, 253, 248, 0.04), rgba(0, 0, 0, 0)),
-    #1b1d1d;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(44, 36, 63, 0.1)),
+    #171919;
 }
 
 :root[data-theme="dark"] .forum-detail-viewer.no-images .forum-text-stage {
-  color: #f8fbf7;
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: none;
+  color: #47414f;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.46), transparent 34%),
+    linear-gradient(180deg, #f1ecff 0%, #ebe5fa 100%);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.28);
 }
 
-:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-text-stage p {
-  color: rgba(255, 255, 255, 0.78);
+:root[data-theme="dark"] .forum-text-copy {
+  color: #48424f;
 }
 
 :root[data-theme="dark"] .forum-detail-viewer.no-images .forum-detail-close {
@@ -4168,6 +4198,30 @@ a:focus-visible,
   .forum-media-stage {
     min-height: 360px;
     padding: 14px;
+  }
+
+  .forum-text-stage {
+    width: min(520px, 94%);
+    padding: 56px 34px 52px;
+    border-radius: 24px;
+  }
+
+  .forum-text-quote {
+    top: 34px;
+    left: 34px;
+    font-size: 78px;
+  }
+
+  .forum-text-copy {
+    font-size: 30px;
+    line-height: 1.52;
+  }
+
+  .forum-text-mark {
+    right: 36px;
+    bottom: 46px;
+    width: 46px;
+    height: 8px;
   }
 
   .forum-detail-close {
