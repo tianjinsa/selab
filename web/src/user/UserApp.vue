@@ -80,7 +80,9 @@ const routeTitle = computed(() => {
     '/tasks': '校园任务互助',
     '/tasks/workbench': '任务工作台',
     '/forum': '校园社区论坛',
+    '/forum/collections': '社区收藏与关注',
     '/market': '校园二手市场',
+    '/market/favorites': '市场收藏',
     '/market/orders': '我的交易',
     '/ai': '校园信息智能体'
   };

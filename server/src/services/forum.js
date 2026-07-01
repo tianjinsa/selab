@@ -86,6 +86,43 @@ export function listPosts(store, query = {}, viewerId = '') {
   return decorated.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+export function listFavoritePosts(store, userId) {
+  const posts = store.collection('posts');
+  return store.collection('postFavorites')
+    .filter((item) => item.userId === userId)
+    .map((favorite) => {
+      const post = posts.find((item) => item.id === favorite.postId && !item.deletedAt && item.visibility === 'public');
+      return post ? { ...decoratePost(store, post, userId), favoritedAt: favorite.createdAt } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b.favoritedAt || '').localeCompare(String(a.favoritedAt || '')));
+}
+
+export function listFollowingUsers(store, userId) {
+  const users = store.collection('users');
+  return store.collection('follows')
+    .filter((item) => item.followerId === userId)
+    .map((follow) => {
+      const target = users.find((item) => item.id === follow.followingId && !item.isBanned);
+      if (!target) return null;
+      const publicPosts = store.collection('posts')
+        .filter((post) => post.authorId === target.id && !post.deletedAt && post.visibility === 'public')
+        .map((post) => decoratePost(store, post, userId))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return {
+        ...userBrief(store, target.id),
+        studentId: target.studentId,
+        bio: target.bio,
+        contact: target.contact,
+        followedAt: follow.createdAt,
+        stats: userStats(store, target.id),
+        recentPosts: publicPosts.slice(0, 3)
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b.followedAt || '').localeCompare(String(a.followedAt || '')));
+}
+
 export function getPostDetail(store, postId, viewerId = '', options = {}) {
   const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
   if (!post) throw notFound('帖子不存在');
@@ -378,6 +415,16 @@ function reportTarget(store, report) {
   }
   const comment = store.collection('comments').find((item) => item.id === report.targetId);
   return comment ? { title: comment.content.slice(0, 40), author: userBrief(store, comment.authorId), deletedAt: comment.deletedAt } : null;
+}
+
+function userStats(store, userId) {
+  const posts = store.collection('posts').filter((item) => item.authorId === userId && !item.deletedAt && item.visibility === 'public');
+  const follows = store.collection('follows');
+  return {
+    postCount: posts.length,
+    followerCount: follows.filter((item) => item.followingId === userId).length,
+    followingCount: follows.filter((item) => item.followerId === userId).length
+  };
 }
 
 async function changeCredit(store, userId, change, reason) {

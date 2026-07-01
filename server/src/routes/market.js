@@ -12,6 +12,7 @@ import {
   deliverOrder,
   getProductDetail,
   gradeRecommendations,
+  listFavoriteProducts,
   listMarketAdmin,
   listMyOrders,
   listProducts,
@@ -52,6 +53,10 @@ router.get('/orders/my', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/orders/workbench', requireUser, asyncHandler(async (req, res) => {
   res.json(marketWorkbench(req.store, req.user.id));
+}));
+
+router.get('/favorites', requireUser, asyncHandler(async (req, res) => {
+  res.json({ products: listFavoriteProducts(req.store, req.user.id) });
 }));
 
 router.post('/category-requests', requireUser, asyncHandler(async (req, res) => {

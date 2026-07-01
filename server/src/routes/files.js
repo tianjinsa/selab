@@ -12,6 +12,7 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 
 const imageMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const imageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const attachmentMimeTypes = new Set([
   ...imageMimeTypes,
   'application/pdf',
@@ -50,7 +51,8 @@ const imageUpload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
-    if (!imageMimeTypes.has(file.mimetype)) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!imageMimeTypes.has(file.mimetype) && !imageExtensions.has(ext)) {
       cb(badRequest('仅支持 jpg、jpeg、png、webp 图片'));
       return;
     }
@@ -88,7 +90,7 @@ async function saveUploadedFile(req, file, kind) {
   await fs.mkdir(config.uploadDir, { recursive: true });
   const originalExt = path.extname(file.originalname || '').toLowerCase();
   const ext = kind === 'image'
-    ? imageExtension(file.mimetype)
+    ? imageExtension(file.mimetype, originalExt)
     : attachmentExtensions.has(originalExt)
       ? originalExt
       : fallbackExtension(file.mimetype);
@@ -107,12 +109,11 @@ async function saveUploadedFile(req, file, kind) {
   return { asset, url };
 }
 
-function imageExtension(mimeType) {
-  return mimeType === 'image/png'
-    ? '.png'
-    : mimeType === 'image/webp'
-      ? '.webp'
-      : '.jpg';
+function imageExtension(mimeType, originalExt = '') {
+  if (mimeType === 'image/png') return '.png';
+  if (mimeType === 'image/webp') return '.webp';
+  if (imageExtensions.has(originalExt)) return originalExt === '.jpeg' ? '.jpg' : originalExt;
+  return '.jpg';
 }
 
 function fallbackExtension(mimeType) {
