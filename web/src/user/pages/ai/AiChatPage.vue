@@ -99,7 +99,7 @@
                 <template v-for="block in reasoningBlocks(item)" :key="block.id">
                   <div v-if="block.type === 'text'" class="reasoning-text markdown-body" v-html="renderMarkdown(block.text)" />
                   <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
-                    <Wrench :size="15" />
+                    <Wrench :size="13" />
                     <div>
                       <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
                       <span>{{ toolStatusText(block.tool.status) }}</span>
@@ -118,7 +118,7 @@
               <template v-for="block in contentBlocks(item)" :key="block.id">
                 <div v-if="block.type === 'text'" class="markdown-body" v-html="renderMarkdown(block.text)" />
                 <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
-                  <Wrench :size="15" />
+                  <Wrench :size="13" />
                   <div>
                     <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
                     <span>{{ toolStatusText(block.tool.status) }}</span>

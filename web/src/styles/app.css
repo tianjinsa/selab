@@ -2893,7 +2893,57 @@ a {
 }
 
 .inline-tool-event {
-  margin: 2px 0;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+  margin: 3px 0;
+  padding: 4px 7px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.inline-tool-event:hover {
+  transform: none;
+}
+
+.inline-tool-event > svg {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin-top: 0;
+  color: var(--muted);
+  stroke-width: 2.2;
+}
+
+.inline-tool-event > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.inline-tool-event strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.inline-tool-event span,
+.inline-tool-event small {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.inline-tool-event small {
+  max-width: min(420px, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-tool-event .tool-error-text {
+  white-space: normal;
 }
 
 .tool-error-text {
