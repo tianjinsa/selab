@@ -1,9 +1,10 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
 import { config } from '../config.js';
 import { collectionNames, createEmptyData, normalizeData } from './defaultData.js';
+
+const COLLECTION_NAME_MAX = 100;
+const ITEM_ID_MAX = 200;
 
 function now() {
   return new Date().toISOString();
@@ -28,14 +29,21 @@ function sqlConfig(database) {
   };
 }
 
+function quoteSqlString(value) {
+  return String(value).replaceAll("'", "''");
+}
+
+function quoteSqlIdentifier(value) {
+  return String(value).replaceAll(']', ']]');
+}
+
 async function createSqlPersistence() {
   const master = await new sql.ConnectionPool(sqlConfig('master')).connect();
   try {
-    const databaseName = config.db.database.replaceAll(']', ']]');
     await master.request().query(`
-      IF DB_ID(N'${config.db.database.replaceAll("'", "''")}') IS NULL
+      IF DB_ID(N'${quoteSqlString(config.db.database)}') IS NULL
       BEGIN
-        CREATE DATABASE [${databaseName}]
+        CREATE DATABASE [${quoteSqlIdentifier(config.db.database)}]
       END
     `);
   } finally {
@@ -55,15 +63,47 @@ async function createSqlPersistence() {
 
   async function ensureSchema(activePool) {
     await activePool.request().query(`
-    IF OBJECT_ID(N'dbo.AppCollections', N'U') IS NULL
-    BEGIN
-      CREATE TABLE dbo.AppCollections (
-        name NVARCHAR(100) NOT NULL PRIMARY KEY,
-        payload NVARCHAR(MAX) NOT NULL,
-        updatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+      IF OBJECT_ID(N'dbo.AppItems', N'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.AppItems (
+          collectionName NVARCHAR(${COLLECTION_NAME_MAX}) NOT NULL,
+          itemId NVARCHAR(${ITEM_ID_MAX}) NOT NULL,
+          payload NVARCHAR(MAX) NOT NULL,
+          sortIndex INT NOT NULL CONSTRAINT DF_AppItems_sortIndex DEFAULT 0,
+          createdAt DATETIME2 NOT NULL CONSTRAINT DF_AppItems_createdAt DEFAULT SYSUTCDATETIME(),
+          updatedAt DATETIME2 NOT NULL CONSTRAINT DF_AppItems_updatedAt DEFAULT SYSUTCDATETIME(),
+          CONSTRAINT PK_AppItems PRIMARY KEY (collectionName, itemId)
+        )
+      END
+
+      IF COL_LENGTH(N'dbo.AppItems', N'sortIndex') IS NULL
+      BEGIN
+        ALTER TABLE dbo.AppItems
+          ADD sortIndex INT NOT NULL CONSTRAINT DF_AppItems_sortIndex DEFAULT 0
+      END
+
+      IF NOT EXISTS (
+        SELECT 1
+        FROM sys.indexes
+        WHERE name = N'IX_AppItems_CollectionSort'
+          AND object_id = OBJECT_ID(N'dbo.AppItems')
       )
-    END
-  `);
+      BEGIN
+        CREATE INDEX IX_AppItems_CollectionSort
+          ON dbo.AppItems(collectionName, sortIndex, updatedAt DESC)
+      END
+
+      IF OBJECT_ID(N'dbo.AppSettings', N'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.AppSettings (
+          id TINYINT NOT NULL CONSTRAINT PK_AppSettings PRIMARY KEY,
+          payload NVARCHAR(MAX) NOT NULL,
+          updatedAt DATETIME2 NOT NULL CONSTRAINT DF_AppSettings_updatedAt DEFAULT SYSUTCDATETIME(),
+          CONSTRAINT CK_AppSettings_Singleton CHECK (id = 1)
+        )
+      END
+    `);
+    await migrateLegacyCollections(activePool);
   }
 
   async function reconnect() {
@@ -91,36 +131,86 @@ async function createSqlPersistence() {
     }
   }
 
+  async function migrateLegacyCollections(activePool) {
+    const legacyTable = await activePool.request().query(`
+      SELECT OBJECT_ID(N'dbo.AppCollections', N'U') AS objectId
+    `);
+    if (!legacyTable.recordset[0]?.objectId) return;
+
+    const legacy = await activePool.request().query('SELECT name, payload FROM dbo.AppCollections');
+    for (const row of legacy.recordset) {
+      const name = normalizeCollectionName(row.name);
+      if (!name) continue;
+
+      const parsed = parseJson(row.payload, null);
+      if (name === 'settings') {
+        const settingsCount = await countSettingsRows(activePool);
+        if (settingsCount === 0 && parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          await saveSettings(activePool, normalizeData({ settings: parsed }).settings);
+        }
+        continue;
+      }
+
+      if (!Array.isArray(parsed)) continue;
+      const itemCount = await countItems(activePool, name);
+      if (itemCount === 0) {
+        await replaceItems(activePool, name, prepareCollection(parsed));
+      }
+    }
+  }
+
   await ensureSchema(pool);
 
   return {
     mode: 'sqlserver',
     async load() {
-      const result = await runWithReconnect((activePool) => activePool.request().query('SELECT name, payload FROM dbo.AppCollections'));
       const data = createEmptyData();
-      for (const row of result.recordset) {
-        try {
-          data[row.name] = JSON.parse(row.payload);
-        } catch {
-          data[row.name] = row.name === 'settings' ? createEmptyData().settings : [];
+      const items = await runWithReconnect((activePool) => activePool.request().query(`
+        SELECT collectionName, itemId, payload
+        FROM dbo.AppItems
+        ORDER BY collectionName ASC, sortIndex ASC, createdAt ASC, itemId ASC
+      `));
+
+      for (const row of items.recordset) {
+        const name = normalizeCollectionName(row.collectionName);
+        if (!name) continue;
+        if (!Array.isArray(data[name])) data[name] = [];
+
+        const item = parseJson(row.payload, null);
+        if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+        if (!item.id) item.id = row.itemId;
+        data[name].push(item);
+      }
+
+      const settings = await runWithReconnect((activePool) => activePool.request().query(`
+        SELECT TOP 1 payload
+        FROM dbo.AppSettings
+        WHERE id = 1
+      `));
+      if (settings.recordset[0]?.payload) {
+        const parsed = parseJson(settings.recordset[0].payload, null);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          data.settings = parsed;
         }
       }
-      return normalizeData(data);
+
+      const normalized = normalizeData(data);
+      prepareAllCollections(normalized);
+      await runWithReconnect((activePool) => saveSettings(activePool, normalized.settings));
+      return normalized;
     },
-    async save(name, payload) {
-      const json = JSON.stringify(payload);
-      await runWithReconnect((activePool) => activePool.request()
-        .input('name', sql.NVarChar(100), name)
-        .input('payload', sql.NVarChar(sql.MAX), json)
-        .query(`
-          MERGE dbo.AppCollections AS target
-          USING (SELECT @name AS name, @payload AS payload) AS source
-          ON target.name = source.name
-          WHEN MATCHED THEN
-            UPDATE SET payload = source.payload, updatedAt = SYSUTCDATETIME()
-          WHEN NOT MATCHED THEN
-            INSERT (name, payload) VALUES (source.name, source.payload);
-        `));
+    async saveItem(name, item, sortIndex) {
+      const collectionName = normalizeCollectionName(name);
+      if (!collectionName) throw new Error(`Invalid collection name: ${name}`);
+      await runWithReconnect((activePool) => upsertItem(activePool, collectionName, item, sortIndex));
+    },
+    async replaceItems(name, items) {
+      const collectionName = normalizeCollectionName(name);
+      if (!collectionName) throw new Error(`Invalid collection name: ${name}`);
+      await runWithReconnect((activePool) => replaceItems(activePool, collectionName, items));
+    },
+    async saveSettings(settings) {
+      await runWithReconnect((activePool) => saveSettings(activePool, settings));
     },
     async close() {
       if (reconnecting) await reconnecting.catch(() => {});
@@ -140,57 +230,172 @@ function isTransientSqlError(error) {
     || message.includes('failed to connect');
 }
 
-async function createFilePersistence() {
-  const dataDir = path.resolve(config.rootDir, 'data');
-  const dataFile = path.join(dataDir, 'app-data.json');
-  await fs.mkdir(dataDir, { recursive: true });
+function normalizeCollectionName(name) {
+  const value = String(name || '').trim();
+  if (!value || value.length > COLLECTION_NAME_MAX) return '';
+  return value;
+}
 
-  return {
-    mode: 'file',
-    async load() {
-      try {
-        const content = await fs.readFile(dataFile, 'utf8');
-        return normalizeData(JSON.parse(content));
-      } catch {
-        const data = createEmptyData();
-        await fs.writeFile(dataFile, JSON.stringify(data, null, 2), 'utf8');
-        return normalizeData(data);
-      }
-    },
-    async save(_name, _payload, fullData) {
-      await fs.writeFile(dataFile, JSON.stringify(fullData, null, 2), 'utf8');
-    },
-    async close() {}
+function normalizeItemId(id, usedIds = null) {
+  const value = String(id || '').trim();
+  if (value && value.length <= ITEM_ID_MAX && !usedIds?.has(value)) return value;
+  return randomUUID();
+}
+
+function parseJson(content, fallback) {
+  try {
+    return JSON.parse(content);
+  } catch {
+    return fallback;
+  }
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function prepareItem(item, usedIds = null) {
+  const timestamp = now();
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : { value: item };
+  const next = {
+    ...source,
+    id: normalizeItemId(source.id, usedIds),
+    createdAt: source.createdAt || timestamp,
+    updatedAt: source.updatedAt || timestamp
   };
+  usedIds?.add(next.id);
+  return next;
+}
+
+function prepareCollection(items) {
+  const usedIds = new Set();
+  return (Array.isArray(items) ? items : []).map((item) => prepareItem(item, usedIds));
+}
+
+function prepareCollectionInPlace(items) {
+  const prepared = prepareCollection(items);
+  items.splice(0, items.length, ...prepared);
+  return items;
+}
+
+function prepareAllCollections(data) {
+  for (const name of collectionNames) {
+    if (Array.isArray(data[name])) prepareCollectionInPlace(data[name]);
+  }
+}
+
+async function countItems(activePool, collectionName) {
+  const result = await activePool.request()
+    .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+    .query(`
+      SELECT COUNT_BIG(*) AS total
+      FROM dbo.AppItems
+      WHERE collectionName = @collectionName
+    `);
+  return Number(result.recordset[0]?.total || 0);
+}
+
+async function countSettingsRows(activePool) {
+  const result = await activePool.request().query(`
+    SELECT COUNT_BIG(*) AS total
+    FROM dbo.AppSettings
+    WHERE id = 1
+  `);
+  return Number(result.recordset[0]?.total || 0);
+}
+
+async function upsertItem(activePool, collectionName, item, sortIndex = 0) {
+  await activePool.request()
+    .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+    .input('itemId', sql.NVarChar(ITEM_ID_MAX), item.id)
+    .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(item))
+    .input('sortIndex', sql.Int, Number(sortIndex) || 0)
+    .query(`
+      MERGE dbo.AppItems WITH (HOLDLOCK) AS target
+      USING (
+        SELECT
+          @collectionName AS collectionName,
+          @itemId AS itemId,
+          @payload AS payload,
+          @sortIndex AS sortIndex
+      ) AS source
+      ON target.collectionName = source.collectionName
+        AND target.itemId = source.itemId
+      WHEN MATCHED THEN
+        UPDATE SET
+          payload = source.payload,
+          sortIndex = source.sortIndex,
+          updatedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (collectionName, itemId, payload, sortIndex)
+        VALUES (source.collectionName, source.itemId, source.payload, source.sortIndex);
+    `);
+}
+
+async function replaceItems(activePool, collectionName, items) {
+  const transaction = new sql.Transaction(activePool);
+  await transaction.begin();
+  try {
+    await new sql.Request(transaction)
+      .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+      .query('DELETE FROM dbo.AppItems WHERE collectionName = @collectionName');
+
+    for (const [index, item] of items.entries()) {
+      await new sql.Request(transaction)
+        .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+        .input('itemId', sql.NVarChar(ITEM_ID_MAX), item.id)
+        .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(item))
+        .input('sortIndex', sql.Int, index)
+        .query(`
+          INSERT INTO dbo.AppItems (collectionName, itemId, payload, sortIndex)
+          VALUES (@collectionName, @itemId, @payload, @sortIndex)
+        `);
+    }
+
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback().catch(() => {});
+    throw error;
+  }
+}
+
+async function saveSettings(activePool, settings) {
+  await activePool.request()
+    .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(settings || {}))
+    .query(`
+      MERGE dbo.AppSettings WITH (HOLDLOCK) AS target
+      USING (SELECT CAST(1 AS TINYINT) AS id, @payload AS payload) AS source
+      ON target.id = source.id
+      WHEN MATCHED THEN
+        UPDATE SET payload = source.payload, updatedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (id, payload) VALUES (source.id, source.payload);
+    `);
 }
 
 export async function createStore() {
   let persistence;
-  let status;
   try {
     persistence = await createSqlPersistence();
-    status = {
-      mode: 'sqlserver',
-      ok: true,
-      message: `SQL Server 已连接：${config.db.host}:${config.db.port}/${config.db.database}`
-    };
   } catch (error) {
-    persistence = await createFilePersistence();
-    status = {
-      mode: 'file',
-      ok: false,
-      message: `SQL Server 不可用，已启用本地演示数据：${error.message}`
-    };
+    throw new Error(`SQL Server 初始化失败，已停止启动以避免写入本地 JSON：${error.message}`, { cause: error });
   }
 
   const data = await persistence.load();
+  let writeChain = Promise.resolve();
 
-  async function persist(name) {
-    await persistence.save(name, data[name], data);
+  function queueWrite(operation) {
+    const next = writeChain.then(operation, operation);
+    writeChain = next.catch(() => {});
+    return next;
   }
 
   return {
-    status,
+    status: {
+      mode: 'sqlserver',
+      ok: true,
+      message: `SQL Server 数据库存储已启用：${config.db.host}:${config.db.port}/${config.db.database}`
+    },
     data,
     collection(name) {
       if (name === 'settings') return data.settings;
@@ -198,33 +403,36 @@ export async function createStore() {
       return data[name];
     },
     async insert(name, item) {
+      if (name === 'settings') return this.updateSettings(item);
       if (!Array.isArray(data[name])) data[name] = [];
-      const next = {
-        id: item.id || randomUUID(),
-        createdAt: item.createdAt || now(),
-        updatedAt: item.updatedAt || now(),
-        ...item
-      };
+      const next = prepareItem(item);
       data[name].push(next);
-      await persist(name);
+      const itemSnapshot = clone(next);
+      const sortIndex = data[name].length - 1;
+      await queueWrite(() => persistence.saveItem(name, itemSnapshot, sortIndex));
       return next;
     },
     async update(name, id, patch) {
       if (!Array.isArray(data[name])) data[name] = [];
       const index = data[name].findIndex((item) => item.id === id);
       if (index < 0) return null;
+      const current = data[name][index];
       data[name][index] = {
-        ...data[name][index],
+        ...current,
         ...patch,
+        id: current.id,
         updatedAt: now()
       };
-      await persist(name);
+      const itemSnapshot = clone(data[name][index]);
+      await queueWrite(() => persistence.saveItem(name, itemSnapshot, index));
       return data[name][index];
     },
     async replaceCollection(name, items) {
-      data[name] = items;
-      await persist(name);
-      return items;
+      if (name === 'settings') return this.updateSettings(items);
+      data[name] = prepareCollection(items);
+      const itemsSnapshot = clone(data[name]);
+      await queueWrite(() => persistence.replaceItems(name, itemsSnapshot));
+      return data[name];
     },
     async updateSettings(patch) {
       data.settings = {
@@ -232,17 +440,27 @@ export async function createStore() {
         ...patch,
         updatedAt: now()
       };
-      await persist('settings');
+      const settingsSnapshot = clone(data.settings);
+      await queueWrite(() => persistence.saveSettings(settingsSnapshot));
       return data.settings;
     },
     async saveCollection(name) {
-      await persist(name);
+      if (name === 'settings') {
+        const settingsSnapshot = clone(data.settings);
+        await queueWrite(() => persistence.saveSettings(settingsSnapshot));
+        return;
+      }
+      if (!Array.isArray(data[name])) data[name] = [];
+      prepareCollectionInPlace(data[name]);
+      const itemsSnapshot = clone(data[name]);
+      await queueWrite(() => persistence.replaceItems(name, itemsSnapshot));
     },
     snapshot() {
-      return JSON.parse(JSON.stringify(data));
+      return clone(data);
     },
     collectionNames,
     async close() {
+      await writeChain.catch(() => {});
       await persistence.close();
     }
   };
