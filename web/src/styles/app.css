@@ -286,7 +286,7 @@ a {
 }
 
 .nav-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
 }
 
 .main-pane {
@@ -703,7 +703,7 @@ a {
 }
 
 .live-list button:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   border-color: rgba(20, 108, 96, 0.34);
   background: #f4faf7;
   box-shadow: 0 8px 22px rgba(22, 33, 31, 0.07);
@@ -1446,7 +1446,7 @@ a {
 }
 
 .follow-recent-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   border-color: rgba(20, 108, 96, 0.3);
   background: var(--surface-hover);
 }
@@ -2104,7 +2104,7 @@ a {
 }
 
 .workbench-action-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   border-color: rgba(20, 108, 96, 0.34);
   background: #f4faf7;
   box-shadow: 0 10px 26px rgba(22, 33, 31, 0.08);
@@ -2514,7 +2514,7 @@ a {
 
 .message-center-nav:hover,
 .message-center-nav.active {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   background: rgba(20, 108, 96, 0.09);
   color: var(--brand);
 }
@@ -2523,6 +2523,7 @@ a {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
+  overflow-x: hidden;
   border-right: 1px solid var(--line);
 }
 
@@ -2545,7 +2546,8 @@ a {
 
 .message-center-items {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .message-center-item {
@@ -2564,7 +2566,7 @@ a {
 }
 
 .message-center-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   background: rgba(20, 108, 96, 0.06);
 }
 
@@ -2713,7 +2715,8 @@ a {
 
 .conversation-scroll {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .conversation-item {
@@ -2728,7 +2731,7 @@ a {
 }
 
 .conversation-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   background: rgba(20, 108, 96, 0.06);
 }
 
@@ -2918,7 +2921,7 @@ a {
 }
 
 .tool-event:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
 }
 
 .tool-event > div {

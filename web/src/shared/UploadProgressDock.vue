@@ -182,7 +182,8 @@ function itemStatusText(item) {
 
 .upload-dock-list {
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 8px;
 }
 
@@ -201,7 +202,7 @@ function itemStatusText(item) {
 }
 
 .upload-dock-item:hover {
-  transform: translateX(2px);
+  transform: translateY(-1px);
   border-color: var(--line);
   background: var(--surface-muted);
 }
