@@ -7,7 +7,7 @@
         <p>发任务、找资料、买二手、问流程、看社区动态，都共用同一套身份、私信和通知。</p>
         <div class="home-search">
           <n-input v-model:value="searchText" size="large" placeholder="搜任务、商品、帖子，或直接问智能体" @keyup.enter="goSearch" />
-          <n-select v-model:value="searchTarget" size="large" :options="searchOptions" style="width: 132px;" />
+          <n-select v-model:value="searchTarget" class="search-target-select" size="large" :options="searchOptions" />
           <n-button size="large" type="primary" @click="goSearch">
             <template #icon><Search :size="18" /></template>
             查找
@@ -59,14 +59,14 @@
     </section>
 
     <transition-group name="card-flow" tag="section" class="service-strip" appear>
-      <article v-for="item in services" :key="item.path" class="service-tile" @click="$router.push(item.path)">
+      <button v-for="item in services" :key="item.path" type="button" class="service-tile" @click="$router.push(item.path)">
         <div class="service-icon"><component :is="item.icon" :size="22" /></div>
         <div>
           <strong>{{ item.title }}</strong>
           <p>{{ item.desc }}</p>
         </div>
         <ArrowRight :size="18" />
-      </article>
+      </button>
     </transition-group>
 
     <section class="home-section">

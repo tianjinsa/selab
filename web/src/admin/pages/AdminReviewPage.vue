@@ -1,37 +1,41 @@
 <template>
   <div class="grid">
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">AI 内容审核</h2>
+          <h2>AI 内容审核</h2>
           <p class="muted">帖子、任务和商品共用同一个审核队列；违规内容会保留发布时快照，便于追溯。</p>
         </div>
         <n-space>
           <n-button secondary :loading="scanning" @click="scanModeration">立即扫描</n-button>
           <n-button secondary @click="load">刷新</n-button>
         </n-space>
-      </n-space>
-      <n-data-table style="margin-top: 12px;" :columns="moderationColumns" :data="moderationItems" :pagination="{ pageSize: 8 }" />
+      </div>
+      <n-data-table :columns="moderationColumns" :data="moderationItems" :pagination="{ pageSize: 8 }" />
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">举报处理</h2>
+          <h2>举报处理</h2>
           <p class="muted">属实处理会下架/删除目标内容，并扣除内容归属用户 4 分信用分。</p>
         </div>
         <n-button secondary @click="load">刷新</n-button>
-      </n-space>
-      <n-data-table style="margin-top: 12px;" :columns="reportColumns" :data="reports" :pagination="{ pageSize: 8 }" />
+      </div>
+      <n-data-table :columns="reportColumns" :data="reports" :pagination="{ pageSize: 8 }" />
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">任务纠纷</h2>
+      <div class="panel-heading">
+        <h2>任务纠纷</h2>
+      </div>
       <n-data-table :columns="taskDisputeColumns" :data="taskDisputes" :pagination="{ pageSize: 6 }" />
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">订单纠纷</h2>
+      <div class="panel-heading">
+        <h2>订单纠纷</h2>
+      </div>
       <n-data-table :columns="orderDisputeColumns" :data="orderDisputes" :pagination="{ pageSize: 6 }" />
     </section>
 
@@ -115,7 +119,7 @@ const reportColumns = [
     key: 'actions',
     render(row) {
       if (row.status !== 'pending') return '-';
-      return h('div', { style: 'display:flex;gap:8px;' }, [
+      return h('div', { class: 'table-actions' }, [
         h(NButton, { size: 'small', type: 'error', onClick: () => resolveReport(row, true) }, { default: () => '属实' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => resolveReport(row, false) }, { default: () => '驳回' })
       ]);
@@ -133,7 +137,7 @@ const taskDisputeColumns = [
     key: 'actions',
     render(row) {
       if (row.status !== 'pending') return '-';
-      return h('div', { style: 'display:flex;gap:8px;' }, [
+      return h('div', { class: 'table-actions' }, [
         h(NButton, { size: 'small', type: 'primary', onClick: () => resolveTask(row, 'complete') }, { default: () => '强制完成' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => resolveTask(row, 'cancel') }, { default: () => '强制取消' })
       ]);
@@ -151,7 +155,7 @@ const orderDisputeColumns = [
     key: 'actions',
     render(row) {
       if (row.status !== 'pending') return '-';
-      return h('div', { style: 'display:flex;gap:8px;' }, [
+      return h('div', { class: 'table-actions' }, [
         h(NButton, { size: 'small', type: 'primary', onClick: () => resolveOrder(row, 'complete') }, { default: () => '强制完成' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => resolveOrder(row, 'cancel') }, { default: () => '强制取消' })
       ]);

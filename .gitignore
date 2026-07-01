@@ -1,5 +1,6 @@
 .agents/
 .codex/
+.claude/
 skills-lock.json
 
 node_modules/
@@ -17,6 +18,7 @@ server/.env.*
 web/.env
 web/.env.*
 !web/.env.example
+package-lock.json
 
 *.log
 npm-debug.log*

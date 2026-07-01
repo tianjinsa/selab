@@ -1,23 +1,27 @@
 <template>
   <div class="grid">
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">分类申请</h2>
+          <h2>分类申请</h2>
           <p class="muted">通过后分类进入前台商品发布选择列表。</p>
         </div>
         <n-button secondary @click="scanTimeouts">扫描订单超时</n-button>
-      </n-space>
-      <n-data-table style="margin-top: 12px;" :columns="requestColumns" :data="categoryRequests" :pagination="{ pageSize: 6 }" />
+      </div>
+      <n-data-table :columns="requestColumns" :data="categoryRequests" :pagination="{ pageSize: 6 }" />
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">商品列表</h2>
+      <div class="panel-heading">
+        <h2>商品列表</h2>
+      </div>
       <n-data-table :columns="productColumns" :data="products" :pagination="{ pageSize: 8 }" />
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">订单列表</h2>
+      <div class="panel-heading">
+        <h2>订单列表</h2>
+      </div>
       <n-data-table :columns="orderColumns" :data="orders" :pagination="{ pageSize: 8 }" />
     </section>
   </div>
@@ -45,7 +49,7 @@ const requestColumns = [
     key: 'actions',
     render(row) {
       if (row.status !== 'pending') return '-';
-      return h('div', { style: 'display:flex;gap:8px;' }, [
+      return h('div', { class: 'table-actions' }, [
         h(NButton, { size: 'small', type: 'primary', onClick: () => resolveCategory(row, true) }, { default: () => '通过' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => resolveCategory(row, false) }, { default: () => '拒绝' })
       ]);

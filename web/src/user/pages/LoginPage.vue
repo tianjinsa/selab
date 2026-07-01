@@ -1,13 +1,28 @@
 <template>
   <div class="auth-page">
     <div class="auth-card surface">
+      <div class="auth-theme-toggle">
+        <ThemeToggle />
+      </div>
       <section class="auth-copy">
-        <h1>把分散的校园生活服务收回一个入口</h1>
-        <p>任务互助、社区交流、二手交易、私信通知和智能咨询共享一套清晰的校园身份。</p>
-        <div class="grid" style="margin-top: 28px;">
-          <span class="status-pill">学号 12 位校验</span>
-          <span class="status-pill">手机号唯一登录</span>
-          <span class="status-pill">用户与管理员 Token 隔离</span>
+        <div>
+          <span class="auth-kicker">Campus Life Service</span>
+          <h1>把分散的校园生活服务收回一个入口</h1>
+          <p>任务互助、社区交流、二手交易、私信通知和智能咨询共享一套清晰的校园身份。</p>
+        </div>
+        <div class="auth-proof-grid">
+          <div class="auth-proof">
+            <strong>12 位</strong>
+            <span>学号格式校验</span>
+          </div>
+          <div class="auth-proof">
+            <strong>JWT</strong>
+            <span>用户登录态保持</span>
+          </div>
+          <div class="auth-proof">
+            <strong>隔离</strong>
+            <span>用户与管理员 Token</span>
+          </div>
         </div>
       </section>
       <section class="auth-form">
@@ -38,7 +53,7 @@
               <n-form-item label="密码">
                 <n-input v-model:value="registerForm.password" type="password" show-password-on="click" />
               </n-form-item>
-              <n-alert v-if="registerHint" type="warning" :show-icon="false" style="margin-bottom: 12px;">
+              <n-alert v-if="registerHint" class="form-alert" type="warning" :show-icon="false">
                 {{ registerHint }}
               </n-alert>
               <n-button type="primary" block :loading="loading" @click="register">创建账号</n-button>
@@ -69,6 +84,7 @@ import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { request } from '../../shared/http.js';
+import ThemeToggle from '../../shared/ThemeToggle.vue';
 import { setUserSession } from '../session.js';
 
 const router = useRouter();

@@ -1,9 +1,9 @@
 <template>
   <section class="surface panel">
-    <n-space justify="space-between" align="center" style="margin-bottom: 14px;">
-      <n-input v-model:value="q" placeholder="搜索昵称 / 学号 / 手机号" clearable style="max-width: 360px;" @keyup.enter="load" />
+    <div class="table-toolbar">
+      <n-input class="admin-search-input" v-model:value="q" placeholder="搜索昵称 / 学号 / 手机号" clearable @keyup.enter="load" />
       <n-button @click="load">搜索</n-button>
-    </n-space>
+    </div>
     <n-data-table :columns="columns" :data="users" :pagination="{ pageSize: 8 }" />
   </section>
 </template>
@@ -31,11 +31,12 @@ const columns = [
         default: () => [
           h(NTag, { type: row.creditScore < 6 ? 'warning' : 'success' }, { default: () => row.creditScore }),
           h(NInputNumber, {
+            class: 'admin-credit-input',
             size: 'small',
             value: row.creditScore,
             min: 0,
             max: 10,
-            style: 'width: 86px;',
+            showButton: false,
             'onUpdate:value': (value) => updateStatus(row, { creditScore: value, reason: '管理员调整信用分' })
           })
         ]

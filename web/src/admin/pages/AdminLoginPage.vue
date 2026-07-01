@@ -1,13 +1,32 @@
 <template>
   <div class="auth-page">
     <div class="auth-card surface">
+      <div class="auth-theme-toggle">
+        <ThemeToggle />
+      </div>
       <section class="auth-copy">
-        <h1>管理员后台</h1>
-        <p>管理员入口与普通用户入口完全隔离，用户 Token 不能访问后台接口。</p>
-        <span class="status-pill">/admin 独立入口</span>
+        <div>
+          <span class="auth-kicker">Admin Console</span>
+          <h1>管理员后台</h1>
+          <p>管理员入口与普通用户入口完全隔离，用户 Token 不能访问后台接口。</p>
+        </div>
+        <div class="auth-proof-grid">
+          <div class="auth-proof">
+            <strong>/admin</strong>
+            <span>独立入口</span>
+          </div>
+          <div class="auth-proof">
+            <strong>日志</strong>
+            <span>操作可追踪</span>
+          </div>
+          <div class="auth-proof">
+            <strong>确认</strong>
+            <span>危险动作二次确认</span>
+          </div>
+        </div>
       </section>
       <section class="auth-form">
-        <h2 style="margin-top: 0;">登录后台</h2>
+        <h2 class="form-title">登录后台</h2>
         <n-form :model="form" label-placement="top">
           <n-form-item label="账号">
             <n-input v-model:value="form.username" placeholder="admin" />
@@ -27,6 +46,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { request } from '../../shared/http.js';
+import ThemeToggle from '../../shared/ThemeToggle.vue';
 import { setAdminSession } from '../session.js';
 
 const router = useRouter();

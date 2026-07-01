@@ -1,14 +1,14 @@
 <template>
   <div class="grid">
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">任务参数</h2>
+          <h2>任务参数</h2>
           <p class="muted">分类和酬金范围会直接影响用户发布任务时的校验。</p>
         </div>
         <n-button secondary @click="scanTimeouts">扫描超时任务</n-button>
-      </n-space>
-      <n-grid :cols="3" :x-gap="12" responsive="screen" style="margin-top: 14px;">
+      </div>
+      <n-grid class="panel-content-offset" :cols="3" :x-gap="12" responsive="screen">
         <n-grid-item>
           <n-input v-model:value="categoryText" type="textarea" :autosize="{ minRows: 3 }" placeholder="每行一个任务分类" />
         </n-grid-item>
@@ -19,18 +19,18 @@
           <n-input-number v-model:value="settings.taskRewardMax" placeholder="酬金上限" />
         </n-grid-item>
       </n-grid>
-      <n-button style="margin-top: 12px;" type="primary" @click="saveSettings">保存参数</n-button>
+      <n-button class="panel-content-offset" type="primary" @click="saveSettings">保存参数</n-button>
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">任务倾向分析</h2>
+          <h2>任务倾向分析</h2>
           <p class="muted">当前来源：{{ tendencySource === 'mock' ? 'Mock 展示数据' : '真实任务关键词' }}</p>
         </div>
         <n-button secondary @click="loadTendencies">刷新</n-button>
-      </n-space>
-      <div class="grid grid-3" style="margin-top: 14px;">
+      </div>
+      <div class="grid grid-3 panel-content-offset">
         <div v-for="item in tendencies" :key="item.keyword" class="metric-card">
           <div class="metric-label">{{ item.keyword }}</div>
           <div class="metric-value">{{ item.count }}</div>
@@ -39,10 +39,10 @@
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="center" style="margin-bottom: 12px;">
-        <h2 style="margin: 0;">任务列表</h2>
-        <n-select v-model:value="status" clearable placeholder="状态筛选" :options="statusOptions" style="width: 180px;" @update:value="loadTasks" />
-      </n-space>
+      <div class="panel-heading">
+        <h2>任务列表</h2>
+        <n-select class="admin-filter-select" v-model:value="status" clearable placeholder="状态筛选" :options="statusOptions" @update:value="loadTasks" />
+      </div>
       <n-data-table :columns="columns" :data="tasks" :pagination="{ pageSize: 8 }" />
     </section>
   </div>
