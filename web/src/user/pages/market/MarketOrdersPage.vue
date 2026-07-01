@@ -37,7 +37,7 @@
       <article class="metric-card workbench-stat">
         <span>卖出收入</span>
         <strong>{{ formatMoney(stats.revenue) }}</strong>
-        <small class="muted">收入入钱包 · 买入支出 {{ formatMoney(stats.spending) }}</small>
+        <small class="muted">收入入钱包 · 退款 {{ formatMoney(stats.refunds) }} · 买入支出 {{ formatMoney(stats.spending) }}</small>
       </article>
     </section>
 
@@ -217,6 +217,7 @@ const emptyStats = {
   sellingActive: 0,
   sellingCompleted: 0,
   revenue: 0,
+  refunds: 0,
   spending: 0
 };
 
@@ -308,7 +309,8 @@ function actionIcon(type) {
 function flowTypeText(type) {
   return {
     product_escrow_payment: '商品担保支付',
-    product_finish_settlement: '商品收入入账钱包'
+    product_finish_settlement: '商品收入入账钱包',
+    product_moderation_refund: '审核未通过退款'
   }[type] || type;
 }
 

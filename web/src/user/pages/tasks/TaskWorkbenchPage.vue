@@ -37,7 +37,7 @@
       <article class="metric-card workbench-stat">
         <span>资金概览</span>
         <strong>{{ formatMoney(stats.income) }}</strong>
-        <small class="muted">收入入钱包 · 支出 {{ formatMoney(stats.spending) }}</small>
+        <small class="muted">收入/退款入钱包 · 支出 {{ formatMoney(stats.spending) }}</small>
       </article>
     </section>
 
@@ -264,7 +264,8 @@ function flowTypeText(type) {
     task_publish_payment: '任务发布支付',
     task_finish_settlement: '任务收入入账钱包',
     task_cancel_refund: '任务取消退款',
-    task_timeout_refund: '无人接单退款'
+    task_timeout_refund: '无人接单退款',
+    task_moderation_refund: '审核未通过退款'
   }[type] || type;
 }
 

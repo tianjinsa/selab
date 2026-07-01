@@ -182,7 +182,7 @@ export function taskWorkbench(store, userId) {
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const actionItems = buildTaskActionItems(published, assigned, myApplications);
   const income = flows
-    .filter((flow) => flow.userId === userId && ['task_finish_settlement', 'task_cancel_refund', 'task_timeout_refund'].includes(flow.type))
+    .filter((flow) => flow.userId === userId && ['task_finish_settlement', 'task_cancel_refund', 'task_timeout_refund', 'task_moderation_refund'].includes(flow.type))
     .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
   const spending = flows
     .filter((flow) => flow.userId === userId && flow.type === 'task_publish_payment')

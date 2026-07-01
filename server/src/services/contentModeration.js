@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createNotification } from './notifications.js';
+import { applyModerationRejectionEffects } from './moderationRefunds.js';
 
 const PROCESSING_STATUSES = new Set(['pending', 'processing']);
 
@@ -321,15 +322,30 @@ async function applyModerationResult(store, realtime, item, result) {
   if (item.entityType === 'post') {
     patch.visibility = 'hidden';
   }
+  const effects = await applyModerationRejectionEffects(store, realtime, item.entityType, entity, reason);
+  Object.assign(patch, effects.entityPatch || {});
   await store.update(collectionNameFor(item.entityType), entity.id, patch);
   await createNotification(store, {
     userId: item.userId,
     type: notificationTypes[item.entityType] || 'system',
     title: `${entityLabels[item.entityType]}审核未通过`,
-    body: `${item.snapshot.title || entityLabels[item.entityType]}：${reason}`,
+    body: `${item.snapshot.title || entityLabels[item.entityType]}：${reason}${refundNotice(item.userId, effects.refunds)}`,
     link: userManageLinks[item.entityType] || '/',
     sourceId: item.id
   }, realtime);
+}
+
+function refundNotice(ownerId, refunds = []) {
+  if (!refunds.length) return '';
+  const ownerAmount = refunds
+    .filter((item) => item.userId === ownerId)
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  if (ownerAmount > 0) return `；已自动退款 ${formatAmount(ownerAmount)} 元到钱包`;
+  return '；相关已支付订单已自动退款给买家';
+}
+
+function formatAmount(value) {
+  return Number(value || 0).toFixed(2).replace(/\.00$/, '');
 }
 
 function buildSnapshot(store, entityType, entity) {
