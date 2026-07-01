@@ -6,6 +6,8 @@ import { collectionNames, createEmptyData, normalizeData } from './defaultData.j
 const COLLECTION_NAME_MAX = 100;
 const ITEM_ID_MAX = 200;
 const SETTINGS_COLLECTION_NAME = 'settings';
+const LEGACY_COLLECTIONS_MIGRATION = 'legacy_collections_to_items';
+const COLLECTION_VERSIONS_MIGRATION = 'collection_versions_seeded';
 const SYNC_MIN_INTERVAL_MS = 300;
 
 function now() {
@@ -40,20 +42,25 @@ function quoteSqlIdentifier(value) {
 }
 
 async function createSqlPersistence() {
-  const master = await new sql.ConnectionPool(sqlConfig('master')).connect();
-  try {
-    await master.request().query(`
-      IF DB_ID(N'${quoteSqlString(config.db.database)}') IS NULL
-      BEGIN
-        CREATE DATABASE [${quoteSqlIdentifier(config.db.database)}]
-      END
-    `);
-  } finally {
-    await master.close();
-  }
-
-  let pool = await connectAppPool();
+  let pool = await connectAppPool().catch(async () => {
+    await ensureDatabase();
+    return connectAppPool();
+  });
   let reconnecting = null;
+
+  async function ensureDatabase() {
+    const master = await new sql.ConnectionPool(sqlConfig('master')).connect();
+    try {
+      await master.request().query(`
+        IF DB_ID(N'${quoteSqlString(config.db.database)}') IS NULL
+        BEGIN
+          CREATE DATABASE [${quoteSqlIdentifier(config.db.database)}]
+        END
+      `);
+    } finally {
+      await master.close();
+    }
+  }
 
   async function connectAppPool() {
     const next = new sql.ConnectionPool(sqlConfig(config.db.database));
@@ -112,6 +119,14 @@ async function createSqlPersistence() {
           updatedAt DATETIME2 NOT NULL CONSTRAINT DF_AppCollectionVersions_updatedAt DEFAULT SYSUTCDATETIME()
         )
       END
+
+      IF OBJECT_ID(N'dbo.AppStoreMigrations', N'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.AppStoreMigrations (
+          name NVARCHAR(120) NOT NULL CONSTRAINT PK_AppStoreMigrations PRIMARY KEY,
+          completedAt DATETIME2 NOT NULL CONSTRAINT DF_AppStoreMigrations_completedAt DEFAULT SYSUTCDATETIME()
+        )
+      END
     `);
     await migrateLegacyCollections(activePool);
     await seedCollectionVersions(activePool);
@@ -143,10 +158,15 @@ async function createSqlPersistence() {
   }
 
   async function migrateLegacyCollections(activePool) {
+    if (await isMigrationCompleted(activePool, LEGACY_COLLECTIONS_MIGRATION)) return;
+
     const legacyTable = await activePool.request().query(`
       SELECT OBJECT_ID(N'dbo.AppCollections', N'U') AS objectId
     `);
-    if (!legacyTable.recordset[0]?.objectId) return;
+    if (!legacyTable.recordset[0]?.objectId) {
+      await markMigrationCompleted(activePool, LEGACY_COLLECTIONS_MIGRATION);
+      return;
+    }
 
     const legacy = await activePool.request().query('SELECT name, payload FROM dbo.AppCollections');
     for (const row of legacy.recordset) {
@@ -168,9 +188,13 @@ async function createSqlPersistence() {
         await replaceItems(activePool, name, prepareCollection(parsed));
       }
     }
+
+    await markMigrationCompleted(activePool, LEGACY_COLLECTIONS_MIGRATION);
   }
 
   async function seedCollectionVersions(activePool) {
+    if (await isMigrationCompleted(activePool, COLLECTION_VERSIONS_MIGRATION)) return;
+
     await activePool.request()
       .input('settingsName', sql.NVarChar(COLLECTION_NAME_MAX), SETTINGS_COLLECTION_NAME)
       .query(`
@@ -191,6 +215,7 @@ async function createSqlPersistence() {
           INSERT (collectionName, updatedAt)
           VALUES (source.collectionName, source.updatedAt);
       `);
+    await markMigrationCompleted(activePool, COLLECTION_VERSIONS_MIGRATION);
   }
 
   await ensureSchema(pool);
@@ -199,6 +224,7 @@ async function createSqlPersistence() {
     mode: 'sqlserver',
     async load() {
       const data = createEmptyData();
+      let hasSettings = false;
       const items = await runWithReconnect((activePool) => activePool.request().query(`
         SELECT collectionName, itemId, payload
         FROM dbo.AppItems
@@ -222,6 +248,7 @@ async function createSqlPersistence() {
         WHERE id = 1
       `));
       if (settings.recordset[0]?.payload) {
+        hasSettings = true;
         const parsed = parseJson(settings.recordset[0].payload, null);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
           data.settings = parsed;
@@ -230,7 +257,9 @@ async function createSqlPersistence() {
 
       const normalized = normalizeData(data);
       prepareAllCollections(normalized);
-      await runWithReconnect((activePool) => saveSettings(activePool, normalized.settings));
+      if (!hasSettings) {
+        await runWithReconnect((activePool) => saveSettings(activePool, normalized.settings));
+      }
       return normalized;
     },
     async saveItem(name, item, sortIndex) {
@@ -389,6 +418,27 @@ async function readCollectionVersions(activePool) {
     FROM dbo.AppCollectionVersions
   `);
   return Object.fromEntries(result.recordset.map((row) => [row.collectionName, row.version]));
+}
+
+async function isMigrationCompleted(activePool, name) {
+  const result = await activePool.request()
+    .input('name', sql.NVarChar(120), name)
+    .query('SELECT TOP 1 1 AS completed FROM dbo.AppStoreMigrations WHERE name = @name');
+  return Boolean(result.recordset[0]);
+}
+
+async function markMigrationCompleted(activePool, name) {
+  await activePool.request()
+    .input('name', sql.NVarChar(120), name)
+    .query(`
+      MERGE dbo.AppStoreMigrations AS target
+      USING (SELECT @name AS name) AS source
+      ON target.name = source.name
+      WHEN MATCHED THEN
+        UPDATE SET completedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (name) VALUES (source.name);
+    `);
 }
 
 async function upsertItem(activePool, collectionName, item, sortIndex = 0) {

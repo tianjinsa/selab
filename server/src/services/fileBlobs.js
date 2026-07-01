@@ -6,6 +6,7 @@ import { config } from '../config.js';
 const FILENAME_MAX = 260;
 const MIME_TYPE_MAX = 160;
 const KIND_MAX = 30;
+const LOCAL_UPLOADS_MIGRATION = 'local_uploads_to_blobs';
 
 let pool = null;
 let connecting = null;
@@ -76,6 +77,14 @@ async function ensureSchema() {
         )
         BEGIN
           CREATE INDEX IX_AppFileBlobs_AssetId ON dbo.AppFileBlobs(assetId)
+        END
+
+        IF OBJECT_ID(N'dbo.AppFileBlobMigrations', N'U') IS NULL
+        BEGIN
+          CREATE TABLE dbo.AppFileBlobMigrations (
+            name NVARCHAR(120) NOT NULL CONSTRAINT PK_AppFileBlobMigrations PRIMARY KEY,
+            completedAt DATETIME2 NOT NULL CONSTRAINT DF_AppFileBlobMigrations_completedAt DEFAULT SYSUTCDATETIME()
+          )
         END
       `);
     })().catch((error) => {
@@ -155,6 +164,9 @@ export async function hasFileBlob(filename) {
 
 export async function migrateLocalUploadsToDatabase(store) {
   await ensureSchema();
+  const activePool = await getPool();
+  if (await isMigrationCompleted(activePool, LOCAL_UPLOADS_MIGRATION)) return;
+
   const assets = store.collection('fileAssets');
   let migrated = 0;
   for (const asset of assets) {
@@ -186,6 +198,7 @@ export async function migrateLocalUploadsToDatabase(store) {
   if (migrated > 0) {
     console.log(`已迁移 ${migrated} 个上传文件到 SQL Server`);
   }
+  await markMigrationCompleted(activePool, LOCAL_UPLOADS_MIGRATION);
 }
 
 export async function closeFileBlobStorage() {
@@ -207,4 +220,25 @@ function filenameFromUploadUrl(url) {
   const value = String(url || '');
   if (!value.startsWith('/uploads/')) return '';
   return safeUploadFilename(decodeURIComponent(value.slice('/uploads/'.length)));
+}
+
+async function isMigrationCompleted(activePool, name) {
+  const result = await activePool.request()
+    .input('name', sql.NVarChar(120), name)
+    .query('SELECT TOP 1 1 AS completed FROM dbo.AppFileBlobMigrations WHERE name = @name');
+  return Boolean(result.recordset[0]);
+}
+
+async function markMigrationCompleted(activePool, name) {
+  await activePool.request()
+    .input('name', sql.NVarChar(120), name)
+    .query(`
+      MERGE dbo.AppFileBlobMigrations AS target
+      USING (SELECT @name AS name) AS source
+      ON target.name = source.name
+      WHEN MATCHED THEN
+        UPDATE SET completedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (name) VALUES (source.name);
+    `);
 }
