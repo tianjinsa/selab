@@ -34,9 +34,21 @@
       <n-list>
         <n-list-item v-for="item in task.applications" :key="item.id">
           <n-space justify="space-between" align="center">
-            <div>
-              <strong>{{ item.applicant?.nickname }}</strong>
-              <span class="muted"> · 信用分 {{ item.applicant?.creditScore }} · {{ applicationText(item.status) }}</span>
+            <div class="task-applicant-row">
+              <button
+                v-if="item.applicant?.id"
+                type="button"
+                class="comment-author task-applicant-link"
+                @click="$router.push(`/users/${item.applicant.id}`)"
+              >
+                <UserAvatar :size="34" :src="item.applicant.avatarUrl" :name="item.applicant.nickname" />
+                <span>
+                  <strong>{{ item.applicant.nickname || '同学' }}</strong>
+                  <small class="muted">学号 {{ item.applicant.studentId || '未公开' }}</small>
+                </span>
+              </button>
+              <strong v-else>申请人</strong>
+              <span class="muted">信用分 {{ item.applicant?.creditScore ?? '-' }} · {{ applicationText(item.status) }}</span>
             </div>
             <n-space v-if="task.status === 'open' && item.status === 'pending'">
               <n-button size="small" type="primary" @click="operateApplication(item.id, 'accept')">同意</n-button>
@@ -92,6 +104,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useDialog, useMessage } from 'naive-ui';
 import { request } from '../../../shared/http.js';
+import UserAvatar from '../../../shared/UserAvatar.vue';
 import { userSession as session } from '../../session.js';
 import { formatMoney, taskStatusText, taskStatusType } from './taskFormat.js';
 
