@@ -125,6 +125,78 @@ export function getAiSession(store, userId, sessionId) {
   return { session, messages };
 }
 
+function getAiSessionMessages(store, sessionId) {
+  return store.collection('aiMessages')
+    .filter((item) => item.sessionId === sessionId)
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+}
+
+function sanitizeAdminAiMessage(message) {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content || '',
+    reasoningContent: message.reasoningContent || '',
+    status: message.status || '',
+    runState: message.runState || '',
+    cards: message.cards || [],
+    toolEvents: message.toolEvents || [],
+    createdAt: message.createdAt || '',
+    updatedAt: message.updatedAt || '',
+    editedAt: message.editedAt || ''
+  };
+}
+
+function buildAiConversationSnapshot(store, sessionId, options = {}) {
+  const session = store.collection('aiSessions').find((item) => item.id === sessionId);
+  if (!session) return null;
+  const messages = getAiSessionMessages(store, sessionId).map((item) => sanitizeAdminAiMessage(item));
+  const user = publicUser(store, session.userId);
+  return {
+    capturedAt: options.capturedAt || now(),
+    alertMessageId: options.alertMessageId || '',
+    reconstructed: Boolean(options.reconstructed),
+    session: {
+      id: session.id,
+      title: session.title || '',
+      status: session.status || '',
+      userId: session.userId,
+      createdAt: session.createdAt || '',
+      updatedAt: session.updatedAt || ''
+    },
+    user: user ? {
+      id: user.id,
+      nickname: user.nickname,
+      studentId: user.studentId,
+      avatarUrl: user.avatarUrl
+    } : null,
+    messages
+  };
+}
+
+function sessionIdForRiskAlert(store, alert) {
+  if (alert.sessionId) return alert.sessionId;
+  if (alert.snapshot?.session?.id) return alert.snapshot.session.id;
+  const message = store.collection('aiMessages').find((item) => item.id === alert.messageId);
+  return message?.sessionId || '';
+}
+
+function summarizeRiskAlert(alert) {
+  return {
+    id: alert.id,
+    messageId: alert.messageId || '',
+    sessionId: alert.sessionId || alert.snapshot?.session?.id || '',
+    userId: alert.userId,
+    username: alert.username || '',
+    studentId: alert.studentId || '',
+    level: alert.level || '',
+    reason: alert.reason || '',
+    createdAt: alert.createdAt || '',
+    updatedAt: alert.updatedAt || '',
+    hasSnapshot: Boolean(alert.snapshot)
+  };
+}
+
 export async function updateAiSession(store, userId, sessionId, body = {}) {
   const session = getAiSession(store, userId, sessionId).session;
   const title = String(body.title || '').trim();
@@ -1044,14 +1116,31 @@ async function detectRiskByText(store, user, messageId, text) {
 
 async function reportRisk(store, user, messageId, level = '中风险', reason = '') {
   const profile = publicUser(store, user.id);
+  const message = store.collection('aiMessages').find((item) => item.id === messageId);
+  const sessionId = message?.sessionId || '';
   return store.insert('aiRiskAlerts', {
     messageId,
+    sessionId,
     userId: user.id,
     username: profile?.nickname || '',
     studentId: profile?.studentId || '',
     level,
-    reason
+    reason,
+    snapshot: sessionId ? buildAiConversationSnapshot(store, sessionId, { alertMessageId: messageId }) : null
   });
+}
+
+export function getAiRiskDetail(store, riskId) {
+  const alert = store.collection('aiRiskAlerts').find((item) => item.id === riskId);
+  if (!alert) throw notFound('风险报警不存在');
+  const sessionId = sessionIdForRiskAlert(store, alert);
+  const current = sessionId ? buildAiConversationSnapshot(store, sessionId, { alertMessageId: alert.messageId }) : null;
+  const snapshot = alert.snapshot || (current ? {
+    ...current,
+    capturedAt: alert.createdAt || current.capturedAt,
+    reconstructed: true
+  } : null);
+  return { alert: summarizeRiskAlert(alert), snapshot, current };
 }
 
 export function getAiAdminData(store) {
@@ -1060,7 +1149,9 @@ export function getAiAdminData(store) {
     config: sanitizeAiConfig(store.collection('settings')),
     sessions: store.collection('aiSessions').length,
     stats: store.collection('aiConsultationStats'),
-    risks: store.collection('aiRiskAlerts').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
+    risks: store.collection('aiRiskAlerts')
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      .map((item) => summarizeRiskAlert(item)),
     toolCalls: store.collection('aiToolCalls').sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 100),
     knowledgeBases,
     knowledgeEntries: store.collection('knowledgeEntries')

@@ -11,6 +11,7 @@ import {
   deleteKnowledgeEntry,
   deleteAiSession,
   getAiAdminData,
+  getAiRiskDetail,
   getAiSession,
   listAiSessions,
   regenerateAiRun,
@@ -62,6 +63,10 @@ router.get('/categories', requireUser, asyncHandler(async (_req, res) => {
 
 router.get('/admin', requireAdmin, asyncHandler(async (req, res) => {
   res.json(getAiAdminData(req.store));
+}));
+
+router.get('/admin/risks/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(getAiRiskDetail(req.store, req.params.id));
 }));
 
 router.patch('/admin/config', requireAdmin, asyncHandler(async (req, res) => {

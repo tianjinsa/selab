@@ -128,12 +128,74 @@
       </div>
       <n-data-table :columns="toolColumns" :data="adminData?.toolCalls || []" :pagination="{ pageSize: 6 }" />
     </section>
+
+    <n-modal v-model:show="riskDetailVisible" preset="card" title="风险会话审计" class="ai-risk-detail-modal">
+      <n-spin :show="riskDetailLoading">
+        <n-descriptions bordered size="small" :column="2">
+          <n-descriptions-item label="用户">{{ riskDetail?.alert?.username || '-' }}</n-descriptions-item>
+          <n-descriptions-item label="学号">{{ riskDetail?.alert?.studentId || '-' }}</n-descriptions-item>
+          <n-descriptions-item label="等级">{{ riskDetail?.alert?.level || '-' }}</n-descriptions-item>
+          <n-descriptions-item label="时间">{{ formatTime(riskDetail?.alert?.createdAt) }}</n-descriptions-item>
+          <n-descriptions-item label="原因" :span="2">{{ riskDetail?.alert?.reason || '-' }}</n-descriptions-item>
+        </n-descriptions>
+
+        <div class="risk-conversation-grid">
+          <section class="risk-conversation-panel">
+            <div class="risk-panel-heading">
+              <h3>报警时会话快照</h3>
+              <span class="muted">{{ riskDetail?.snapshot?.reconstructed ? '由当前数据补全' : formatTime(riskDetail?.snapshot?.capturedAt) }}</span>
+            </div>
+            <p class="muted compact-meta">{{ riskDetail?.snapshot?.session?.title || '会话已删除或无法定位' }}</p>
+            <div class="risk-message-list">
+              <article
+                v-for="messageItem in riskDetail?.snapshot?.messages || []"
+                :key="`snapshot-${messageItem.id}`"
+                :class="['risk-message', messageItem.role, { active: messageItem.id === riskDetail?.snapshot?.alertMessageId }]"
+              >
+                <div class="risk-message-meta">
+                  <strong>{{ roleText(messageItem.role) }}</strong>
+                  <span>{{ formatTime(messageItem.createdAt) }}</span>
+                  <span v-if="messageItem.editedAt">已修改 {{ formatTime(messageItem.editedAt) }}</span>
+                </div>
+                <p v-if="messageItem.reasoningContent" class="risk-reasoning">{{ messageItem.reasoningContent }}</p>
+                <pre>{{ messageItem.content || '（空消息）' }}</pre>
+              </article>
+              <n-empty v-if="!riskDetail?.snapshot?.messages?.length" description="没有可用快照" />
+            </div>
+          </section>
+
+          <section class="risk-conversation-panel">
+            <div class="risk-panel-heading">
+              <h3>当前会话内容</h3>
+              <span class="muted">{{ formatTime(riskDetail?.current?.capturedAt) }}</span>
+            </div>
+            <p class="muted compact-meta">{{ riskDetail?.current?.session?.title || '会话已被删除或消息已被重生成' }}</p>
+            <div class="risk-message-list">
+              <article
+                v-for="messageItem in riskDetail?.current?.messages || []"
+                :key="`current-${messageItem.id}`"
+                :class="['risk-message', messageItem.role, { active: messageItem.id === riskDetail?.alert?.messageId }]"
+              >
+                <div class="risk-message-meta">
+                  <strong>{{ roleText(messageItem.role) }}</strong>
+                  <span>{{ formatTime(messageItem.createdAt) }}</span>
+                  <span v-if="messageItem.editedAt">已修改 {{ formatTime(messageItem.editedAt) }}</span>
+                </div>
+                <p v-if="messageItem.reasoningContent" class="risk-reasoning">{{ messageItem.reasoningContent }}</p>
+                <pre>{{ messageItem.content || '（空消息）' }}</pre>
+              </article>
+              <n-empty v-if="!riskDetail?.current?.messages?.length" description="当前会话不可用" />
+            </div>
+          </section>
+        </div>
+      </n-spin>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useDialog, useMessage } from 'naive-ui';
+import { computed, h, onMounted, reactive, ref } from 'vue';
+import { NButton, useDialog, useMessage } from 'naive-ui';
 import { request } from '../../shared/http.js';
 
 const message = useMessage();
@@ -141,6 +203,9 @@ const dialog = useDialog();
 const adminData = ref(null);
 const showKnowledgeForm = ref(false);
 const showBaseForm = ref(false);
+const riskDetailVisible = ref(false);
+const riskDetailLoading = ref(false);
+const riskDetail = ref(null);
 const activeKnowledgeBaseId = ref('default');
 const editingKnowledgeId = ref('');
 const editingBaseId = ref('');
@@ -183,7 +248,16 @@ const riskColumns = [
   { title: '学号', key: 'studentId' },
   { title: '等级', key: 'level' },
   { title: '原因', key: 'reason' },
-  { title: '时间', key: 'createdAt', render: (row) => new Date(row.createdAt).toLocaleString() }
+  { title: '时间', key: 'createdAt', render: (row) => formatTime(row.createdAt) },
+  {
+    title: '操作',
+    key: 'actions',
+    render: (row) => h(NButton, {
+      size: 'small',
+      secondary: true,
+      onClick: () => openRiskDetail(row)
+    }, { default: () => '查看会话' })
+  }
 ];
 
 const toolColumns = [
@@ -265,6 +339,20 @@ function deleteKnowledge(item) {
   });
 }
 
+async function openRiskDetail(row) {
+  riskDetailVisible.value = true;
+  riskDetailLoading.value = true;
+  riskDetail.value = null;
+  try {
+    riskDetail.value = await request(`/api/ai/admin/risks/${row.id}`, {}, 'admin');
+  } catch (error) {
+    message.error(error.message || '加载风险会话失败');
+    riskDetailVisible.value = false;
+  } finally {
+    riskDetailLoading.value = false;
+  }
+}
+
 function openBaseForm(base = null) {
   editingBaseId.value = base?.id || '';
   Object.assign(baseForm, base ? {
@@ -312,5 +400,18 @@ function deleteBase(base) {
 function shortText(value = '') {
   const text = String(value || '');
   return text.length > 120 ? `${text.slice(0, 120)}...` : text;
+}
+
+function roleText(role = '') {
+  if (role === 'user') return '用户';
+  if (role === 'assistant') return '智能体';
+  if (role === 'system') return '系统';
+  return role || '消息';
+}
+
+function formatTime(value = '') {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString();
 }
 </script>

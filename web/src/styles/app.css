@@ -2031,6 +2031,97 @@ a:focus-visible,
   background: rgba(20, 108, 96, 0.05);
 }
 
+.ai-risk-detail-modal {
+  width: min(1180px, 94vw);
+}
+
+.risk-conversation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.risk-conversation-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.risk-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.risk-panel-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.risk-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 58vh;
+  overflow: auto;
+  padding: 12px;
+}
+
+.risk-message {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.risk-message.active {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.risk-message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.risk-message-meta strong {
+  color: var(--ink);
+}
+
+.risk-message pre,
+.risk-reasoning {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  line-height: 1.65;
+}
+
+.risk-reasoning {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  background: var(--brand-tint-soft);
+}
+
+@media (max-width: 900px) {
+  .risk-conversation-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .image-preview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
