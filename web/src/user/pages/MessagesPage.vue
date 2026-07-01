@@ -54,12 +54,12 @@
               <p v-if="item.card.expiredReason" class="muted" style="margin: 8px 0 0;">{{ item.card.expiredReason }}</p>
             </div>
             <div v-else-if="item.type === 'image' && messageAttachment(item)" class="chat-attachment image">
-              <a :href="messageAttachment(item).url" target="_blank" rel="noreferrer">
-                <img :src="messageAttachment(item).url" :alt="messageAttachment(item).name || '私信图片'" />
+              <a :href="assetUrl(messageAttachment(item).url)" target="_blank" rel="noreferrer">
+                <img :src="assetUrl(messageAttachment(item).url)" :alt="messageAttachment(item).name || '私信图片'" />
               </a>
               <p v-if="item.content">{{ item.content }}</p>
             </div>
-            <a v-else-if="messageAttachment(item)" class="chat-attachment file" :href="messageAttachment(item).url" target="_blank" rel="noreferrer">
+            <a v-else-if="messageAttachment(item)" class="chat-attachment file" :href="assetUrl(messageAttachment(item).url)" target="_blank" rel="noreferrer">
               <FileText :size="22" />
               <span>
                 <strong>{{ messageAttachment(item).name || '附件' }}</strong>
@@ -110,7 +110,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { Download, FileText, ImagePlus, Paperclip, Send } from '@lucide/vue';
-import { request, websocketUrl } from '../../shared/http.js';
+import { assetUrl, request, websocketUrl } from '../../shared/http.js';
 import { createReconnectableWebSocket } from '../../shared/realtimeSocket.js';
 import { loadUserSession, userSession as session } from '../session.js';
 

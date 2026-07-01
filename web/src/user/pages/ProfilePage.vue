@@ -9,16 +9,27 @@
               <strong>主页背景</strong>
               <span>建议使用横向图片，支持 jpg、png、webp</span>
             </div>
-            <n-upload
-              accept="image/jpeg,image/png,image/webp"
-              :show-file-list="false"
-              :custom-request="uploadCover"
-            >
-              <n-button secondary :loading="coverUploading">
-                <template #icon><ImagePlus :size="16" /></template>
-                更换背景
+            <div class="profile-cover-actions">
+              <n-upload
+                accept="image/jpeg,image/png,image/webp"
+                :show-file-list="false"
+                :custom-request="uploadCover"
+              >
+                <n-button secondary :loading="coverUploading">
+                  <template #icon><ImagePlus :size="16" /></template>
+                  更换背景
+                </n-button>
+              </n-upload>
+              <n-button
+                secondary
+                :disabled="!form.coverUrl || coverUploading"
+                :loading="coverResetting"
+                @click="resetCover"
+              >
+                <template #icon><RotateCcw :size="16" /></template>
+                恢复默认
               </n-button>
-            </n-upload>
+            </div>
           </div>
         </n-form-item>
         <n-form-item label="头像">
@@ -29,7 +40,7 @@
               :custom-request="uploadAvatar"
             >
               <button type="button" class="avatar-upload-trigger" :class="{ loading: avatarUploading }">
-                <n-avatar round :size="72" :src="form.avatarUrl || undefined">
+                <n-avatar round :size="72" :src="assetUrl(form.avatarUrl)">
                   {{ avatarText(form.nickname) }}
                 </n-avatar>
                 <span><Camera :size="15" />点击更换</span>
@@ -94,8 +105,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useMessage } from 'naive-ui';
-import { Camera, Eye, ImagePlus } from '@lucide/vue';
-import { request } from '../../shared/http.js';
+import { Camera, Eye, ImagePlus, RotateCcw } from '@lucide/vue';
+import { assetUrl, request } from '../../shared/http.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const message = useMessage();
@@ -103,11 +114,12 @@ const saving = ref(false);
 const changing = ref(false);
 const avatarUploading = ref(false);
 const coverUploading = ref(false);
+const coverResetting = ref(false);
 const form = reactive({ avatarUrl: '', coverUrl: '', nickname: '', phone: '', contact: '', bio: '' });
 const passwordForm = reactive({ oldPassword: '', newPassword: '' });
 const coverPreviewStyle = computed(() => (
   form.coverUrl
-    ? { backgroundImage: `linear-gradient(90deg, rgba(19, 39, 35, 0.62), rgba(19, 39, 35, 0.18)), url("${form.coverUrl}")` }
+    ? { backgroundImage: `linear-gradient(90deg, rgba(19, 39, 35, 0.62), rgba(19, 39, 35, 0.18)), url("${assetUrl(form.coverUrl)}")` }
     : {}
 ));
 
@@ -151,6 +163,21 @@ async function uploadProfileImage(file, field, loadingRef, successText, onFinish
     onError();
   } finally {
     loadingRef.value = false;
+  }
+}
+
+async function resetCover() {
+  if (!form.coverUrl) return;
+  coverResetting.value = true;
+  try {
+    const data = await request('/api/profile', { method: 'PATCH', body: { coverUrl: '' } });
+    session.user = data.user;
+    syncForm();
+    message.success('已恢复默认背景');
+  } catch (error) {
+    message.error(error.message || '恢复默认背景失败');
+  } finally {
+    coverResetting.value = false;
   }
 }
 

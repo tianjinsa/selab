@@ -13,7 +13,7 @@
       </div>
 
       <div class="user-profile-identity">
-        <n-avatar class="user-profile-avatar" round :size="92" :src="profile.avatarUrl || undefined">
+        <n-avatar class="user-profile-avatar" round :size="92" :src="assetUrl(profile.avatarUrl)">
           {{ avatarText(profile.nickname) }}
         </n-avatar>
         <div class="user-profile-info">
@@ -83,7 +83,7 @@
       </n-space>
       <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall user-posts" appear>
         <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
-          <img v-if="post.imageUrls?.[0]" class="post-cover" :src="post.imageUrls[0]" alt="帖子封面" />
+          <img v-if="post.imageUrls?.[0]" class="post-cover" :src="assetUrl(post.imageUrls[0])" alt="帖子封面" />
           <n-space justify="space-between" align="center">
             <strong>{{ post.title }}</strong>
             <n-tag size="small">{{ post.type }}</n-tag>
@@ -113,7 +113,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { Eye, Heart, MessageCircle, PenLine, Share2, ShieldCheck, Star, UserCheck, UserPlus } from '@lucide/vue';
-import { request } from '../../shared/http.js';
+import { assetUrl, request } from '../../shared/http.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const route = useRoute();
@@ -128,7 +128,7 @@ const profileViewMode = ref('owner');
 const isSelf = computed(() => profile.value?.id === session.user?.id);
 const coverStyle = computed(() => (
   profile.value?.coverUrl
-    ? { backgroundImage: `linear-gradient(180deg, rgba(18, 27, 34, 0.12), rgba(18, 27, 34, 0.56)), url("${profile.value.coverUrl}")` }
+    ? { backgroundImage: `linear-gradient(180deg, rgba(18, 27, 34, 0.12), rgba(18, 27, 34, 0.56)), url("${assetUrl(profile.value.coverUrl)}")` }
     : {}
 ));
 const creditTagType = computed(() => {

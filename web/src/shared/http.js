@@ -29,6 +29,15 @@ export async function request(path, options = {}, kind = 'user') {
   return data;
 }
 
+export function assetUrl(url) {
+  const value = String(url || '').trim();
+  if (!value) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (!value.startsWith('/uploads/')) return value;
+  const isVite = window.location.port === '5173';
+  return isVite ? `${window.location.protocol}//${window.location.hostname}:3000${value}` : value;
+}
+
 export function websocketUrl(token) {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const isVite = window.location.port === '5173';

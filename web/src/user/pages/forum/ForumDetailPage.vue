@@ -49,7 +49,7 @@
       <aside class="forum-info-pane">
         <header class="forum-info-author">
           <button type="button" class="forum-author-identity" @click="$router.push(`/users/${post.authorId}`)">
-            <n-avatar round :size="46" :src="post.author?.avatarUrl || undefined">
+            <n-avatar round :size="46" :src="assetUrl(post.author?.avatarUrl)">
               {{ avatarText(post.author?.nickname) }}
             </n-avatar>
             <span>
@@ -103,7 +103,7 @@
             <transition-group v-if="post.comments?.length" name="comment-flow" tag="div" class="forum-comment-list" appear>
               <article v-for="comment in post.comments" :key="comment.id" class="forum-comment-item">
                 <button type="button" class="comment-author" @click="$router.push(`/users/${comment.authorId}`)">
-                  <n-avatar round :size="34" :src="comment.author?.avatarUrl || undefined">
+                  <n-avatar round :size="34" :src="assetUrl(comment.author?.avatarUrl)">
                     {{ avatarText(comment.author?.nickname) }}
                   </n-avatar>
                   <strong>{{ comment.author?.nickname || '同学' }}</strong>
@@ -128,7 +128,7 @@
                 <div v-if="comment.replies?.length" class="forum-reply-list">
                   <div v-for="reply in comment.replies" :key="reply.id" class="forum-reply-item">
                     <button type="button" class="comment-author inline" @click="$router.push(`/users/${reply.authorId}`)">
-                      <n-avatar round :size="24" :src="reply.author?.avatarUrl || undefined">
+                      <n-avatar round :size="24" :src="assetUrl(reply.author?.avatarUrl)">
                         {{ avatarText(reply.author?.nickname) }}
                       </n-avatar>
                       <strong>{{ reply.author?.nickname || '同学' }}</strong>
@@ -202,7 +202,7 @@ import {
   UserCheck,
   UserPlus
 } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 import { loadUserSession, userSession as session } from '../../session.js';
 
 const route = useRoute();
@@ -215,7 +215,7 @@ const replyTo = ref('');
 const commentInputRef = ref(null);
 const currentImageIndex = ref(0);
 const imageUrls = computed(() => Array.isArray(post.value?.imageUrls) ? post.value.imageUrls : []);
-const currentImage = computed(() => imageUrls.value[currentImageIndex.value] || imageUrls.value[0] || '');
+const currentImage = computed(() => assetUrl(imageUrls.value[currentImageIndex.value] || imageUrls.value[0] || ''));
 
 onMounted(async () => {
   if (!session.user) await loadUserSession();

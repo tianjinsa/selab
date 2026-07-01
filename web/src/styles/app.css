@@ -1420,6 +1420,19 @@ a {
   z-index: 1;
 }
 
+.profile-cover-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profile-cover-actions .n-upload {
+  display: inline-flex;
+}
+
 .profile-cover-shade {
   position: relative;
   z-index: 1;
