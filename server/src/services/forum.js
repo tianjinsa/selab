@@ -67,8 +67,8 @@ export async function createPost(store, user, body) {
     viewCount: 0,
     shareCount: 0,
     deletedAt: ''
-  });
-  await savePostTags(store, post.id, tags);
+  }, { async: true });
+  await savePostTags(store, post.id, tags, { async: true });
   return decoratePost(store, post, user.id, true);
 }
 
@@ -490,17 +490,17 @@ function postTags(store, postId) {
     .map((item) => item.name);
 }
 
-async function savePostTags(store, postId, tags) {
+async function savePostTags(store, postId, tags, options = {}) {
   const allTags = store.collection('tags');
   for (const name of tags) {
     if (!allTags.some((item) => item.name === name)) {
       allTags.push({ id: randomUUID(), name, createdAt: now(), updatedAt: now() });
     }
   }
-  await store.saveCollection('tags');
+  await store.saveCollection('tags', options);
   const remaining = store.collection('postTags').filter((item) => item.postId !== postId);
   const next = tags.map((name) => ({ id: randomUUID(), postId, name, createdAt: now(), updatedAt: now() }));
-  await store.replaceCollection('postTags', [...remaining, ...next]);
+  await store.replaceCollection('postTags', [...remaining, ...next], options);
 }
 
 function heatScore(post, range = 'all') {

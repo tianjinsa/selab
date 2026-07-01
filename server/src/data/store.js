@@ -8,7 +8,7 @@ const ITEM_ID_MAX = 200;
 const SETTINGS_COLLECTION_NAME = 'settings';
 const LEGACY_COLLECTIONS_MIGRATION = 'legacy_collections_to_items';
 const COLLECTION_VERSIONS_MIGRATION = 'collection_versions_seeded';
-const SYNC_MIN_INTERVAL_MS = 300;
+const SYNC_MIN_INTERVAL_MS = 3000;
 
 function now() {
   return new Date().toISOString();
@@ -280,6 +280,10 @@ async function createSqlPersistence() {
       if (!collectionName) throw new Error(`Invalid collection name: ${name}`);
       return runWithReconnect((activePool) => loadCollectionItems(activePool, collectionName));
     },
+    async loadCollections(names) {
+      const collectionNames = normalizeCollectionNames(names);
+      return runWithReconnect((activePool) => loadCollectionItemsMap(activePool, collectionNames));
+    },
     async countItems(name) {
       const collectionName = normalizeCollectionName(name);
       if (!collectionName) throw new Error(`Invalid collection name: ${name}`);
@@ -313,6 +317,12 @@ function normalizeCollectionName(name) {
   const value = String(name || '').trim();
   if (!value || value.length > COLLECTION_NAME_MAX) return '';
   return value;
+}
+
+function normalizeCollectionNames(names = []) {
+  return [...new Set((Array.isArray(names) ? names : [names])
+    .map((name) => normalizeCollectionName(name))
+    .filter(Boolean))];
 }
 
 function normalizeItemId(id, usedIds = null) {
@@ -400,6 +410,39 @@ async function loadCollectionItems(activePool, collectionName) {
     items.push(item);
   }
   return prepareCollection(items);
+}
+
+async function loadCollectionItemsMap(activePool, collectionNames) {
+  const names = normalizeCollectionNames(collectionNames);
+  const collections = Object.fromEntries(names.map((name) => [name, []]));
+  if (!names.length) return collections;
+
+  const request = activePool.request();
+  const placeholders = names.map((name, index) => {
+    const paramName = `name${index}`;
+    request.input(paramName, sql.NVarChar(COLLECTION_NAME_MAX), name);
+    return `@${paramName}`;
+  });
+  const result = await request.query(`
+    SELECT collectionName, itemId, payload
+    FROM dbo.AppItems
+    WHERE collectionName IN (${placeholders.join(', ')})
+    ORDER BY collectionName ASC, sortIndex ASC, createdAt ASC, itemId ASC
+  `);
+
+  for (const row of result.recordset) {
+    const name = normalizeCollectionName(row.collectionName);
+    if (!name || !collections[name]) continue;
+    const item = parseJson(row.payload, null);
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    if (!item.id) item.id = row.itemId;
+    collections[name].push(item);
+  }
+
+  for (const name of names) {
+    collections[name] = prepareCollection(collections[name]);
+  }
+  return collections;
 }
 
 async function loadSettings(activePool) {
@@ -554,42 +597,113 @@ export async function createStore() {
 
   const data = normalizeData({ settings: await persistence.loadSettings() });
   const loadedCollections = new Set([SETTINGS_COLLECTION_NAME]);
+  const collectionVersions = new Map();
+  const pendingWriteCounts = new Map();
+  const refreshDeferredUntil = new Map();
   let writeChain = Promise.resolve();
   let syncChain = Promise.resolve();
   let lastSyncAt = 0;
 
-  function queueWrite(operation) {
-    const next = writeChain.then(operation, operation);
+  function markPendingWrites(names) {
+    for (const name of normalizeCollectionNames(names)) {
+      pendingWriteCounts.set(name, Number(pendingWriteCounts.get(name) || 0) + 1);
+    }
+  }
+
+  function unmarkPendingWrites(names) {
+    for (const name of normalizeCollectionNames(names)) {
+      const next = Number(pendingWriteCounts.get(name) || 0) - 1;
+      if (next > 0) pendingWriteCounts.set(name, next);
+      else pendingWriteCounts.delete(name);
+    }
+  }
+
+  function hasPendingWrite(name) {
+    return Number(pendingWriteCounts.get(name) || 0) > 0;
+  }
+
+  function deferCollectionRefresh(name, durationMs = 30000) {
+    const collectionName = normalizeCollectionName(name);
+    if (!collectionName) return;
+    const until = Date.now() + Math.max(1000, Number(durationMs) || 30000);
+    refreshDeferredUntil.set(collectionName, Math.max(Number(refreshDeferredUntil.get(collectionName) || 0), until));
+  }
+
+  function isRefreshDeferred(name) {
+    const until = Number(refreshDeferredUntil.get(name) || 0);
+    if (!until) return false;
+    if (until > Date.now()) return true;
+    refreshDeferredUntil.delete(name);
+    return false;
+  }
+
+  function queueWrite(operation, names = []) {
+    const writeNames = normalizeCollectionNames(names);
+    markPendingWrites(writeNames);
+    const next = writeChain
+      .then(operation, operation)
+      .finally(() => unmarkPendingWrites(writeNames));
     writeChain = next.catch(() => {});
     return next;
   }
 
+  function logAsyncWriteError(action, error) {
+    console.error(`SQL Server 异步落盘失败（${action}）：`, error?.message || error);
+  }
+
+  function enqueueWrite(operation, names, options, action) {
+    const promise = queueWrite(operation, names);
+    if (options?.async) {
+      promise.catch((error) => logAsyncWriteError(action, error));
+      return null;
+    }
+    return promise;
+  }
+
+  async function reloadCollections(names = []) {
+    const uniqueNames = normalizeCollectionNames(names);
+    if (!uniqueNames.length) return { loaded: [] };
+
+    const loaded = [];
+    const itemNames = uniqueNames.filter((name) => name !== SETTINGS_COLLECTION_NAME);
+    const settingsRequested = uniqueNames.includes(SETTINGS_COLLECTION_NAME);
+    const [settingsValue, itemCollections] = await Promise.all([
+      settingsRequested ? persistence.loadSettings() : Promise.resolve(null),
+      itemNames.length ? persistence.loadCollections(itemNames) : Promise.resolve({})
+    ]);
+
+    if (settingsRequested) {
+      data.settings = settingsValue;
+      loadedCollections.add(SETTINGS_COLLECTION_NAME);
+      loaded.push(SETTINGS_COLLECTION_NAME);
+    }
+
+    for (const name of itemNames) {
+      data[name] = itemCollections[name] || [];
+      loadedCollections.add(name);
+      loaded.push(name);
+    }
+    return { loaded };
+  }
+
   async function loadCollections(names = [], options = {}) {
     const force = Boolean(options.force);
-    const uniqueNames = [...new Set((Array.isArray(names) ? names : [names])
-      .map((name) => normalizeCollectionName(name))
-      .filter(Boolean))];
+    const uniqueNames = normalizeCollectionNames(names);
+    if (!uniqueNames.length) return { loaded: [] };
     const targetNames = uniqueNames.filter((name) => force || !loadedCollections.has(name));
-    if (!targetNames.length) return { loaded: [] };
 
-    await writeChain.catch(() => {});
-    const loaded = [];
-    const concurrency = 5;
-    for (let index = 0; index < targetNames.length; index += concurrency) {
-      const batch = targetNames.slice(index, index + concurrency);
-      const results = await Promise.all(batch.map(async (name) => {
-        if (name === SETTINGS_COLLECTION_NAME) {
-          return [name, await persistence.loadSettings()];
-        }
-        return [name, await persistence.loadCollection(name)];
-      }));
-      for (const [name, value] of results) {
-        if (name === SETTINGS_COLLECTION_NAME) data.settings = value;
-        else data[name] = value;
-        loadedCollections.add(name);
-        loaded.push(name);
-      }
+    let loaded = [];
+    if (targetNames.length) {
+      if (force) await writeChain.catch(() => {});
+      const result = await reloadCollections(targetNames);
+      loaded = result.loaded;
     }
+
+    if (!force && options.checkVersions !== false) {
+      const result = await refreshFromDatabase({ collections: uniqueNames, minInterval: options.minInterval });
+      return { loaded, checked: result.checked, changed: result.changed };
+    }
+
     return { loaded };
   }
 
@@ -605,10 +719,31 @@ export async function createStore() {
         return { checked: false, changed: [] };
       }
 
-      const names = options.collections || [SETTINGS_COLLECTION_NAME, ...collectionNames];
-      const result = await loadCollections(names, { force: true });
+      if (force) await writeChain.catch(() => {});
+      const names = normalizeCollectionNames(options.collections || [SETTINGS_COLLECTION_NAME, ...collectionNames])
+        .filter((name) => force || loadedCollections.has(name));
+      const versions = await persistence.getVersions();
       lastSyncAt = Date.now();
-      return { checked: true, changed: result.loaded };
+
+      const changed = [];
+      for (const name of names) {
+        if (hasPendingWrite(name) || isRefreshDeferred(name)) continue;
+        const nextVersion = versions[name] || '';
+        const previousVersion = collectionVersions.get(name);
+        if (force || (previousVersion && previousVersion !== nextVersion)) {
+          changed.push(name);
+        } else if (!previousVersion) {
+          collectionVersions.set(name, nextVersion);
+        }
+      }
+
+      if (changed.length) {
+        await reloadCollections(changed);
+        for (const name of changed) {
+          collectionVersions.set(name, versions[name] || '');
+        }
+      }
+      return { checked: true, changed };
     });
     syncChain = next.catch(() => {});
     return next;
@@ -633,8 +768,8 @@ export async function createStore() {
       if (name === 'settings') return 1;
       return persistence.countItems(name);
     },
-    async insert(name, item) {
-      if (name === 'settings') return this.updateSettings(item);
+    async insert(name, item, options = {}) {
+      if (name === 'settings') return this.updateSettings(item, options);
       if (!Array.isArray(data[name])) data[name] = [];
       const next = prepareItem(item);
       data[name].push(next);
@@ -642,10 +777,16 @@ export async function createStore() {
       const sortIndex = loadedCollections.has(name)
         ? data[name].length - 1
         : await persistence.countItems(name);
-      await queueWrite(() => persistence.saveItem(name, itemSnapshot, sortIndex));
+      const write = enqueueWrite(
+        () => persistence.saveItem(name, itemSnapshot, sortIndex),
+        [name],
+        options,
+        `insert ${name}/${next.id}`
+      );
+      if (write) await write;
       return next;
     },
-    async update(name, id, patch) {
+    async update(name, id, patch, options = {}) {
       if (!Array.isArray(data[name])) data[name] = [];
       if (!loadedCollections.has(name)) {
         await loadCollections([name]);
@@ -660,18 +801,30 @@ export async function createStore() {
         updatedAt: now()
       };
       const itemSnapshot = clone(data[name][index]);
-      await queueWrite(() => persistence.saveItem(name, itemSnapshot, index));
+      const write = enqueueWrite(
+        () => persistence.saveItem(name, itemSnapshot, index),
+        [name],
+        options,
+        `update ${name}/${id}`
+      );
+      if (write) await write;
       return data[name][index];
     },
-    async replaceCollection(name, items) {
-      if (name === 'settings') return this.updateSettings(items);
+    async replaceCollection(name, items, options = {}) {
+      if (name === 'settings') return this.updateSettings(items, options);
       data[name] = prepareCollection(items);
       loadedCollections.add(name);
       const itemsSnapshot = clone(data[name]);
-      await queueWrite(() => persistence.replaceItems(name, itemsSnapshot));
+      const write = enqueueWrite(
+        () => persistence.replaceItems(name, itemsSnapshot),
+        [name],
+        options,
+        `replace ${name}`
+      );
+      if (write) await write;
       return data[name];
     },
-    async updateSettings(patch) {
+    async updateSettings(patch, options = {}) {
       data.settings = {
         ...data.settings,
         ...patch,
@@ -679,13 +832,25 @@ export async function createStore() {
       };
       loadedCollections.add(SETTINGS_COLLECTION_NAME);
       const settingsSnapshot = clone(data.settings);
-      await queueWrite(() => persistence.saveSettings(settingsSnapshot));
+      const write = enqueueWrite(
+        () => persistence.saveSettings(settingsSnapshot),
+        [SETTINGS_COLLECTION_NAME],
+        options,
+        'update settings'
+      );
+      if (write) await write;
       return data.settings;
     },
-    async saveCollection(name) {
+    async saveCollection(name, options = {}) {
       if (name === 'settings') {
         const settingsSnapshot = clone(data.settings);
-        await queueWrite(() => persistence.saveSettings(settingsSnapshot));
+        const write = enqueueWrite(
+          () => persistence.saveSettings(settingsSnapshot),
+          [SETTINGS_COLLECTION_NAME],
+          options,
+          'save settings'
+        );
+        if (write) await write;
         return;
       }
       if (!Array.isArray(data[name])) data[name] = [];
@@ -694,13 +859,20 @@ export async function createStore() {
       }
       prepareCollectionInPlace(data[name]);
       const itemsSnapshot = clone(data[name]);
-      await queueWrite(() => persistence.replaceItems(name, itemsSnapshot));
+      const write = enqueueWrite(
+        () => persistence.replaceItems(name, itemsSnapshot),
+        [name],
+        options,
+        `save ${name}`
+      );
+      if (write) await write;
     },
     snapshot() {
       return clone(data);
     },
     collectionNames,
     refreshFromDatabase,
+    deferCollectionRefresh,
     async close() {
       await syncChain.catch(() => {});
       await writeChain.catch(() => {});

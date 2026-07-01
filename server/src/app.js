@@ -133,7 +133,7 @@ export function createApp(store, realtime) {
     req.store = store;
     req.realtime = realtime;
     try {
-      await store.loadCollections?.(collectionsForRequest(req), { force: true });
+      await store.loadCollections?.(collectionsForRequest(req), { checkVersions: true });
       next();
     } catch (error) {
       next(error);

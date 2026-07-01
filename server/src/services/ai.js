@@ -44,7 +44,12 @@ function isPotentialSilentToolName(name = '') {
   return [...silentToolNames].some((toolName) => toolName === value || toolName.startsWith(value));
 }
 
+function deferAiMessageRefresh(store) {
+  store.deferCollectionRefresh?.('aiMessages', 120000);
+}
+
 function createTransientAiMessage(store, item) {
+  deferAiMessageRefresh(store);
   const message = {
     id: item.id || randomUUID(),
     createdAt: item.createdAt || now(),
@@ -66,7 +71,7 @@ async function markSessionRunning(store, session, runId, userContent) {
     patch.titleSource = 'auto';
     patch.titleStatus = 'pending';
   }
-  return store.update('aiSessions', session.id, patch);
+  return store.update('aiSessions', session.id, patch, { async: true });
 }
 
 function publicUser(store, userId) {
@@ -110,7 +115,7 @@ export async function createAiSession(store, userId, title = '新的咨询', opt
     status: 'idle',
     currentRunId: '',
     stoppedAt: ''
-  });
+  }, { async: true });
 }
 
 function assertIdleSession(session) {
@@ -206,7 +211,7 @@ export async function updateAiSession(store, userId, sessionId, body = {}) {
     title: title.slice(0, 40),
     titleSource: 'manual',
     titleStatus: 'done'
-  });
+  }, { async: true });
   return updated;
 }
 
@@ -241,7 +246,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     content,
     status: 'done',
     cards: []
-  });
+  }, { async: true });
   const assistant = createTransientAiMessage(store, {
     sessionId: session.id,
     role: 'assistant',
@@ -289,12 +294,12 @@ export async function updateAiUserMessage(store, userId, sessionId, messageId, b
   const updated = await store.update('aiMessages', message.id, {
     content,
     editedAt: now()
-  });
+  }, { async: true });
   await store.update('aiSessions', session.id, {
     title: session.title || content.slice(0, 18),
     titleSource: session.titleSource || 'auto',
     titleStatus: session.titleStatus || 'pending'
-  });
+  }, { async: true });
   return updated;
 }
 
@@ -345,7 +350,7 @@ export async function cancelAiRun(store, userId, sessionId) {
   if (!session?.currentRunId) return { ok: true };
   const run = activeRuns.get(session.currentRunId);
   if (run) run.controller.abort();
-  await store.update('aiSessions', sessionId, { status: 'stopped', currentRunId: '', stoppedAt: now() });
+  await store.update('aiSessions', sessionId, { status: 'stopped', currentRunId: '', stoppedAt: now() }, { async: true });
   return { ok: true };
 }
 
@@ -626,7 +631,7 @@ async function runLocalTool(store, realtime, user, assistantMessageId, toolName,
       arguments: args,
       result,
       summary: summarizeToolResult(result)
-    });
+    }, { async: true });
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: callId,
       toolName,
@@ -653,6 +658,7 @@ async function runLocalTool(store, realtime, user, assistantMessageId, toolName,
 }
 
 async function appendAssistantContent(store, realtime, userId, messageId, delta) {
+  deferAiMessageRefresh(store);
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message) return;
   message.content = `${message.content || ''}${delta}`;
@@ -663,6 +669,7 @@ async function appendAssistantContent(store, realtime, userId, messageId, delta)
 }
 
 async function appendAssistantReasoning(store, realtime, userId, messageId, delta) {
+  deferAiMessageRefresh(store);
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message) return;
   message.reasoningContent = `${message.reasoningContent || ''}${delta}`;
@@ -696,6 +703,7 @@ function appendTextStreamPart(message, channel, delta) {
 
 async function recordToolEvent(store, realtime, userId, messageId, event) {
   if (isSilentToolName(event?.toolName)) return null;
+  deferAiMessageRefresh(store);
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message) return null;
   const id = event.id || `${event.toolName || 'tool'}_${randomUUID()}`;
@@ -773,14 +781,14 @@ function ensureToolStreamPart(message, event) {
 
 async function finishAssistantMessage(store, realtime, userId, sessionId, messageId, runId, text, status, append = true) {
   if (append && text) await appendAssistantContent(store, realtime, userId, messageId, text);
-  await store.update('aiMessages', messageId, { status, runState: status });
-  await store.update('aiSessions', sessionId, { status, currentRunId: '', stoppedAt: status === 'stopped' ? now() : '' });
+  await store.update('aiMessages', messageId, { status, runState: status }, { async: true });
+  await store.update('aiSessions', sessionId, { status, currentRunId: '', stoppedAt: status === 'stopped' ? now() : '' }, { async: true });
   realtime.sendToUser(userId, status === 'error' ? 'ai.run.error' : 'ai.run.done', { sessionId, runId, messageId, status });
 }
 
 async function markAssistantDone(store, realtime, userId, sessionId, messageId, runId) {
-  await store.update('aiMessages', messageId, { status: 'done', runState: 'done' });
-  await store.update('aiSessions', sessionId, { status: 'idle', currentRunId: '' });
+  await store.update('aiMessages', messageId, { status: 'done', runState: 'done' }, { async: true });
+  await store.update('aiSessions', sessionId, { status: 'idle', currentRunId: '' }, { async: true });
   realtime.sendToUser(userId, 'ai.run.done', { sessionId, runId, messageId, status: 'done' });
 }
 
@@ -824,7 +832,7 @@ function shouldGenerateTitle(store, session) {
 }
 
 async function updateSessionTitleState(store, realtime, userId, sessionId, patch) {
-  const updated = await store.update('aiSessions', sessionId, patch);
+  const updated = await store.update('aiSessions', sessionId, patch, { async: true });
   if (updated) realtime.sendToUser(userId, 'ai.session.updated', { session: updated });
   return updated;
 }
@@ -949,7 +957,7 @@ async function executeAiTool(store, realtime, user, assistantMessageId, call) {
       arguments: args,
       result,
       summary: summarizeToolResult(result)
-    });
+    }, { async: true });
     await recordToolEvent(store, realtime, user.id, assistantMessageId, {
       id: call.id,
       toolName: call.name,

@@ -11,7 +11,7 @@ export async function createNotification(store, payload, realtime = null) {
     link: payload.link || '',
     sourceId: payload.sourceId || '',
     isRead: false
-  });
+  }, { async: true });
   if (realtime) {
     realtime.sendToUser(payload.userId, 'notification.new', notification);
     const count = countUnread(store, payload.userId);

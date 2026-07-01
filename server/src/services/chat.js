@@ -111,8 +111,8 @@ export async function sendMessage(store, realtime, senderId, conversationId, pay
     card: payload.card || null,
     readBy: [senderId],
     deletedFor: []
-  });
-  await store.update('conversations', conversationId, { lastMessageAt: message.createdAt });
+  }, { async: true });
+  await store.update('conversations', conversationId, { lastMessageAt: message.createdAt }, { async: true });
 
   for (const receiverId of conversation.memberIds.filter((id) => id !== senderId)) {
     const muted = conversation.mutedBy?.includes(receiverId);
