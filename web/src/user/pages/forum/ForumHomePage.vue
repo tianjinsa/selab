@@ -47,9 +47,7 @@
         </n-space>
         <div class="post-card-footer">
           <button type="button" class="comment-author inline" @click.stop="$router.push(`/users/${post.authorId}`)">
-            <n-avatar round :size="24" :src="assetUrl(post.author?.avatarUrl)">
-              {{ avatarText(post.author?.nickname) }}
-            </n-avatar>
+            <UserAvatar :size="24" :src="post.author?.avatarUrl" :name="post.author?.nickname" />
             <strong>{{ post.author?.nickname || '同学' }}</strong>
           </button>
           <div class="post-stat-row" aria-label="帖子互动数据">
@@ -71,6 +69,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { BarChart3, Bookmark, Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import UserAvatar from '../../../shared/UserAvatar.vue';
 
 const route = useRoute();
 const posts = ref([]);
@@ -94,7 +93,4 @@ async function loadSummary() {
   summary.value = (await request('/api/forum/summary')).summary;
 }
 
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
-}
 </script>

@@ -1724,7 +1724,7 @@ a {
   transition: opacity var(--motion-fast) var(--motion-ease);
 }
 
-.avatar-upload-trigger > span {
+.avatar-upload-hint {
   position: absolute;
   z-index: 2;
   display: inline-flex;
@@ -1742,8 +1742,8 @@ a {
 
 .avatar-upload-trigger:hover::after,
 .avatar-upload-trigger.loading::after,
-.avatar-upload-trigger:hover > span,
-.avatar-upload-trigger.loading > span {
+.avatar-upload-trigger:hover .avatar-upload-hint,
+.avatar-upload-trigger.loading .avatar-upload-hint {
   opacity: 1;
   transform: translateY(0);
 }

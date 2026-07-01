@@ -47,9 +47,7 @@
           :class="{ active: activeConversationId === conversation.id, unread: conversation.unreadCount }"
           @click="selectConversation(conversation.id)"
         >
-          <n-avatar round :size="42" :src="assetUrl(conversation.peer?.avatarUrl)">
-            {{ avatarText(conversation.peer?.nickname) }}
-          </n-avatar>
+          <UserAvatar :size="42" :src="conversation.peer?.avatarUrl" :name="conversation.peer?.nickname" />
           <span>
             <strong>{{ conversation.peer?.nickname || '同学' }}</strong>
             <small>{{ conversationPreview(conversation.lastMessage) }}</small>
@@ -91,9 +89,7 @@
       <template v-if="activeCategory === 'messages'">
         <div v-if="activeConversation" class="message-detail-card">
           <div class="message-detail-header">
-            <n-avatar round :size="52" :src="assetUrl(activeConversation.peer?.avatarUrl)">
-              {{ avatarText(activeConversation.peer?.nickname) }}
-            </n-avatar>
+            <UserAvatar :size="52" :src="activeConversation.peer?.avatarUrl" :name="activeConversation.peer?.nickname" />
             <div>
               <h3>{{ activeConversation.peer?.nickname || '同学' }}</h3>
               <p class="muted">{{ activeConversation.peer?.studentId || '校园用户' }}</p>
@@ -164,7 +160,8 @@ import {
   ShoppingBag,
   Trash2
 } from '@lucide/vue';
-import { assetUrl, request } from '../../shared/http.js';
+import { request } from '../../shared/http.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
 import { userSession as session } from '../session.js';
 
 const router = useRouter();
@@ -321,10 +318,6 @@ async function loadUnreadCount() {
 
 function unreadByType(type) {
   return notifications.value.filter((item) => item.type === type && !item.isRead).length;
-}
-
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
 }
 
 function notificationTypeText(type) {

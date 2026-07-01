@@ -13,9 +13,7 @@
       </div>
 
       <div class="user-profile-identity">
-        <n-avatar class="user-profile-avatar" round :size="92" :src="assetUrl(profile.avatarUrl)">
-          {{ avatarText(profile.nickname) }}
-        </n-avatar>
+        <UserAvatar class="user-profile-avatar" :size="92" :src="profile.avatarUrl" :name="profile.nickname" />
         <div class="user-profile-info">
           <n-space align="center" :wrap="true">
             <h2 class="user-profile-name">{{ profile.nickname || '同学' }}</h2>
@@ -114,6 +112,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { Eye, Heart, MessageCircle, PenLine, Share2, ShieldCheck, Star, UserCheck, UserPlus } from '@lucide/vue';
 import { assetUrl, request } from '../../shared/http.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const route = useRoute();
@@ -180,10 +179,6 @@ async function toggleFollow() {
 async function startConversation() {
   const data = await request(`/api/conversations/by-user/${profile.value.id}`, { method: 'POST' });
   router.push(`/messages/${data.conversation.id}`);
-}
-
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
 }
 
 function formatDate(value) {

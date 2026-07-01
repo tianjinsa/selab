@@ -37,6 +37,31 @@
       <n-form-item label="交付要求">
         <n-input v-model:value="form.deliveryRequirement" type="textarea" :autosize="{ minRows: 2 }" />
       </n-form-item>
+      <n-form-item label="任务图片">
+        <div class="upload-field">
+          <n-upload
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            :max="9"
+            :show-file-list="false"
+            :custom-request="uploadTaskImage"
+          >
+            <n-button secondary :loading="uploading">
+              <template #icon><ImagePlus :size="16" /></template>
+              上传图片
+            </n-button>
+          </n-upload>
+          <span class="muted">可上传地点、物品或需求截图，最多 9 张。</span>
+        </div>
+        <div v-if="form.imageUrls.length" class="image-preview-grid">
+          <div v-for="url in form.imageUrls" :key="url" class="image-preview-item">
+            <img :src="assetUrl(url)" alt="任务图片预览" />
+            <n-button circle quaternary size="small" @click="removeImage(url)">
+              <template #icon><X :size="15" /></template>
+            </n-button>
+          </div>
+        </div>
+      </n-form-item>
       <n-alert type="info" :show-icon="false" style="margin-bottom: 14px;">
         酬金范围：{{ meta.rewardMin }} - {{ meta.rewardMax }} 元。支付、结算和退款都会记录模拟流水。
       </n-alert>
@@ -49,7 +74,9 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { request } from '../../../shared/http.js';
+import { ImagePlus, X } from '@lucide/vue';
+import { assetUrl, request } from '../../../shared/http.js';
+import { uploadFile } from '../../../shared/uploadManager.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -57,6 +84,8 @@ const message = useMessage();
 const taskId = computed(() => route.params.id);
 const meta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
 const saving = ref(false);
+const uploadingCount = ref(0);
+const uploading = computed(() => uploadingCount.value > 0);
 const deadlineValue = ref(Date.now() + 24 * 60 * 60 * 1000);
 const form = reactive({
   title: '',
@@ -80,6 +109,7 @@ onMounted(async () => {
   if (taskId.value) {
     const data = await request(`/api/tasks/${taskId.value}`);
     Object.assign(form, data.task);
+    form.imageUrls = Array.isArray(data.task.imageUrls) ? data.task.imageUrls : [];
     deadlineValue.value = new Date(data.task.deadlineAt).getTime();
   }
 });
@@ -100,5 +130,29 @@ async function submit() {
   } finally {
     saving.value = false;
   }
+}
+
+async function uploadTaskImage({ file, onFinish, onError }) {
+  if (form.imageUrls.length + uploadingCount.value >= 9) {
+    message.warning('最多上传 9 张图片');
+    onError?.();
+    return;
+  }
+  uploadingCount.value += 1;
+  try {
+    const data = await uploadFile('/api/files/upload', file.file, { label: file.name || file.file?.name || '任务图片' });
+    form.imageUrls.push(data.url);
+    message.success('图片已上传');
+    onFinish?.();
+  } catch (error) {
+    message.error(error.message || '上传失败');
+    onError?.();
+  } finally {
+    uploadingCount.value = Math.max(0, uploadingCount.value - 1);
+  }
+}
+
+function removeImage(url) {
+  form.imageUrls = form.imageUrls.filter((item) => item !== url);
 }
 </script>

@@ -48,16 +48,18 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { X } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import { uploadFile } from '../../../shared/uploadManager.js';
 
 const router = useRouter();
 const message = useMessage();
 const saving = ref(false);
-const uploading = ref(false);
+const uploadingCount = ref(0);
+const uploading = computed(() => uploadingCount.value > 0);
 const typeOptions = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item }));
 const form = reactive({ title: '', content: '', type: '经验分享帖', tags: [], imageUrls: [], visibility: 'public' });
 
@@ -75,24 +77,22 @@ async function submit() {
 }
 
 async function uploadPostImage({ file, onFinish, onError }) {
-  if (form.imageUrls.length >= 9) {
+  if (form.imageUrls.length + uploadingCount.value >= 9) {
     message.warning('最多上传 9 张图片');
-    onError();
+    onError?.();
     return;
   }
-  uploading.value = true;
+  uploadingCount.value += 1;
   try {
-    const body = new FormData();
-    body.append('file', file.file);
-    const data = await request('/api/files/upload', { method: 'POST', body });
+    const data = await uploadFile('/api/files/upload', file.file, { label: file.name || file.file?.name || '帖子图片' });
     form.imageUrls.push(data.url);
     message.success('图片已上传');
-    onFinish();
+    onFinish?.();
   } catch (error) {
     message.error(error.message || '上传失败');
-    onError();
+    onError?.();
   } finally {
-    uploading.value = false;
+    uploadingCount.value = Math.max(0, uploadingCount.value - 1);
   }
 }
 

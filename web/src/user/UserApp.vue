@@ -53,6 +53,7 @@
               </transition>
             </router-view>
           </main>
+          <UploadProgressDock />
         </div>
       </n-dialog-provider>
     </n-message-provider>
@@ -64,6 +65,7 @@ import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound, WalletCards } from '@lucide/vue';
 import ThemeToggle from '../shared/ThemeToggle.vue';
+import UploadProgressDock from '../shared/UploadProgressDock.vue';
 import { useThemeMode } from '../shared/theme.js';
 import { clearUserSession, loadUserSession, userSession as session } from './session.js';
 

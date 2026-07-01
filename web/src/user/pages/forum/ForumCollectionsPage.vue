@@ -28,9 +28,7 @@
               </n-space>
               <div class="post-card-footer">
                 <button type="button" class="comment-author inline" @click.stop="$router.push(`/users/${post.authorId}`)">
-                  <n-avatar round :size="24" :src="assetUrl(post.author?.avatarUrl)">
-                    {{ avatarText(post.author?.nickname) }}
-                  </n-avatar>
+                  <UserAvatar :size="24" :src="post.author?.avatarUrl" :name="post.author?.nickname" />
                   <strong>{{ post.author?.nickname || '同学' }}</strong>
                 </button>
                 <div class="post-stat-row" aria-label="帖子互动数据">
@@ -52,9 +50,7 @@
             <article v-for="user in followingUsers" :key="user.id" class="module-card follow-card">
               <div class="follow-card-head">
                 <button type="button" class="comment-author inline" @click="$router.push(`/users/${user.id}`)">
-                  <n-avatar round :size="42" :src="assetUrl(user.avatarUrl)">
-                    {{ avatarText(user.nickname) }}
-                  </n-avatar>
+                  <UserAvatar :size="42" :src="user.avatarUrl" :name="user.nickname" />
                   <span>
                     <strong>{{ user.nickname || '同学' }}</strong>
                     <small class="muted">信用分 {{ user.creditScore ?? '-' }} · 关注于 {{ formatTime(user.followedAt) }}</small>
@@ -106,6 +102,7 @@ import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { Bookmark, Eye, Heart, MessageCircle, Send, Share2, Star, UserCheck } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import UserAvatar from '../../../shared/UserAvatar.vue';
 
 const router = useRouter();
 const message = useMessage();
@@ -132,10 +129,6 @@ async function toggleFollow(user) {
 async function startConversation(user) {
   const data = await request(`/api/conversations/by-user/${user.id}`, { method: 'POST' });
   router.push(`/messages/${data.conversation.id}`);
-}
-
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
 }
 
 function formatTime(value) {

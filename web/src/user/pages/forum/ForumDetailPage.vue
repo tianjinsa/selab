@@ -49,9 +49,7 @@
       <aside class="forum-info-pane">
         <header class="forum-info-author">
           <button type="button" class="forum-author-identity" @click="$router.push(`/users/${post.authorId}`)">
-            <n-avatar round :size="46" :src="assetUrl(post.author?.avatarUrl)">
-              {{ avatarText(post.author?.nickname) }}
-            </n-avatar>
+            <UserAvatar :size="46" :src="post.author?.avatarUrl" :name="post.author?.nickname" />
             <span>
               <strong>{{ post.author?.nickname || '同学' }}</strong>
               <small>信用分 {{ post.author?.creditScore ?? '-' }}</small>
@@ -103,9 +101,7 @@
             <transition-group v-if="post.comments?.length" name="comment-flow" tag="div" class="forum-comment-list" appear>
               <article v-for="comment in post.comments" :key="comment.id" class="forum-comment-item">
                 <button type="button" class="comment-author" @click="$router.push(`/users/${comment.authorId}`)">
-                  <n-avatar round :size="34" :src="assetUrl(comment.author?.avatarUrl)">
-                    {{ avatarText(comment.author?.nickname) }}
-                  </n-avatar>
+                  <UserAvatar :size="34" :src="comment.author?.avatarUrl" :name="comment.author?.nickname" />
                   <strong>{{ comment.author?.nickname || '同学' }}</strong>
                 </button>
                 <p>{{ comment.content }}</p>
@@ -128,9 +124,7 @@
                 <div v-if="comment.replies?.length" class="forum-reply-list">
                   <div v-for="reply in comment.replies" :key="reply.id" class="forum-reply-item">
                     <button type="button" class="comment-author inline" @click="$router.push(`/users/${reply.authorId}`)">
-                      <n-avatar round :size="24" :src="assetUrl(reply.author?.avatarUrl)">
-                        {{ avatarText(reply.author?.nickname) }}
-                      </n-avatar>
+                      <UserAvatar :size="24" :src="reply.author?.avatarUrl" :name="reply.author?.nickname" />
                       <strong>{{ reply.author?.nickname || '同学' }}</strong>
                     </button>
                     <span>{{ reply.content }}</span>
@@ -203,6 +197,7 @@ import {
   UserPlus
 } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import UserAvatar from '../../../shared/UserAvatar.vue';
 import { loadUserSession, userSession as session } from '../../session.js';
 
 const route = useRoute();
@@ -290,10 +285,6 @@ function showPrevImage() {
 function showNextImage() {
   if (!imageUrls.value.length) return;
   currentImageIndex.value = (currentImageIndex.value + 1) % imageUrls.value.length;
-}
-
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
 }
 
 function formatDate(value) {

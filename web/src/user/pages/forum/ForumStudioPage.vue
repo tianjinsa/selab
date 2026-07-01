@@ -199,12 +199,14 @@ import {
   X
 } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import { uploadFile } from '../../../shared/uploadManager.js';
 
 const message = useMessage();
 const dialog = useDialog();
 const loading = ref(false);
 const saving = ref(false);
-const uploading = ref(false);
+const uploadingCount = ref(0);
+const uploading = computed(() => uploadingCount.value > 0);
 const visibilityLoadingId = ref('');
 const deletingPostId = ref('');
 const editorVisible = ref(false);
@@ -317,24 +319,22 @@ function confirmDelete(post) {
 }
 
 async function uploadImage({ file, onFinish, onError }) {
-  if (editForm.imageUrls.length >= 9) {
+  if (editForm.imageUrls.length + uploadingCount.value >= 9) {
     message.warning('最多上传 9 张图片');
-    onError();
+    onError?.();
     return;
   }
-  uploading.value = true;
+  uploadingCount.value += 1;
   try {
-    const body = new FormData();
-    body.append('file', file.file);
-    const data = await request('/api/files/upload', { method: 'POST', body });
+    const data = await uploadFile('/api/files/upload', file.file, { label: file.name || file.file?.name || '帖子图片' });
     editForm.imageUrls.push(data.url);
     message.success('图片已上传');
-    onFinish();
+    onFinish?.();
   } catch (error) {
     message.error(error.message || '上传失败');
-    onError();
+    onError?.();
   } finally {
-    uploading.value = false;
+    uploadingCount.value = Math.max(0, uploadingCount.value - 1);
   }
 }
 
