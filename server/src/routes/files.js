@@ -1,12 +1,11 @@
 import express from 'express';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import multer from 'multer';
-import { config } from '../config.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { badRequest } from '../utils/errors.js';
+import { ApiError, badRequest } from '../utils/errors.js';
 import { requireUser } from '../services/auth.js';
+import { getFileBlob, safeUploadFilename, saveFileBlob } from '../services/fileBlobs.js';
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -87,7 +86,6 @@ router.post('/upload-attachment', requireUser, attachmentUpload.single('file'), 
 }));
 
 async function saveUploadedFile(req, file, kind) {
-  await fs.mkdir(config.uploadDir, { recursive: true });
   const originalExt = path.extname(file.originalname || '').toLowerCase();
   const ext = kind === 'image'
     ? imageExtension(file.mimetype, originalExt)
@@ -95,10 +93,19 @@ async function saveUploadedFile(req, file, kind) {
       ? originalExt
       : fallbackExtension(file.mimetype);
   const filename = `${Date.now()}-${randomUUID()}${ext}`;
-  const target = path.join(config.uploadDir, filename);
-  await fs.writeFile(target, file.buffer);
   const url = `/uploads/${filename}`;
+  const assetId = randomUUID();
+  await saveFileBlob({
+    filename,
+    assetId,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+    kind,
+    buffer: file.buffer
+  });
   const asset = await req.store.insert('fileAssets', {
+    id: assetId,
     userId: req.user.id,
     url,
     originalName: file.originalname,
@@ -108,6 +115,25 @@ async function saveUploadedFile(req, file, kind) {
   });
   return { asset, url };
 }
+
+export const serveUploadedFile = asyncHandler(async (req, res) => {
+  const filename = safeUploadFilename(req.params.filename);
+  if (!filename) throw new ApiError(404, '文件不存在');
+
+  const file = await getFileBlob(filename);
+  if (!file) throw new ApiError(404, '文件不存在');
+
+  const content = Buffer.isBuffer(file.content) ? file.content : Buffer.from(file.content);
+  const mimeType = file.mimeType || 'application/octet-stream';
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Content-Length', String(file.size || content.length));
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  if (file.kind !== 'image') {
+    const downloadName = encodeURIComponent(file.originalName || file.filename || 'download');
+    res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${downloadName}`);
+  }
+  res.end(content);
+});
 
 function imageExtension(mimeType, originalExt = '') {
   if (mimeType === 'image/png') return '.png';

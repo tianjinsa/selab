@@ -8,7 +8,7 @@ import profileRoutes from './routes/profile.js';
 import adminRoutes from './routes/admin.js';
 import chatRoutes from './routes/chat.js';
 import notificationRoutes from './routes/notifications.js';
-import fileRoutes from './routes/files.js';
+import fileRoutes, { serveUploadedFile } from './routes/files.js';
 import taskRoutes from './routes/tasks.js';
 import forumRoutes from './routes/forum.js';
 import marketRoutes from './routes/market.js';
@@ -20,7 +20,7 @@ export function createApp(store, realtime) {
   const app = express();
   app.use(cors());
   app.use(express.json({ limit: '2mb' }));
-  app.use('/uploads', express.static(config.uploadDir));
+  app.get('/uploads/:filename', serveUploadedFile);
 
   app.use(async (req, _res, next) => {
     req.store = store;

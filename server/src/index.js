@@ -7,9 +7,11 @@ import { RealtimeHub } from './realtime/realtimeHub.js';
 import { scanTaskTimeouts } from './services/tasks.js';
 import { scanOrderTimeouts } from './services/market.js';
 import { scanContentModerationQueue } from './services/contentModeration.js';
+import { closeFileBlobStorage, migrateLocalUploadsToDatabase } from './services/fileBlobs.js';
 
 const store = await createStore();
 await seedInitialData(store);
+await migrateLocalUploadsToDatabase(store).catch((error) => console.error('Upload file migration failed:', error.message));
 
 const realtime = new RealtimeHub(store);
 const app = createApp(store, realtime);
@@ -35,6 +37,7 @@ async function runBackgroundScans() {
 
 process.on('SIGINT', async () => {
   realtime.close();
+  await closeFileBlobStorage();
   await store.close();
   process.exit(0);
 });
