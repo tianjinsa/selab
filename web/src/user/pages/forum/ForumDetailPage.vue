@@ -1,142 +1,207 @@
 <template>
-  <div class="grid" v-if="post">
-    <section class="surface panel">
-      <n-space justify="space-between" align="start">
-        <div>
-          <n-space align="center">
-            <h2 style="margin: 0;">{{ post.title }}</h2>
-            <n-tag>{{ post.type }}</n-tag>
-          </n-space>
-          <p class="muted">浏览 {{ post.viewCount }} · 发布于 {{ formatTime(post.createdAt) }}</p>
+  <div class="forum-detail-page" v-if="post">
+    <section class="forum-detail-viewer">
+      <div class="forum-media-pane">
+        <button type="button" class="forum-detail-close" title="返回社区" @click="$router.push('/forum')">
+          <ArrowLeft :size="22" />
+        </button>
+
+        <div class="forum-media-stage">
+          <template v-if="imageUrls.length">
+            <img class="forum-media-image" :src="currentImage" alt="帖子图片" />
+            <div class="forum-media-counter">{{ currentImageIndex + 1 }}/{{ imageUrls.length }}</div>
+            <button
+              v-if="imageUrls.length > 1"
+              type="button"
+              class="forum-media-nav prev"
+              title="上一张"
+              @click="showPrevImage"
+            >
+              <ChevronLeft :size="24" />
+            </button>
+            <button
+              v-if="imageUrls.length > 1"
+              type="button"
+              class="forum-media-nav next"
+              title="下一张"
+              @click="showNextImage"
+            >
+              <ChevronRight :size="24" />
+            </button>
+            <div v-if="imageUrls.length > 1" class="forum-media-dots" aria-label="图片进度">
+              <button
+                v-for="(url, index) in imageUrls"
+                :key="url"
+                type="button"
+                :class="{ active: index === currentImageIndex }"
+                @click="currentImageIndex = index"
+              ></button>
+            </div>
+          </template>
+          <div v-else class="forum-text-stage">
+            <n-tag :bordered="false">{{ post.type }}</n-tag>
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+          </div>
         </div>
-        <n-button secondary @click="$router.push('/forum')">返回社区</n-button>
-      </n-space>
-      <div class="post-author-card post-author-card--detail">
-        <div class="post-author-main">
-          <button type="button" class="author-identity" @click="$router.push(`/users/${post.authorId}`)">
-            <n-avatar round :size="44" :src="post.author?.avatarUrl || undefined">
+      </div>
+
+      <aside class="forum-info-pane">
+        <header class="forum-info-author">
+          <button type="button" class="forum-author-identity" @click="$router.push(`/users/${post.authorId}`)">
+            <n-avatar round :size="46" :src="post.author?.avatarUrl || undefined">
               {{ avatarText(post.author?.nickname) }}
             </n-avatar>
             <span>
               <strong>{{ post.author?.nickname || '同学' }}</strong>
-              <small class="muted">信用分 {{ post.author?.creditScore ?? '-' }}</small>
+              <small>信用分 {{ post.author?.creditScore ?? '-' }}</small>
             </span>
           </button>
-          <n-button
-            v-if="post.authorId !== session.user?.id"
-            class="inline-follow-button"
-            size="small"
-            round
-            :secondary="post.followedAuthor"
-            :type="post.followedAuthor ? 'default' : 'primary'"
-            @click="followAuthor"
-          >
-            <template #icon>
-              <component :is="post.followedAuthor ? UserCheck : UserPlus" :size="15" />
-            </template>
-            {{ post.followedAuthor ? '已关注' : '关注' }}
-          </n-button>
-        </div>
-        <n-button v-if="post.authorId !== session.user?.id" secondary round @click="startConversation">
-          <template #icon><Send :size="16" /></template>
-          私信
-        </n-button>
-      </div>
-      <div v-if="post.imageUrls?.length" class="post-image-gallery">
-        <img v-for="url in post.imageUrls" :key="url" class="post-cover" :src="url" alt="帖子图片" />
-      </div>
-      <p style="white-space: pre-wrap;">{{ post.content }}</p>
-      <n-space size="small">
-        <n-tag v-for="tag in post.tags" :key="tag">{{ tag }}</n-tag>
-      </n-space>
-      <div class="post-action-bar">
-        <n-button class="post-action-button" :class="{ active: post.liked }" secondary round @click="likePost">
-          <template #icon>
-            <Heart :size="18" :fill="post.liked ? 'currentColor' : 'none'" />
-          </template>
-          {{ post.liked ? '已点赞' : '点赞' }} {{ post.likeCount }}
-        </n-button>
-        <n-button class="post-action-button" secondary round @click="focusComment">
-          <template #icon><MessageCircle :size="18" /></template>
-          评论 {{ post.commentCount }}
-        </n-button>
-        <n-button class="post-action-button" :class="{ active: post.favorited }" secondary round @click="favoritePost">
-          <template #icon>
-            <Star :size="18" :fill="post.favorited ? 'currentColor' : 'none'" />
-          </template>
-          {{ post.favorited ? '已收藏' : '收藏' }} {{ post.favoriteCount }}
-        </n-button>
-        <n-button class="post-action-button" secondary round @click="sharePost">
-          <template #icon><Share2 :size="18" /></template>
-          分享 {{ post.shareCount }}
-        </n-button>
-      </div>
-    </section>
+          <n-space>
+            <n-button v-if="post.authorId !== session.user?.id" secondary circle title="私信" @click="startConversation">
+              <template #icon><Send :size="16" /></template>
+            </n-button>
+            <n-button
+              v-if="post.authorId !== session.user?.id"
+              class="forum-follow-pill"
+              round
+              :secondary="post.followedAuthor"
+              :type="post.followedAuthor ? 'default' : 'error'"
+              @click="followAuthor"
+            >
+              <template #icon>
+                <component :is="post.followedAuthor ? UserCheck : UserPlus" :size="15" />
+              </template>
+              {{ post.followedAuthor ? '已关注' : '关注' }}
+            </n-button>
+          </n-space>
+        </header>
 
-    <section id="post-comments" class="surface panel">
-      <h3 style="margin-top: 0;">评论</h3>
-      <n-input ref="commentInputRef" v-model:value="commentText" type="textarea" :autosize="{ minRows: 2 }" placeholder="写下你的评论" />
-      <n-button style="margin-top: 10px;" type="primary" @click="sendComment('')">发表评论</n-button>
-      <n-list v-if="post.comments?.length" style="margin-top: 16px;">
-        <n-list-item v-for="comment in post.comments" :key="comment.id">
-          <div>
-            <n-space justify="space-between">
-              <button type="button" class="comment-author" @click="$router.push(`/users/${comment.authorId}`)">
-                <n-avatar round :size="28" :src="comment.author?.avatarUrl || undefined">
-                  {{ avatarText(comment.author?.nickname) }}
-                </n-avatar>
-                <strong>{{ comment.author?.nickname || '同学' }}</strong>
-              </button>
-              <n-space>
-                <n-button text class="comment-icon-action" @click="likeComment(comment.id)">
-                  <template #icon><Heart :size="15" /></template>
-                  {{ comment.likeCount }}
-                </n-button>
-                <n-button text class="comment-icon-action" @click="replyTo = replyTo === comment.id ? '' : comment.id">
-                  <template #icon><MessageCircle :size="15" /></template>
-                  回复
-                </n-button>
-                <n-button text class="comment-icon-action" type="warning" @click="report('comment', comment.id)">
-                  <template #icon><Flag :size="15" /></template>
-                  举报
-                </n-button>
-              </n-space>
+        <div class="forum-info-scroll">
+          <article class="forum-note-body">
+            <n-space size="small">
+              <n-tag>{{ post.type }}</n-tag>
+              <n-tag v-for="tag in post.tags" :key="tag" :bordered="false">#{{ tag }}</n-tag>
             </n-space>
-            <p>{{ comment.content }}</p>
-            <div v-for="reply in comment.replies" :key="reply.id" class="metric-card" style="margin: 8px 0 0 20px;">
-              <button type="button" class="comment-author inline" @click="$router.push(`/users/${reply.authorId}`)">
-                <n-avatar round :size="24" :src="reply.author?.avatarUrl || undefined">
-                  {{ avatarText(reply.author?.nickname) }}
-                </n-avatar>
-                <strong>{{ reply.author?.nickname || '同学' }}</strong>
-              </button>：{{ reply.content }}
+            <h2>{{ post.title }}</h2>
+            <p>{{ post.content }}</p>
+            <div class="forum-note-meta">
+              <span>{{ formatDate(post.createdAt) }}</span>
+              <span>{{ post.viewCount }} 浏览</span>
+              <button type="button" @click="report('post', post.id)">
+                <Flag :size="14" />
+                举报
+              </button>
             </div>
-            <div v-if="replyTo === comment.id" style="margin-top: 8px;">
-              <n-input v-model:value="replyText" placeholder="回复内容" />
-              <n-button size="small" style="margin-top: 6px;" @click="sendComment(comment.id)">发送回复</n-button>
-            </div>
-          </div>
-        </n-list-item>
-      </n-list>
-      <div v-else class="empty-state">还没有评论</div>
-    </section>
+          </article>
 
-    <section class="surface panel">
-      <n-collapse>
-        <n-collapse-item title="举报帖子" name="report">
-          <n-input v-model:value="reportReason" type="textarea" placeholder="说明举报原因" />
-          <n-button style="margin-top: 10px;" secondary type="warning" @click="report('post', post.id)">提交举报</n-button>
-        </n-collapse-item>
-      </n-collapse>
+          <section id="post-comments" class="forum-comment-section">
+            <div class="forum-section-heading">
+              <strong>共 {{ post.commentCount }} 条评论</strong>
+            </div>
+
+            <transition-group v-if="post.comments?.length" name="comment-flow" tag="div" class="forum-comment-list" appear>
+              <article v-for="comment in post.comments" :key="comment.id" class="forum-comment-item">
+                <button type="button" class="comment-author" @click="$router.push(`/users/${comment.authorId}`)">
+                  <n-avatar round :size="34" :src="comment.author?.avatarUrl || undefined">
+                    {{ avatarText(comment.author?.nickname) }}
+                  </n-avatar>
+                  <strong>{{ comment.author?.nickname || '同学' }}</strong>
+                </button>
+                <p>{{ comment.content }}</p>
+                <div class="forum-comment-actions">
+                  <span>{{ formatDate(comment.createdAt) }}</span>
+                  <button type="button" @click="likeComment(comment.id)">
+                    <Heart :size="14" />
+                    {{ comment.likeCount || '赞' }}
+                  </button>
+                  <button type="button" @click="replyTo = replyTo === comment.id ? '' : comment.id">
+                    <MessageCircle :size="14" />
+                    回复
+                  </button>
+                  <button type="button" @click="report('comment', comment.id)">
+                    <Flag :size="14" />
+                    举报
+                  </button>
+                </div>
+
+                <div v-if="comment.replies?.length" class="forum-reply-list">
+                  <div v-for="reply in comment.replies" :key="reply.id" class="forum-reply-item">
+                    <button type="button" class="comment-author inline" @click="$router.push(`/users/${reply.authorId}`)">
+                      <n-avatar round :size="24" :src="reply.author?.avatarUrl || undefined">
+                        {{ avatarText(reply.author?.nickname) }}
+                      </n-avatar>
+                      <strong>{{ reply.author?.nickname || '同学' }}</strong>
+                    </button>
+                    <span>{{ reply.content }}</span>
+                  </div>
+                </div>
+
+                <div v-if="replyTo === comment.id" class="forum-reply-composer">
+                  <n-input v-model:value="replyText" placeholder="回复内容" />
+                  <n-button size="small" type="primary" @click="sendComment(comment.id)">发送</n-button>
+                </div>
+              </article>
+            </transition-group>
+            <div v-else class="empty-state compact">还没有评论</div>
+          </section>
+        </div>
+
+        <footer class="forum-detail-actions">
+          <div class="forum-comment-composer">
+            <n-input
+              ref="commentInputRef"
+              v-model:value="commentText"
+              type="textarea"
+              :autosize="{ minRows: 1, maxRows: 3 }"
+              placeholder="说点什么..."
+              @keyup.enter.exact.prevent="sendComment('')"
+            />
+            <n-button type="primary" circle @click="sendComment('')">
+              <template #icon><Send :size="16" /></template>
+            </n-button>
+          </div>
+          <div class="forum-social-actions">
+            <button type="button" :class="{ active: post.liked }" @click="likePost">
+              <Heart :size="21" :fill="post.liked ? 'currentColor' : 'none'" />
+              <span>{{ post.likeCount }}</span>
+            </button>
+            <button type="button" :class="{ active: post.favorited }" @click="favoritePost">
+              <Star :size="21" :fill="post.favorited ? 'currentColor' : 'none'" />
+              <span>{{ post.favoriteCount }}</span>
+            </button>
+            <button type="button" @click="focusComment">
+              <MessageCircle :size="21" />
+              <span>{{ post.commentCount }}</span>
+            </button>
+            <button type="button" @click="sharePost">
+              <Share2 :size="21" />
+              <span>{{ post.shareCount }}</span>
+            </button>
+          </div>
+        </footer>
+      </aside>
     </section>
   </div>
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { Flag, Heart, MessageCircle, Send, Share2, Star, UserCheck, UserPlus } from '@lucide/vue';
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Flag,
+  Heart,
+  MessageCircle,
+  Send,
+  Share2,
+  Star,
+  UserCheck,
+  UserPlus
+} from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 import { loadUserSession, userSession as session } from '../../session.js';
 
@@ -147,8 +212,10 @@ const post = ref(null);
 const commentText = ref('');
 const replyText = ref('');
 const replyTo = ref('');
-const reportReason = ref('');
 const commentInputRef = ref(null);
+const currentImageIndex = ref(0);
+const imageUrls = computed(() => Array.isArray(post.value?.imageUrls) ? post.value.imageUrls : []);
+const currentImage = computed(() => imageUrls.value[currentImageIndex.value] || imageUrls.value[0] || '');
 
 onMounted(async () => {
   if (!session.user) await loadUserSession();
@@ -158,6 +225,7 @@ onMounted(async () => {
 async function load(trackView = false) {
   const params = trackView ? '' : '?trackView=false';
   post.value = (await request(`/api/forum/posts/${route.params.id}${params}`)).post;
+  if (currentImageIndex.value >= imageUrls.value.length) currentImageIndex.value = 0;
 }
 
 async function likePost() {
@@ -209,17 +277,26 @@ async function likeComment(id) {
 }
 
 async function report(type, targetId) {
-  if (!reportReason.value.trim()) return message.warning('请填写举报原因');
-  await request('/api/forum/reports', { method: 'POST', body: { type, targetId, reason: reportReason.value } });
-  reportReason.value = '';
+  const reason = type === 'post' ? '用户在帖子详情页举报该帖子' : '用户在帖子详情页举报该评论';
+  await request('/api/forum/reports', { method: 'POST', body: { type, targetId, reason } });
   message.success('举报已提交，管理员将处理');
+}
+
+function showPrevImage() {
+  if (!imageUrls.value.length) return;
+  currentImageIndex.value = (currentImageIndex.value - 1 + imageUrls.value.length) % imageUrls.value.length;
+}
+
+function showNextImage() {
+  if (!imageUrls.value.length) return;
+  currentImageIndex.value = (currentImageIndex.value + 1) % imageUrls.value.length;
 }
 
 function avatarText(name = '') {
   return String(name || '同').slice(0, 1);
 }
 
-function formatTime(value) {
-  return value ? new Date(value).toLocaleString() : '-';
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : '-';
 }
 </script>
