@@ -383,11 +383,30 @@ a:focus-visible,
   background: rgba(255, 255, 252, 0.78);
   box-shadow: 0 14px 36px rgba(18, 32, 43, 0.08);
   backdrop-filter: blur(18px);
+  transition:
+    top var(--motion-mid) var(--motion-ease),
+    margin var(--motion-mid) var(--motion-ease),
+    padding var(--motion-mid) var(--motion-ease),
+    background var(--motion-mid) var(--motion-ease),
+    border-color var(--motion-mid) var(--motion-ease),
+    box-shadow var(--motion-mid) var(--motion-ease);
+}
+
+.topbar > div:first-child {
+  min-width: 0;
 }
 
 .topbar .n-button {
   min-width: 44px;
   min-height: 44px;
+  transition:
+    min-width var(--motion-mid) var(--motion-ease),
+    min-height var(--motion-mid) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
 
 .page-title {
@@ -396,12 +415,46 @@ a:focus-visible,
   font-weight: 860;
   line-height: 1.2;
   letter-spacing: 0;
+  transition: font-size var(--motion-mid) var(--motion-ease), line-height var(--motion-mid) var(--motion-ease);
 }
 
 .page-desc {
   margin: 5px 0 0;
+  max-height: 28px;
+  overflow: hidden;
   color: var(--muted);
   line-height: 1.55;
+  opacity: 1;
+  transition:
+    max-height var(--motion-mid) var(--motion-ease),
+    margin var(--motion-mid) var(--motion-ease),
+    opacity var(--motion-fast) var(--motion-ease),
+    transform var(--motion-mid) var(--motion-ease);
+}
+
+.topbar--compact {
+  top: 8px;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 252, 0.86);
+  box-shadow: 0 10px 26px rgba(18, 32, 43, 0.08);
+}
+
+.topbar--compact .page-title {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.topbar--compact .page-desc {
+  max-height: 0;
+  margin-top: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.topbar--compact .n-button {
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .surface {
@@ -3635,6 +3688,11 @@ a:focus-visible,
   border-color: rgba(42, 57, 64, 0.9);
   background: rgba(19, 27, 32, 0.78);
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .topbar--compact {
+  background: rgba(19, 27, 32, 0.88);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
 }
 
 :root[data-theme="dark"] .n-message {

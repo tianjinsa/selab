@@ -44,7 +44,7 @@
             </div>
           </aside>
           <main class="main-pane">
-            <div class="topbar">
+            <div class="topbar" :class="{ 'topbar--compact': isTopbarCompact }">
               <div>
                 <h1 class="page-title">{{ routeTitle }}</h1>
                 <p class="page-desc">{{ session.user?.nickname || '同学' }}，信用分 {{ session.user?.creditScore ?? '-' }}</p>
@@ -76,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound, WalletCards } from '@lucide/vue';
 import OverlayScrollbars from '../shared/OverlayScrollbars.vue';
@@ -91,6 +91,9 @@ const route = useRoute();
 const router = useRouter();
 const { naiveTheme, naiveThemeOverrides } = useThemeMode();
 let unreadSocket = null;
+const topbarScrolled = ref(false);
+
+const isTopbarCompact = computed(() => route.path !== '/' || topbarScrolled.value);
 
 const routeTitle = computed(() => {
   const map = {
@@ -116,6 +119,8 @@ const routeTitle = computed(() => {
 });
 
 onMounted(async () => {
+  updateTopbarScrollState();
+  window.addEventListener('scroll', updateTopbarScrollState, { passive: true });
   if (session.token && !session.user) {
     await loadUserSession().catch(() => {
       clearUserSession();
@@ -126,7 +131,15 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   unreadSocket?.close();
+  window.removeEventListener('scroll', updateTopbarScrollState);
 });
+
+watch(
+  () => route.fullPath,
+  () => {
+    updateTopbarScrollState();
+  }
+);
 
 watch(
   () => session.token,
@@ -166,5 +179,9 @@ function handleUnreadSocketMessage(event) {
 function unreadBadgeText(value) {
   const count = Number(value || 0);
   return count > 99 ? '99+' : String(count);
+}
+
+function updateTopbarScrollState() {
+  topbarScrolled.value = window.scrollY > 36;
 }
 </script>
