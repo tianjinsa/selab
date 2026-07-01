@@ -236,6 +236,7 @@ async function loadCenter() {
   notifications.value = notificationData.notifications || [];
   conversations.value = conversationData.conversations || [];
   session.unreadCount = notificationData.unreadCount || 0;
+  syncMessageUnreadCount();
   if (activeConversationId.value) {
     await loadConversationMessages(activeConversationId.value);
   }
@@ -257,6 +258,7 @@ async function selectConversation(id) {
   await loadConversationMessages(id);
   const readData = await request(`/api/conversations/${id}/read`, { method: 'PATCH' });
   if (readData.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
+  if (readData.messageUnreadCount !== undefined) session.messageUnreadCount = readData.messageUnreadCount;
   await loadCenter();
 }
 
@@ -318,6 +320,10 @@ async function loadUnreadCount() {
 
 function unreadByType(type) {
   return notifications.value.filter((item) => item.type === type && !item.isRead).length;
+}
+
+function syncMessageUnreadCount() {
+  session.messageUnreadCount = conversations.value.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0);
 }
 
 function notificationTypeText(type) {

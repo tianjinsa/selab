@@ -156,6 +156,7 @@ onBeforeUnmount(() => {
 async function loadConversations() {
   const data = await request('/api/conversations');
   conversations.value = data.conversations;
+  syncMessageUnreadCount();
 }
 
 async function selectConversation(id) {
@@ -165,6 +166,7 @@ async function selectConversation(id) {
   messages.value = data.messages;
   const readData = await request(`/api/conversations/${id}/read`, { method: 'PATCH' });
   if (readData.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
+  if (readData.messageUnreadCount !== undefined) session.messageUnreadCount = readData.messageUnreadCount;
   await loadConversations();
   scrollBottom();
 }
@@ -274,6 +276,7 @@ async function handleSocketMessage(event) {
       upsertMessage(packet.payload.message);
       const readData = await request(`/api/conversations/${activeId.value}/read`, { method: 'PATCH' }).catch(() => null);
       if (readData?.unreadCount !== undefined) session.unreadCount = readData.unreadCount;
+      if (readData?.messageUnreadCount !== undefined) session.messageUnreadCount = readData.messageUnreadCount;
       scrollBottom();
     }
     await loadConversations();
@@ -286,9 +289,16 @@ async function handleSocketMessage(event) {
   if (packet.event === 'notification.unread_count') {
     session.unreadCount = packet.payload.count;
   }
+  if (packet.event === 'message.unread_count') {
+    session.messageUnreadCount = packet.payload.count;
+  }
   if (packet.event === 'error') {
     notice.error(packet.payload.message);
   }
+}
+
+function syncMessageUnreadCount() {
+  session.messageUnreadCount = conversations.value.reduce((sum, item) => sum + Number(item.unreadCount || 0), 0);
 }
 
 async function refreshCurrentConversation() {

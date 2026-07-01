@@ -18,15 +18,23 @@
               <div class="brand-subtitle">互助、交流、闲置与咨询</div>
             </div>
             <nav class="nav-list">
-              <router-link class="nav-item" to="/"><Home :size="18" />校园首页</router-link>
-              <router-link class="nav-item" to="/tasks"><ClipboardList :size="18" />任务互助</router-link>
-              <router-link class="nav-item" to="/forum"><MessagesSquare :size="18" />社区论坛</router-link>
-              <router-link class="nav-item" to="/market"><ShoppingBag :size="18" />二手市场</router-link>
-              <router-link class="nav-item" to="/ai"><Bot :size="18" />智能体</router-link>
-              <router-link class="nav-item" to="/messages"><Mail :size="18" />私信</router-link>
-              <router-link class="nav-item" to="/notifications"><Bell :size="18" />通知</router-link>
-              <router-link class="nav-item" to="/wallet"><WalletCards :size="18" />钱包</router-link>
-              <router-link class="nav-item" to="/profile"><UserRound :size="18" />个人中心</router-link>
+              <router-link class="nav-item" to="/"><Home :size="18" /><span class="nav-item-label">校园首页</span></router-link>
+              <router-link class="nav-item" to="/tasks"><ClipboardList :size="18" /><span class="nav-item-label">任务互助</span></router-link>
+              <router-link class="nav-item" to="/forum"><MessagesSquare :size="18" /><span class="nav-item-label">社区论坛</span></router-link>
+              <router-link class="nav-item" to="/market"><ShoppingBag :size="18" /><span class="nav-item-label">二手市场</span></router-link>
+              <router-link class="nav-item" to="/ai"><Bot :size="18" /><span class="nav-item-label">智能体</span></router-link>
+              <router-link class="nav-item" to="/messages">
+                <Mail :size="18" />
+                <span class="nav-item-label">私信</span>
+                <span v-if="session.messageUnreadCount" class="nav-unread-badge">{{ unreadBadgeText(session.messageUnreadCount) }}</span>
+              </router-link>
+              <router-link class="nav-item" to="/notifications">
+                <Bell :size="18" />
+                <span class="nav-item-label">通知</span>
+                <span v-if="session.unreadCount" class="nav-unread-badge">{{ unreadBadgeText(session.unreadCount) }}</span>
+              </router-link>
+              <router-link class="nav-item" to="/wallet"><WalletCards :size="18" /><span class="nav-item-label">钱包</span></router-link>
+              <router-link class="nav-item" to="/profile"><UserRound :size="18" /><span class="nav-item-label">个人中心</span></router-link>
             </nav>
           </aside>
           <main class="main-pane">
@@ -62,18 +70,21 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound, WalletCards } from '@lucide/vue';
 import OverlayScrollbars from '../shared/OverlayScrollbars.vue';
 import ThemeToggle from '../shared/ThemeToggle.vue';
 import UploadProgressDock from '../shared/UploadProgressDock.vue';
+import { websocketUrl } from '../shared/http.js';
+import { createReconnectableWebSocket } from '../shared/realtimeSocket.js';
 import { useThemeMode } from '../shared/theme.js';
 import { clearUserSession, loadUserSession, userSession as session } from './session.js';
 
 const route = useRoute();
 const router = useRouter();
 const { naiveTheme, naiveThemeOverrides } = useThemeMode();
+let unreadSocket = null;
 
 const routeTitle = computed(() => {
   const map = {
@@ -107,8 +118,47 @@ onMounted(async () => {
   }
 });
 
+onBeforeUnmount(() => {
+  unreadSocket?.close();
+});
+
+watch(
+  () => session.token,
+  (token) => {
+    unreadSocket?.close();
+    unreadSocket = null;
+    if (!token) return;
+    unreadSocket = createReconnectableWebSocket({
+      url: () => websocketUrl(session.token),
+      onMessage: handleUnreadSocketMessage
+    });
+    unreadSocket.connect();
+  },
+  { immediate: true }
+);
+
 function logout() {
   clearUserSession();
   router.push('/login');
+}
+
+function handleUnreadSocketMessage(event) {
+  let packet;
+  try {
+    packet = JSON.parse(event.data);
+  } catch {
+    return;
+  }
+  if (packet.event === 'notification.unread_count') {
+    session.unreadCount = packet.payload?.count || 0;
+  }
+  if (packet.event === 'message.unread_count') {
+    session.messageUnreadCount = packet.payload?.count || 0;
+  }
+}
+
+function unreadBadgeText(value) {
+  const count = Number(value || 0);
+  return count > 99 ? '99+' : String(count);
 }
 </script>

@@ -64,6 +64,21 @@ export function listConversations(store, userId) {
     .sort((a, b) => String(b.lastMessageAt || b.updatedAt).localeCompare(String(a.lastMessageAt || a.updatedAt)));
 }
 
+export function countConversationUnread(store, userId) {
+  const conversationIds = new Set(
+    store.collection('conversations')
+      .filter((conversation) => conversation.memberIds?.includes(userId))
+      .map((conversation) => conversation.id)
+  );
+  if (!conversationIds.size) return 0;
+  return store.collection('messages')
+    .filter((message) => conversationIds.has(message.conversationId))
+    .filter((message) => message.senderId !== userId)
+    .filter((message) => !(message.deletedFor || []).includes(userId))
+    .filter((message) => !(message.readBy || []).includes(userId))
+    .length;
+}
+
 export function listMessages(store, userId, conversationId) {
   const conversation = store.collection('conversations').find((item) => item.id === conversationId);
   if (!conversation) throw notFound('会话不存在');
@@ -111,6 +126,7 @@ export async function sendMessage(store, realtime, senderId, conversationId, pay
         sourceId: message.id
       }, realtime);
     }
+    realtime?.sendToUser(receiverId, 'message.unread_count', { count: countConversationUnread(store, receiverId) });
     realtime?.sendToUser(receiverId, 'chat.message.new', { conversationId, message });
   }
   realtime?.sendToUser(senderId, 'chat.message.new', { conversationId, message });
@@ -161,9 +177,11 @@ export async function markConversationRead(store, realtime, userId, conversation
   }
   if (changed) await store.saveCollection('messages');
   const unreadCount = await markNotificationsReadByLink(store, userId, `/messages/${conversationId}`, 'message');
+  const messageUnreadCount = countConversationUnread(store, userId);
   realtime?.sendToUser(userId, 'chat.message.read', { conversationId });
   realtime?.sendToUser(userId, 'notification.unread_count', { count: unreadCount });
-  return { ok: true, unreadCount };
+  realtime?.sendToUser(userId, 'message.unread_count', { count: messageUnreadCount });
+  return { ok: true, unreadCount, messageUnreadCount };
 }
 
 export async function setConversationMuted(store, userId, conversationId, muted) {

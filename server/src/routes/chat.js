@@ -7,6 +7,7 @@ import { listProducts } from '../services/market.js';
 import { listTasks } from '../services/tasks.js';
 import { paginateItems } from '../utils/pagination.js';
 import {
+  countConversationUnread,
   getOrCreateConversation,
   listConversations,
   listMessages,
@@ -92,6 +93,10 @@ router.get('/users/:id/content', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/conversations', requireUser, asyncHandler(async (req, res) => {
   res.json({ conversations: listConversations(req.store, req.user.id) });
+}));
+
+router.get('/conversations/unread-count', requireUser, asyncHandler(async (req, res) => {
+  res.json({ count: countConversationUnread(req.store, req.user.id) });
 }));
 
 router.post('/conversations/by-user/:peerId', requireUser, asyncHandler(async (req, res) => {
