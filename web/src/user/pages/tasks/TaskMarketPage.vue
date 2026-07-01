@@ -43,7 +43,16 @@
     </section>
 
     <transition-group v-if="tasks.length" name="card-flow" tag="div" class="grid grid-3" appear>
-      <article v-for="task in tasks" :key="task.id" class="module-card legacy-catalog-card">
+      <article
+        v-for="task in tasks"
+        :key="task.id"
+        class="module-card legacy-catalog-card"
+        role="link"
+        tabindex="0"
+        @click="$router.push(`/tasks/${task.id}`)"
+        @keydown.enter.self="$router.push(`/tasks/${task.id}`)"
+        @keydown.space.self.prevent="$router.push(`/tasks/${task.id}`)"
+      >
         <div>
           <n-space justify="space-between" align="center">
             <strong>{{ task.title }}</strong>
@@ -55,7 +64,7 @@
         </div>
         <n-space justify="space-between" align="center">
           <span class="muted">申请 {{ task.applicationCount }} 人</span>
-          <n-button secondary @click="$router.push(`/tasks/${task.id}`)">查看详情</n-button>
+          <n-button secondary @click.stop="$router.push(`/tasks/${task.id}`)">查看详情</n-button>
         </n-space>
       </article>
     </transition-group>

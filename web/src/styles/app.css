@@ -1201,6 +1201,10 @@ a:focus-visible,
   box-shadow: none;
 }
 
+.legacy-catalog-card[role="link"] {
+  cursor: pointer;
+}
+
 .legacy-catalog-card strong {
   font-size: 17px;
 }

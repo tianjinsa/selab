@@ -34,7 +34,16 @@
     </section>
 
     <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
-      <article v-for="product in products" :key="product.id" class="module-card legacy-catalog-card">
+      <article
+        v-for="product in products"
+        :key="product.id"
+        class="module-card legacy-catalog-card"
+        role="link"
+        tabindex="0"
+        @click="$router.push(`/market/${product.id}`)"
+        @keydown.enter.self="$router.push(`/market/${product.id}`)"
+        @keydown.space.self.prevent="$router.push(`/market/${product.id}`)"
+      >
         <div>
           <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
           <n-space justify="space-between" align="center">
@@ -47,7 +56,7 @@
         </div>
         <n-space justify="space-between">
           <span class="muted">收藏 {{ product.favoriteCount }}</span>
-          <n-button secondary @click="$router.push(`/market/${product.id}`)">查看详情</n-button>
+          <n-button secondary @click.stop="$router.push(`/market/${product.id}`)">查看详情</n-button>
         </n-space>
       </article>
     </transition-group>
