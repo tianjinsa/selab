@@ -466,6 +466,9 @@ export function marketWorkbench(store, userId) {
   const revenue = paymentFlows
     .filter((flow) => flow.userId === userId && flow.type === 'product_finish_settlement')
     .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
+  const refunds = paymentFlows
+    .filter((flow) => flow.userId === userId && flow.type === 'product_moderation_refund')
+    .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
   const spending = paymentFlows
     .filter((flow) => flow.userId === userId && flow.type === 'product_escrow_payment')
     .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
@@ -480,6 +483,7 @@ export function marketWorkbench(store, userId) {
       sellingActive: selling.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
       sellingCompleted: selling.filter((order) => order.status === 'completed').length,
       revenue,
+      refunds,
       spending
     },
     actionItems,
