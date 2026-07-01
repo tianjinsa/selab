@@ -345,6 +345,20 @@ function tagLabels(store) {
   return store.collection('tags').map((tag) => ({ id: tag.id || entityIdForLabel('forumTag', tag.name), label: tag.name }));
 }
 
+function forumCategoryLabels(store) {
+  const defaults = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'];
+  const names = [
+    ...defaults,
+    ...store.collection('posts')
+      .map((post) => String(post.type || '').trim())
+      .filter(Boolean)
+  ];
+  return [...new Set(names)].map((name) => ({
+    id: entityIdForLabel('forumCategory', name),
+    label: name
+  }));
+}
+
 function productCategoryLabels(store) {
   return (store.collection('settings').productCategories || []).map((item) => ({
     id: item.id,
@@ -389,6 +403,7 @@ function knowledgeEntryLabels(store) {
 
 function labelsForEntity(store, entityType) {
   if (entityType === 'forumTag') return tagLabels(store);
+  if (entityType === 'forumCategory') return forumCategoryLabels(store);
   if (entityType === 'productCategory') return productCategoryLabels(store);
   if (entityType === 'taskCategory') return taskCategoryLabels(store);
   if (entityType === 'taskTag') return taskTagLabels(store);
@@ -537,6 +552,245 @@ export async function classifyProductCategories(store, { title = '', detail = ''
   );
   const ids = result.categoryIds || result.categories || [];
   return categories.filter((item) => ids.includes(item.id)).slice(0, 3);
+}
+
+export async function recommendEntityCategory(store, domain, body = {}) {
+  const config = categoryRecommendationConfig(store, domain);
+  const current = normalizeCurrentCategory(config, body);
+  const text = categoryRecommendationText(domain, body);
+  const acceptedLabel = String(body.acceptedLabel || '').trim();
+  const apply = Boolean(body.apply);
+  const proposal = acceptedLabel
+    ? { newLabel: acceptedLabel, reason: '用户确认使用推荐分类' }
+    : await generateCategoryRecommendation(store, config, text, current);
+  const resolved = await resolveCategoryRecommendation(store, config, proposal, current, apply);
+  return {
+    domain: config.domain,
+    current,
+    recommended: resolved.recommended,
+    changed: categoryValue(current) !== categoryValue(resolved.recommended),
+    applied: resolved.applied,
+    reason: proposal.reason || resolved.reason || '',
+    similarity: resolved.similarity || []
+  };
+}
+
+function categoryRecommendationConfig(store, domain) {
+  if (domain === 'forum') {
+    return {
+      domain,
+      entityType: 'forumCategory',
+      idMode: false,
+      categories: forumCategoryLabels(store),
+      system: '你是校园社区帖子分类助手。只输出 JSON：{"existingId":"已有分类id或空","existingLabel":"已有分类名或空","newLabel":"新分类名或空","reason":"中文理由"}。如果已有分类不合适，可以给出一个 2-8 字中文新分类；不要输出标签。'
+    };
+  }
+  if (domain === 'task') {
+    return {
+      domain,
+      entityType: 'taskCategory',
+      idMode: false,
+      categories: taskCategoryLabels(store),
+      system: '你是校园任务互助分类助手。只输出 JSON：{"existingId":"已有分类id或空","existingLabel":"已有分类名或空","newLabel":"新分类名或空","reason":"中文理由"}。优先复用已有分类；如果都不合适，可以给出一个 2-8 字中文新任务分类。'
+    };
+  }
+  if (domain === 'product') {
+    return {
+      domain,
+      entityType: 'productCategory',
+      idMode: true,
+      categories: productCategoryLabels(store),
+      system: '你是校园二手商品分类助手。只输出 JSON：{"existingId":"已有分类id或空","existingLabel":"已有分类名或空","newLabel":"新分类名或空","reason":"中文理由"}。优先复用已有分类；如果都不合适，可以给出一个 2-8 字中文新商品分类。'
+    };
+  }
+  throw badRequest('不支持的分类推荐类型');
+}
+
+function normalizeCurrentCategory(config, body = {}) {
+  const raw = config.domain === 'product'
+    ? String(body.categoryId || '').trim()
+    : String(body.category || body.type || '').trim();
+  const found = config.idMode
+    ? config.categories.find((item) => item.id === raw)
+    : config.categories.find((item) => item.label === raw);
+  if (found) return publicCategoryValue(config, found, false);
+  return {
+    id: config.idMode ? raw : entityIdForLabel(config.entityType, raw),
+    label: raw,
+    value: raw,
+    isNew: false
+  };
+}
+
+function categoryRecommendationText(domain, body = {}) {
+  if (domain === 'forum') {
+    return [
+      `标题：${body.title || ''}`,
+      `正文：${body.content || ''}`,
+      `用户当前选择：${body.type || ''}`,
+      `用户标签：${(Array.isArray(body.tags) ? body.tags : []).join('、')}`
+    ].join('\n');
+  }
+  if (domain === 'task') {
+    return [
+      `任务标题：${body.title || ''}`,
+      `任务详情：${body.detail || ''}`,
+      `交付要求：${body.deliveryRequirement || ''}`,
+      `用户当前选择：${body.category || ''}`,
+      `任务标签：${(Array.isArray(body.tags) ? body.tags : []).join('、')}`
+    ].join('\n');
+  }
+  return [
+    `商品名称：${body.title || ''}`,
+    `商品详情：${body.detail || ''}`,
+    `成色：${body.condition || ''}`,
+    `交易方式：${body.tradeMethod || ''}`,
+    `用户当前选择：${body.categoryId || ''}`
+  ].join('\n');
+}
+
+async function generateCategoryRecommendation(store, config, text, current) {
+  const fallback = () => fallbackCategoryRecommendation(config, text, current);
+  return chatJson(
+    store,
+    config.system,
+    [
+      text,
+      `已有分类：${config.categories.map((item) => `${item.id}:${item.label}`).join('；')}`,
+      '判断内容真正所属分类。若用户当前选择不合适，请推荐更合适分类。'
+    ].join('\n'),
+    fallback
+  );
+}
+
+function fallbackCategoryRecommendation(config, text, current) {
+  const match = config.categories.find((item) => text.includes(item.label));
+  if (match) return { existingId: match.id, existingLabel: match.label, reason: '根据内容关键词匹配已有分类' };
+  return {
+    existingId: current?.id || '',
+    existingLabel: current?.label || '',
+    reason: '未配置 AI，保留当前分类'
+  };
+}
+
+async function resolveCategoryRecommendation(store, config, proposal = {}, current, apply) {
+  const existing = findCategoryByProposal(config, proposal);
+  if (existing) {
+    return {
+      recommended: publicCategoryValue(config, existing, false),
+      applied: false,
+      reason: proposal.reason || ''
+    };
+  }
+
+  const newLabel = sanitizeCategoryLabel(proposal.newLabel || proposal.category || proposal.label);
+  if (!newLabel) {
+    return {
+      recommended: current,
+      applied: false,
+      reason: proposal.reason || ''
+    };
+  }
+  const exactExisting = config.categories.find((item) => item.label === newLabel);
+  if (exactExisting) {
+    return {
+      recommended: publicCategoryValue(config, exactExisting, false),
+      applied: false,
+      reason: proposal.reason || 'AI 推荐复用已有分类'
+    };
+  }
+
+  const checks = await checkLabelSimilarity(store, config.entityType, [newLabel]);
+  const matches = checks[0]?.matches || [];
+  const nearest = matches.find((item) => item.level === 'duplicate' || item.level === 'similar');
+  if (nearest) {
+    return {
+      recommended: publicCategoryValue(config, {
+        id: nearest.entityId,
+        label: nearest.label
+      }, false),
+      applied: false,
+      reason: `推荐分类与已有分类「${nearest.label}」相似，已优先复用已有分类`,
+      similarity: matches
+    };
+  }
+
+  if (!apply) {
+    return {
+      recommended: {
+        id: '',
+        label: newLabel,
+        value: newLabel,
+        isNew: true
+      },
+      applied: false,
+      reason: proposal.reason || 'AI 建议新增分类',
+      similarity: matches
+    };
+  }
+
+  const created = await createRecommendedCategory(store, config, newLabel);
+  return {
+    recommended: created,
+    applied: true,
+    reason: proposal.reason || 'AI 已新增分类',
+    similarity: matches
+  };
+}
+
+function findCategoryByProposal(config, proposal = {}) {
+  const existingId = String(proposal.existingId || proposal.categoryId || '').trim();
+  const existingLabel = sanitizeCategoryLabel(proposal.existingLabel || proposal.categoryName || '');
+  return config.categories.find((item) => existingId && item.id === existingId)
+    || config.categories.find((item) => existingLabel && item.label === existingLabel)
+    || null;
+}
+
+function sanitizeCategoryLabel(value) {
+  return String(value || '')
+    .replace(/^#/, '')
+    .trim()
+    .slice(0, 20);
+}
+
+async function createRecommendedCategory(store, config, label) {
+  const existing = config.categories.find((item) => item.label === label);
+  if (existing) return publicCategoryValue(config, existing, false);
+
+  if (config.domain === 'product') {
+    const settings = store.collection('settings');
+    const category = {
+      id: `cat-${Date.now()}`,
+      name: label,
+      parentId: null
+    };
+    await store.updateSettings({ productCategories: [...(settings.productCategories || []), category] });
+    await upsertSemanticVector(store, config.entityType, category.name, { entityId: category.id, metadata: { parentId: null } });
+    return publicCategoryValue(config, { id: category.id, label: category.name }, true);
+  }
+
+  if (config.domain === 'task') {
+    const settings = store.collection('settings');
+    await store.updateSettings({ taskCategories: [...new Set([...(settings.taskCategories || []), label])] });
+    await upsertSemanticVector(store, config.entityType, label, { entityId: entityIdForLabel(config.entityType, label) });
+    return publicCategoryValue(config, { id: entityIdForLabel(config.entityType, label), label }, true);
+  }
+
+  await upsertSemanticVector(store, config.entityType, label, { entityId: entityIdForLabel(config.entityType, label) });
+  return publicCategoryValue(config, { id: entityIdForLabel(config.entityType, label), label }, true);
+}
+
+function publicCategoryValue(config, category, isNew = false) {
+  return {
+    id: category.id,
+    label: category.label,
+    value: config.idMode ? category.id : category.label,
+    isNew
+  };
+}
+
+function categoryValue(category) {
+  return String(category?.value || category?.label || category?.id || '');
 }
 
 export async function requestNewCategoryWithSimilarity(store, user, body = {}) {

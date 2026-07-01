@@ -194,7 +194,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, h, onMounted, reactive, ref } from 'vue';
 import { useDialog, useMessage } from 'naive-ui';
 import {
   ArrowLeft,
@@ -237,7 +237,7 @@ const stats = ref({
   favorites: 0,
   shares: 0
 });
-const typeOptions = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item }));
+const typeOptions = ref(['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item })));
 const editForm = reactive({ id: '', title: '', content: '', type: '经验分享帖', tags: [], imageUrls: [] });
 
 const filteredPosts = computed(() => {
@@ -273,6 +273,8 @@ function openEditor(post) {
 async function submitResubmit() {
   saving.value = true;
   try {
+    const categoryDecision = await resolveEditorCategoryRecommendation();
+    if (!categoryDecision) return;
     await request(`/api/forum/posts/${editForm.id}/resubmit`, {
       method: 'PATCH',
       body: {
@@ -291,6 +293,64 @@ async function submitResubmit() {
   } finally {
     saving.value = false;
   }
+}
+
+async function resolveEditorCategoryRecommendation() {
+  if (!editForm.title.trim() && !editForm.content.trim()) return true;
+  const data = await request('/api/forum/category-recommend', {
+    method: 'POST',
+    body: {
+      title: editForm.title,
+      content: editForm.content,
+      type: editForm.type,
+      tags: editForm.tags
+    }
+  });
+  if (!data.changed || !data.recommended?.label) return true;
+  return new Promise((resolve) => {
+    dialog.warning({
+      title: 'AI 推荐了更合适的帖子类型',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', `当前选择：${data.current?.label || editForm.type}`),
+        h('p', `推荐分类：${data.recommended.label}${data.recommended.isNew ? '（新分类）' : '（已有分类）'}`),
+        data.reason ? h('p', data.reason) : null
+      ]),
+      positiveText: '使用推荐分类',
+      negativeText: '保持当前选择',
+      onPositiveClick: async () => {
+        try {
+          const applied = data.recommended.isNew
+            ? await request('/api/forum/category-recommend', {
+              method: 'POST',
+              body: {
+                title: editForm.title,
+                content: editForm.content,
+                type: editForm.type,
+                tags: editForm.tags,
+                apply: true,
+                acceptedLabel: data.recommended.label
+              }
+            })
+            : data;
+          const recommended = applied.recommended || data.recommended;
+          ensureTypeOption(recommended.label);
+          editForm.type = recommended.value || recommended.label;
+          resolve(true);
+        } catch (error) {
+          message.error(error.message || '应用推荐分类失败');
+          resolve(null);
+        }
+      },
+      onNegativeClick: () => resolve(true),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function ensureTypeOption(label) {
+  const name = String(label || '').trim();
+  if (!name || typeOptions.value.some((item) => item.value === name)) return;
+  typeOptions.value.push({ label: name, value: name });
 }
 
 async function toggleVisibility(post) {

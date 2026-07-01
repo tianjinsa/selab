@@ -160,6 +160,8 @@ async function submit() {
   saving.value = true;
   aiChecking.value = true;
   try {
+    const categoryDecision = await resolveCategoryRecommendation();
+    if (!categoryDecision) return;
     const decision = await resolveTagSimilarity(await checkTaskTagSimilarity(form.tags));
     if (!decision) return;
     const payload = {
@@ -185,6 +187,66 @@ async function submit() {
     aiChecking.value = false;
     saving.value = false;
   }
+}
+
+async function resolveCategoryRecommendation() {
+  if (!form.title.trim() && !form.detail.trim()) return true;
+  const data = await request('/api/tasks/category-recommend', {
+    method: 'POST',
+    body: {
+      title: form.title,
+      detail: form.detail,
+      deliveryRequirement: form.deliveryRequirement,
+      category: form.category,
+      tags: form.tags
+    }
+  });
+  if (!data.changed || !data.recommended?.label) return true;
+  return new Promise((resolve) => {
+    dialog.warning({
+      title: 'AI 推荐了更合适的任务分类',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', `当前选择：${data.current?.label || form.category}`),
+        h('p', `推荐分类：${data.recommended.label}${data.recommended.isNew ? '（新分类）' : '（已有分类）'}`),
+        data.reason ? h('p', data.reason) : null
+      ]),
+      positiveText: '使用推荐分类',
+      negativeText: '保持当前选择',
+      onPositiveClick: async () => {
+        try {
+          const applied = data.recommended.isNew
+            ? await request('/api/tasks/category-recommend', {
+              method: 'POST',
+              body: {
+                title: form.title,
+                detail: form.detail,
+                deliveryRequirement: form.deliveryRequirement,
+                category: form.category,
+                tags: form.tags,
+                apply: true,
+                acceptedLabel: data.recommended.label
+              }
+            })
+            : data;
+          const recommended = applied.recommended || data.recommended;
+          ensureTaskCategory(recommended.label);
+          form.category = recommended.value || recommended.label;
+          resolve(true);
+        } catch (error) {
+          message.error(error.message || '应用推荐分类失败');
+          resolve(null);
+        }
+      },
+      onNegativeClick: () => resolve(true),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function ensureTaskCategory(label) {
+  const name = String(label || '').trim();
+  if (!name || meta.value.categories.includes(name)) return;
+  meta.value.categories.push(name);
 }
 
 async function checkTaskTagSimilarity(tags) {

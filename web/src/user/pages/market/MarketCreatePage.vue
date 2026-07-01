@@ -124,6 +124,8 @@ onMounted(async () => {
 async function submit() {
   saving.value = true;
   try {
+    const categoryDecision = await resolveCategoryRecommendation();
+    if (!categoryDecision) return;
     if (isResubmitMode.value) {
       await request(`/api/market/products/${productId.value}/resubmit`, {
         method: 'PATCH',
@@ -152,22 +154,81 @@ async function classifyProduct() {
   }
   classifying.value = true;
   try {
-    const data = await request('/api/products/ai-classify', {
-      method: 'POST',
-      body: { title: form.title, detail: form.detail }
-    });
-    const first = data.categories?.[0];
-    if (first?.id) {
-      form.categoryId = first.id;
-      message.success(`已推荐分类：${first.label}`);
-    } else {
-      message.warning('暂未找到合适分类');
-    }
+    const handled = await resolveCategoryRecommendation({ showUnchangedMessage: true });
+    if (handled) message.success('商品分类已检查');
   } catch (error) {
     message.error(error.message || 'AI 分类失败');
   } finally {
     classifying.value = false;
   }
+}
+
+async function resolveCategoryRecommendation(options = {}) {
+  if (!form.title.trim() && !form.detail.trim()) return true;
+  const data = await request('/api/products/category-recommend', {
+    method: 'POST',
+    body: {
+      title: form.title,
+      detail: form.detail,
+      condition: form.condition,
+      tradeMethod: form.tradeMethod,
+      categoryId: form.categoryId
+    }
+  });
+  if (!data.changed || !data.recommended?.label) {
+    if (options.showUnchangedMessage) message.info('当前分类已经合适');
+    return true;
+  }
+  return new Promise((resolve) => {
+    dialog.warning({
+      title: 'AI 推荐了更合适的商品分类',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', `当前选择：${data.current?.label || categoryNameById(form.categoryId)}`),
+        h('p', `推荐分类：${data.recommended.label}${data.recommended.isNew ? '（新分类）' : '（已有分类）'}`),
+        data.reason ? h('p', data.reason) : null
+      ]),
+      positiveText: '使用推荐分类',
+      negativeText: '保持当前选择',
+      onPositiveClick: async () => {
+        try {
+          const applied = data.recommended.isNew
+            ? await request('/api/products/category-recommend', {
+              method: 'POST',
+              body: {
+                title: form.title,
+                detail: form.detail,
+                condition: form.condition,
+                tradeMethod: form.tradeMethod,
+                categoryId: form.categoryId,
+                apply: true,
+                acceptedLabel: data.recommended.label
+              }
+            })
+            : data;
+          const recommended = applied.recommended || data.recommended;
+          ensureProductCategory(recommended);
+          form.categoryId = recommended.value || recommended.id;
+          resolve(true);
+        } catch (error) {
+          message.error(error.message || '应用推荐分类失败');
+          resolve(null);
+        }
+      },
+      onNegativeClick: () => resolve(true),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function categoryNameById(id) {
+  return meta.value.categories.find((item) => item.id === id)?.name || id || '';
+}
+
+function ensureProductCategory(category = {}) {
+  const id = String(category.value || category.id || '').trim();
+  const name = String(category.label || '').trim();
+  if (!id || !name || meta.value.categories.some((item) => item.id === id)) return;
+  meta.value.categories.push({ id, name, parentId: null });
 }
 
 async function uploadProductImage({ file, onFinish, onError }) {

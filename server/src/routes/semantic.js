@@ -7,6 +7,7 @@ import {
   checkLabelSimilarity,
   classifyProductCategories,
   generateForumTags,
+  recommendEntityCategory,
   requestNewCategoryWithSimilarity,
   requestNewTaskCategoryWithSimilarity,
   vectorSettings
@@ -32,6 +33,18 @@ router.post('/tags/check-similarity', requireUser, asyncHandler(async (req, res)
 router.post('/products/ai-classify', requireUser, asyncHandler(async (req, res) => {
   const categories = await classifyProductCategories(req.store, req.body || {});
   res.json({ categories });
+}));
+
+router.post('/forum/category-recommend', requireUser, asyncHandler(async (req, res) => {
+  res.json(await recommendEntityCategory(req.store, 'forum', req.body || {}));
+}));
+
+router.post('/tasks/category-recommend', requireUser, asyncHandler(async (req, res) => {
+  res.json(await recommendEntityCategory(req.store, 'task', req.body || {}));
+}));
+
+router.post('/products/category-recommend', requireUser, asyncHandler(async (req, res) => {
+  res.json(await recommendEntityCategory(req.store, 'product', req.body || {}));
 }));
 
 router.post('/categories/request-new', requireUser, asyncHandler(async (req, res) => {

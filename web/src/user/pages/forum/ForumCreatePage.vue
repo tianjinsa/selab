@@ -7,7 +7,7 @@
       </div>
       <n-button secondary @click="$router.push('/forum')">返回社区</n-button>
     </n-space>
-    <n-spin :show="aiChecking" description="AI 正在检测标签相似度...">
+    <n-spin :show="aiChecking" description="AI 正在检测分类与标签相似度...">
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-form-item label="标题">
         <n-input v-model:value="form.title" maxlength="60" show-count />
@@ -70,7 +70,7 @@ const aiChecking = ref(false);
 const generatingTags = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
-const typeOptions = ['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item }));
+const typeOptions = ref(['纯文字帖子', '图文帖子', '求助帖', '经验分享帖'].map((item) => ({ label: item, value: item })));
 const form = reactive({ title: '', content: '', type: '经验分享帖', tags: [], imageUrls: [], visibility: 'public' });
 
 async function submit() {
@@ -78,6 +78,8 @@ async function submit() {
   aiChecking.value = true;
   try {
     await supplementTagsIfNeeded();
+    const categoryDecision = await resolveCategoryRecommendation();
+    if (!categoryDecision) return;
     const similarity = await checkSimilarity(form.tags);
     const decision = await resolveSimilarity(similarity);
     if (!decision) return;
@@ -120,6 +122,64 @@ async function submit() {
     aiChecking.value = false;
     saving.value = false;
   }
+}
+
+async function resolveCategoryRecommendation() {
+  if (!form.title.trim() && !form.content.trim()) return true;
+  const data = await request('/api/forum/category-recommend', {
+    method: 'POST',
+    body: {
+      title: form.title,
+      content: form.content,
+      type: form.type,
+      tags: form.tags
+    }
+  });
+  if (!data.changed || !data.recommended?.label) return true;
+  return new Promise((resolve) => {
+    dialog.warning({
+      title: 'AI 推荐了更合适的帖子类型',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', `当前选择：${data.current?.label || form.type}`),
+        h('p', `推荐分类：${data.recommended.label}${data.recommended.isNew ? '（新分类）' : '（已有分类）'}`),
+        data.reason ? h('p', data.reason) : null
+      ]),
+      positiveText: '使用推荐分类',
+      negativeText: '保持当前选择',
+      onPositiveClick: async () => {
+        try {
+          const applied = data.recommended.isNew
+            ? await request('/api/forum/category-recommend', {
+              method: 'POST',
+              body: {
+                title: form.title,
+                content: form.content,
+                type: form.type,
+                tags: form.tags,
+                apply: true,
+                acceptedLabel: data.recommended.label
+              }
+            })
+            : data;
+          const recommended = applied.recommended || data.recommended;
+          ensureTypeOption(recommended.label);
+          form.type = recommended.value || recommended.label;
+          resolve(true);
+        } catch (error) {
+          message.error(error.message || '应用推荐分类失败');
+          resolve(null);
+        }
+      },
+      onNegativeClick: () => resolve(true),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function ensureTypeOption(label) {
+  const name = String(label || '').trim();
+  if (!name || typeOptions.value.some((item) => item.value === name)) return;
+  typeOptions.value.push({ label: name, value: name });
 }
 
 async function generateTags() {
