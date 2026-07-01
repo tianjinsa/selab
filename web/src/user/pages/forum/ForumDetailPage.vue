@@ -1,6 +1,6 @@
 <template>
   <div class="forum-detail-page" v-if="post">
-    <section class="forum-detail-viewer">
+    <section class="forum-detail-viewer" :class="imageUrls.length ? 'has-images' : 'no-images'">
       <div class="forum-media-pane">
         <button type="button" class="forum-detail-close" title="返回社区" @click="$router.push('/forum')">
           <ArrowLeft :size="22" />

@@ -962,6 +962,17 @@ a {
     #1b1d1d;
 }
 
+.forum-detail-viewer.no-images {
+  background: var(--surface);
+}
+
+.forum-detail-viewer.no-images .forum-media-pane {
+  background:
+    linear-gradient(135deg, rgba(20, 108, 96, 0.08), transparent 46%),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(238, 245, 242, 0.72)),
+    var(--surface);
+}
+
 .forum-detail-close {
   position: absolute;
   z-index: 3;
@@ -983,6 +994,16 @@ a {
 .forum-detail-close:hover {
   transform: scale(1.04);
   background: rgba(0, 0, 0, 0.54);
+}
+
+.forum-detail-viewer.no-images .forum-detail-close {
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.86);
+  box-shadow: 0 12px 30px rgba(22, 33, 31, 0.12);
+}
+
+.forum-detail-viewer.no-images .forum-detail-close:hover {
+  background: var(--surface);
 }
 
 .forum-media-stage {
@@ -1082,6 +1103,13 @@ a {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.forum-detail-viewer.no-images .forum-text-stage {
+  border-color: rgba(20, 108, 96, 0.16);
+  color: var(--ink);
+  background: rgba(255, 253, 248, 0.82);
+  box-shadow: 0 20px 60px rgba(22, 33, 31, 0.08);
+}
+
 .forum-text-stage h2 {
   margin: 0;
   font-size: 32px;
@@ -1092,6 +1120,10 @@ a {
   color: rgba(255, 255, 255, 0.78);
   line-height: 1.8;
   white-space: pre-wrap;
+}
+
+.forum-detail-viewer.no-images .forum-text-stage p {
+  color: var(--muted);
 }
 
 .forum-info-pane {
@@ -3241,6 +3273,37 @@ a {
 :root[data-theme="dark"] .forum-detail-viewer {
   border-color: rgba(77, 215, 192, 0.18);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images {
+  background: #171919;
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-media-pane {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 248, 0.04), rgba(0, 0, 0, 0)),
+    #1b1d1d;
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-text-stage {
+  color: #f8fbf7;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-text-stage p {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-detail-close {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.36);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .forum-detail-viewer.no-images .forum-detail-close:hover {
+  background: rgba(0, 0, 0, 0.54);
 }
 
 :root[data-theme="dark"] .forum-info-pane,
