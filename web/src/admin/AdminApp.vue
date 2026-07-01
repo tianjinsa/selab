@@ -2,6 +2,7 @@
   <n-config-provider :theme="naiveTheme" :theme-overrides="naiveThemeOverrides">
     <n-message-provider>
       <n-dialog-provider>
+        <OverlayScrollbars />
         <div v-if="$route.meta.public" class="public-shell">
           <ThemeToggle class="theme-floating-toggle" />
           <router-view v-slot="{ Component, route }">
@@ -56,6 +57,7 @@
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Bot, ClipboardList, Gauge, LogOut, MessagesSquare, ShieldCheck, ShoppingBag, UsersRound } from '@lucide/vue';
+import OverlayScrollbars from '../shared/OverlayScrollbars.vue';
 import ThemeToggle from '../shared/ThemeToggle.vue';
 import { useThemeMode } from '../shared/theme.js';
 import { clearAdminSession, loadAdminSession } from './session.js';

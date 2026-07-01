@@ -82,6 +82,121 @@ body {
   transition: color var(--motion-mid) var(--motion-ease), background var(--motion-mid) var(--motion-ease);
 }
 
+html.app-scrollbar-root,
+body.app-scrollbar-root,
+.app-scrollbar-native-hidden {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html.app-scrollbar-root::-webkit-scrollbar,
+body.app-scrollbar-root::-webkit-scrollbar,
+.app-scrollbar-native-hidden::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+body.app-scrollbar-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.app-overlay-scrollbar-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+.app-overlay-scrollbar {
+  position: fixed;
+  border-radius: 999px;
+  pointer-events: auto;
+  opacity: 0.32;
+  transition:
+    opacity var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.app-overlay-scrollbar:hover,
+.app-overlay-scrollbar.active,
+.app-overlay-scrollbar.dragging {
+  opacity: 0.92;
+  background: rgba(20, 108, 96, 0.08);
+}
+
+.app-overlay-scrollbar-thumb {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(24, 32, 47, 0.42);
+  box-shadow: 0 6px 16px rgba(24, 32, 47, 0.12);
+  transition:
+    width var(--motion-fast) var(--motion-ease),
+    height var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+
+.app-overlay-scrollbar-y {
+  cursor: grab;
+}
+
+.app-overlay-scrollbar-x {
+  cursor: grab;
+}
+
+.app-overlay-scrollbar-y .app-overlay-scrollbar-thumb {
+  top: 0;
+  right: 3px;
+  width: 6px;
+}
+
+.app-overlay-scrollbar-x .app-overlay-scrollbar-thumb {
+  bottom: 3px;
+  left: 0;
+  height: 6px;
+}
+
+.app-overlay-scrollbar:hover .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar.active .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar.dragging .app-overlay-scrollbar-thumb {
+  background: rgba(20, 108, 96, 0.78);
+  box-shadow: 0 8px 20px rgba(20, 108, 96, 0.22);
+}
+
+.app-overlay-scrollbar-y:hover .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar-y.active .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar-y.dragging .app-overlay-scrollbar-thumb {
+  width: 8px;
+  right: 2px;
+}
+
+.app-overlay-scrollbar-x:hover .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar-x.active .app-overlay-scrollbar-thumb,
+.app-overlay-scrollbar-x.dragging .app-overlay-scrollbar-thumb {
+  height: 8px;
+  bottom: 2px;
+}
+
+:root[data-theme="dark"] .app-overlay-scrollbar:hover,
+:root[data-theme="dark"] .app-overlay-scrollbar.active,
+:root[data-theme="dark"] .app-overlay-scrollbar.dragging {
+  background: rgba(77, 215, 192, 0.1);
+}
+
+:root[data-theme="dark"] .app-overlay-scrollbar-thumb {
+  background: rgba(237, 245, 242, 0.34);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-theme="dark"] .app-overlay-scrollbar:hover .app-overlay-scrollbar-thumb,
+:root[data-theme="dark"] .app-overlay-scrollbar.active .app-overlay-scrollbar-thumb,
+:root[data-theme="dark"] .app-overlay-scrollbar.dragging .app-overlay-scrollbar-thumb {
+  background: rgba(77, 215, 192, 0.78);
+  box-shadow: 0 8px 20px rgba(77, 215, 192, 0.18);
+}
+
 a {
   color: inherit;
   text-decoration: none;
