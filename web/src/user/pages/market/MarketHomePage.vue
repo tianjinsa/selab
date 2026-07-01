@@ -1,12 +1,12 @@
 <template>
-  <div class="grid catalog-page">
-    <section class="surface panel toolbar-panel">
-      <div class="toolbar-header">
-        <div class="toolbar-copy">
-          <h2>校园二手市场</h2>
-          <p>分类由管理员维护，购买申请会进入卖家私信卡片。</p>
+  <div class="grid">
+    <section class="surface panel">
+      <n-space justify="space-between" align="center">
+        <div>
+          <h2 style="margin: 0;">校园二手市场</h2>
+          <p class="muted">分类由管理员维护，购买申请会进入卖家私信卡片。</p>
         </div>
-        <div class="toolbar-actions">
+        <n-space>
           <n-button secondary :loading="feed.refreshing.value" @click="refreshProducts">
             <template #icon><RefreshCw :size="16" /></template>
             刷新
@@ -18,37 +18,37 @@
           <n-button secondary @click="$router.push('/market/orders')">我的交易</n-button>
           <n-button secondary @click="$router.push('/market/grade')">年级推荐</n-button>
           <n-button type="primary" @click="$router.push('/market/new')">发布商品</n-button>
-        </div>
-      </div>
-      <div class="filter-grid">
-        <n-select v-model:value="filters.categoryId" clearable placeholder="分类" :options="categoryOptions" />
-        <n-input v-model:value="filters.keyword" clearable placeholder="关键词" @keyup.enter="refreshProducts" />
-        <n-input-number v-model:value="filters.minPrice" clearable placeholder="最低价" />
-        <n-input-number v-model:value="filters.maxPrice" clearable placeholder="最高价" />
-        <n-select v-model:value="filters.sort" :options="sortOptions" />
-        <n-button secondary @click="refreshProducts">筛选</n-button>
-      </div>
+        </n-space>
+      </n-space>
+      <n-grid :cols="6" :x-gap="10" responsive="screen" style="margin-top: 16px;">
+        <n-grid-item><n-select v-model:value="filters.categoryId" clearable placeholder="分类" :options="categoryOptions" /></n-grid-item>
+        <n-grid-item><n-input v-model:value="filters.keyword" clearable placeholder="关键词" @keyup.enter="refreshProducts" /></n-grid-item>
+        <n-grid-item><n-input-number v-model:value="filters.minPrice" clearable placeholder="最低价" /></n-grid-item>
+        <n-grid-item><n-input-number v-model:value="filters.maxPrice" clearable placeholder="最高价" /></n-grid-item>
+        <n-grid-item><n-select v-model:value="filters.sort" :options="sortOptions" /></n-grid-item>
+        <n-grid-item><n-button block secondary @click="refreshProducts">筛选</n-button></n-grid-item>
+      </n-grid>
       <div v-if="products.length" class="feed-window-note">
         已加载 {{ feed.offset.value }}/{{ feed.total.value || feed.offset.value }}，当前保留 {{ products.length }} 项
       </div>
     </section>
 
-    <transition-group v-if="products.length" name="card-flow" tag="div" class="card-grid" appear>
-      <article v-for="product in products" :key="product.id" class="module-card market-card">
+    <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
+      <article v-for="product in products" :key="product.id" class="module-card legacy-catalog-card">
         <div>
           <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
-          <div class="card-title-row">
+          <n-space justify="space-between" align="center">
             <strong>{{ product.title }}</strong>
             <n-tag>{{ productStatusText[product.status] }}</n-tag>
-          </div>
+          </n-space>
           <p class="muted">{{ product.category?.name }} · {{ product.condition }} · {{ product.tradeMethod }}</p>
-          <p class="price-text">{{ formatMoney(product.price) }}</p>
+          <p style="font-size: 22px; font-weight: 800;">{{ formatMoney(product.price) }}</p>
           <n-alert v-if="product.lowCreditWarning" type="warning" :show-icon="false">卖家信用分较低，请先沟通确认。</n-alert>
         </div>
-        <div class="card-footer-row">
+        <n-space justify="space-between">
           <span class="muted">收藏 {{ product.favoriteCount }}</span>
           <n-button secondary @click="$router.push(`/market/${product.id}`)">查看详情</n-button>
-        </div>
+        </n-space>
       </article>
     </transition-group>
     <section v-else-if="feed.isEmpty.value" class="surface empty-state">当前筛选下没有商品</section>
