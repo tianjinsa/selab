@@ -1,7 +1,9 @@
 <template>
   <div class="grid">
     <section class="surface panel">
-      <h2 style="margin-top: 0;">模型接口配置</h2>
+      <div class="panel-heading">
+        <h2>模型接口配置</h2>
+      </div>
       <n-form :model="configForm" label-placement="top">
         <n-grid :cols="3" :x-gap="12" responsive="screen">
           <n-form-item-gi label="API Base URL"><n-input v-model:value="configForm.baseUrl" placeholder="https://api.openai.com/v1" /></n-form-item-gi>
@@ -24,20 +26,20 @@
         </n-grid>
         <n-button type="primary" @click="saveConfig">保存配置</n-button>
       </n-form>
-      <n-alert style="margin-top: 12px;" type="info" :show-icon="false">
+      <n-alert class="panel-content-offset" type="info" :show-icon="false">
         当前状态：Base URL {{ adminData?.config?.baseUrl || '未配置' }}，Model {{ adminData?.config?.model || '未配置' }}，API Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}，思考 {{ adminData?.config?.enableThinking || adminData?.config?.includeReasoning ? '已开启' : '未开启' }}。
       </n-alert>
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">知识库</h2>
+          <h2>知识库</h2>
           <p class="muted">使用 SQL LIKE 风格模糊匹配，不使用向量检索。</p>
         </div>
         <n-button secondary @click="showKnowledgeForm = !showKnowledgeForm">新增条目</n-button>
-      </n-space>
-      <n-card v-if="showKnowledgeForm" style="margin-top: 12px;">
+      </div>
+      <div v-if="showKnowledgeForm" class="inline-form-panel">
         <n-form :model="knowledgeForm" label-placement="top">
           <n-form-item label="标题"><n-input v-model:value="knowledgeForm.title" /></n-form-item>
           <n-form-item label="分类"><n-input v-model:value="knowledgeForm.category" /></n-form-item>
@@ -45,17 +47,19 @@
           <n-form-item label="内容"><n-input v-model:value="knowledgeForm.content" type="textarea" /></n-form-item>
           <n-button type="primary" @click="addKnowledge">保存条目</n-button>
         </n-form>
-      </n-card>
-      <n-list style="margin-top: 12px;">
+      </div>
+      <n-list class="panel-content-offset">
         <n-list-item v-for="item in adminData?.knowledgeEntries || []" :key="item.id">
           <strong>{{ item.title }}</strong>
-          <p class="muted" style="margin: 4px 0 0;">{{ item.category }} · {{ item.source }}</p>
+          <p class="muted compact-meta">{{ item.category }} · {{ item.source }}</p>
         </n-list-item>
       </n-list>
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">咨询分类统计</h2>
+      <div class="panel-heading">
+        <h2>咨询分类统计</h2>
+      </div>
       <div class="grid grid-3">
         <div v-for="item in adminData?.stats || []" :key="item.category" class="metric-card">
           <div class="metric-label">{{ item.category }}</div>
@@ -65,12 +69,16 @@
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">风险报警记录</h2>
+      <div class="panel-heading">
+        <h2>风险报警记录</h2>
+      </div>
       <n-data-table :columns="riskColumns" :data="adminData?.risks || []" :pagination="{ pageSize: 6 }" />
     </section>
 
     <section class="surface panel">
-      <h2 style="margin-top: 0;">工具调用日志</h2>
+      <div class="panel-heading">
+        <h2>工具调用日志</h2>
+      </div>
       <n-data-table :columns="toolColumns" :data="adminData?.toolCalls || []" :pagination="{ pageSize: 6 }" />
     </section>
   </div>

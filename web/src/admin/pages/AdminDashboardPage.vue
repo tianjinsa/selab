@@ -1,23 +1,23 @@
 <template>
-  <div class="grid">
-    <div class="grid grid-3">
+  <div class="grid admin-dashboard">
+    <div class="admin-metric-grid">
       <div v-for="item in metrics" :key="item.label" class="metric-card">
         <div class="metric-label">{{ item.label }}</div>
         <div class="metric-value">{{ item.value }}</div>
       </div>
     </div>
-    <section class="surface panel">
-      <n-space justify="space-between" align="center">
-        <div>
-          <h2 style="margin: 0;">系统状态</h2>
-          <p class="muted">{{ dashboard?.db?.message || '正在读取' }}</p>
+    <section class="surface panel toolbar-panel">
+      <div class="toolbar-header">
+        <div class="toolbar-copy">
+          <h2>系统状态</h2>
+          <p>{{ dashboard?.db?.message || '正在读取' }}</p>
         </div>
         <n-switch :value="dashboard?.mockEnabled" @update:value="toggleMock">
           <template #checked>Mock 开启</template>
           <template #unchecked>Mock 关闭</template>
         </n-switch>
-      </n-space>
-      <n-alert style="margin-top: 16px;" type="info" :show-icon="false">
+      </div>
+      <n-alert type="info" :show-icon="false">
         Mock 开关只影响后台展示类统计，不会修改真实用户业务状态。
       </n-alert>
     </section>

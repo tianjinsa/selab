@@ -3,7 +3,6 @@
     <n-message-provider>
       <n-dialog-provider>
         <div v-if="$route.meta.public" class="public-shell">
-          <ThemeToggle class="theme-floating-toggle" />
           <router-view v-slot="{ Component, route }">
             <transition name="page-flow" mode="out-in" appear>
               <component :is="Component" :key="route.fullPath" />
@@ -13,8 +12,11 @@
         <div v-else class="app-shell">
           <aside class="side-nav">
             <div class="brand-block">
-              <div class="brand-title">平台管理后台</div>
-              <div class="brand-subtitle">独立管理员登录态</div>
+              <div class="brand-mark">AD</div>
+              <div>
+                <div class="brand-title">平台管理后台</div>
+                <div class="brand-subtitle">独立管理员登录态</div>
+              </div>
             </div>
             <nav class="nav-list">
               <router-link class="nav-item" to="/"><Gauge :size="18" />仪表盘</router-link>
@@ -25,6 +27,10 @@
               <router-link class="nav-item" to="/ai"><Bot :size="18" />AI 管理</router-link>
               <router-link class="nav-item" to="/review"><ShieldCheck :size="18" />综合审核</router-link>
             </nav>
+            <div class="nav-footer">
+              <strong>管理端</strong>
+              <span>审核、配置、仲裁与风险记录</span>
+            </div>
           </aside>
           <main class="main-pane">
             <div class="topbar">
@@ -54,22 +60,26 @@
 
 <script setup>
 import { computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { Bot, ClipboardList, Gauge, LogOut, MessagesSquare, ShieldCheck, ShoppingBag, UsersRound } from '@lucide/vue';
 import ThemeToggle from '../shared/ThemeToggle.vue';
 import { useThemeMode } from '../shared/theme.js';
 import { clearAdminSession, loadAdminSession } from './session.js';
 
 const router = useRouter();
+const route = useRoute();
 const { naiveTheme, naiveThemeOverrides } = useThemeMode();
 const pageTitle = computed(() => {
-  if (router.currentRoute.value.path === '/users') return '用户管理';
-  if (router.currentRoute.value.path === '/tasks') return '任务管理';
-  if (router.currentRoute.value.path === '/forum') return '社区管理';
-  if (router.currentRoute.value.path === '/market') return '二手市场管理';
-  if (router.currentRoute.value.path === '/ai') return 'AI 管理';
-  if (router.currentRoute.value.path === '/review') return '综合审核';
-  return '后台仪表盘';
+  const map = {
+    '/': '后台仪表盘',
+    '/users': '用户管理',
+    '/tasks': '任务管理',
+    '/forum': '社区管理',
+    '/market': '二手市场管理',
+    '/ai': 'AI 管理',
+    '/review': '综合审核'
+  };
+  return map[route.path] || '后台仪表盘';
 });
 
 onMounted(async () => {

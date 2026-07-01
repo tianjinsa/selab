@@ -1,29 +1,29 @@
 <template>
   <div class="grid">
     <section class="surface panel">
-      <n-space justify="space-between" align="center">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">社区词云与热点总结</h2>
+          <h2>社区词云与热点总结</h2>
           <p class="muted">词云来自用户 Tag；总结可在关闭 Mock 后基于真实数据生成。</p>
         </div>
         <n-button secondary @click="regenerate">重新生成总结</n-button>
-      </n-space>
-      <n-space style="margin-top: 14px;">
+      </div>
+      <div class="word-cloud">
         <n-tag v-for="word in words" :key="word.text" :bordered="false">{{ word.text }} · {{ word.value }}</n-tag>
-      </n-space>
-      <n-alert style="margin-top: 14px;" type="info" :show-icon="false">
+      </div>
+      <n-alert class="panel-content-offset" type="info" :show-icon="false">
         来源：{{ summarySource === 'mock' ? 'Mock 展示数据' : '真实社区数据' }}。{{ summary?.summary || '暂无总结' }}
       </n-alert>
     </section>
 
     <section class="surface panel">
-      <n-space justify="space-between" align="center" style="margin-bottom: 12px;">
+      <div class="panel-heading">
         <div>
-          <h2 style="margin: 0;">社区举报</h2>
+          <h2>社区举报</h2>
           <p class="muted">举报属实会删除内容并扣除作者 4 分信用分。</p>
         </div>
         <n-button secondary @click="loadReports">刷新</n-button>
-      </n-space>
+      </div>
       <n-data-table :columns="columns" :data="reports" :pagination="{ pageSize: 8 }" />
     </section>
   </div>
@@ -60,7 +60,7 @@ const columns = [
     width: 180,
     render(row) {
       if (row.status !== 'pending') return '-';
-      return h('div', { style: 'display:flex;gap:8px;' }, [
+      return h('div', { class: 'table-actions' }, [
         h(NButton, { size: 'small', type: 'error', onClick: () => resolve(row, true) }, { default: () => '属实删除' }),
         h(NButton, { size: 'small', secondary: true, onClick: () => resolve(row, false) }, { default: () => '驳回' })
       ]);

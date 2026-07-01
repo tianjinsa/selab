@@ -1,33 +1,45 @@
 <template>
-  <div class="grid">
-    <section class="surface panel">
-      <n-space justify="space-between" align="center">
-        <div>
-          <h2 style="margin: 0;">校园社区</h2>
-          <p class="muted">图文、求助和经验分享会进入统一通知与互动体系。</p>
+  <div class="grid catalog-page">
+    <section class="surface panel toolbar-panel">
+      <div class="toolbar-header">
+        <div class="toolbar-copy">
+          <h2>校园社区</h2>
+          <p>图文、求助和经验分享会进入统一通知与互动体系。</p>
         </div>
-        <n-space>
+        <div class="toolbar-actions">
           <n-button secondary @click="$router.push('/forum/rankings')">热度榜</n-button>
           <n-button type="primary" @click="$router.push('/forum/new')">发布帖子</n-button>
-        </n-space>
-      </n-space>
-      <n-grid :cols="4" :x-gap="10" responsive="screen" style="margin-top: 16px;">
-        <n-grid-item><n-input v-model:value="filters.keyword" placeholder="关键词" clearable @keyup.enter="loadPosts" /></n-grid-item>
-        <n-grid-item><n-input v-model:value="filters.tag" placeholder="Tag" clearable @keyup.enter="loadPosts" /></n-grid-item>
-        <n-grid-item>
-          <n-select v-model:value="filters.sort" :options="[{label:'最新发布',value:'new'},{label:'热门优先',value:'hot'}]" />
-        </n-grid-item>
-        <n-grid-item><n-button secondary block @click="loadPosts">筛选</n-button></n-grid-item>
-      </n-grid>
+        </div>
+      </div>
+      <div class="filter-grid">
+        <n-input v-model:value="filters.keyword" placeholder="关键词" clearable @keyup.enter="loadPosts" />
+        <n-input v-model:value="filters.tag" placeholder="Tag" clearable @keyup.enter="loadPosts" />
+        <n-select v-model:value="filters.sort" :options="[{label:'最新发布',value:'new'},{label:'热门优先',value:'hot'}]" />
+        <n-button secondary @click="loadPosts">筛选</n-button>
+      </div>
     </section>
 
     <section class="surface panel">
-      <h3 style="margin: 0 0 12px;">社区热点</h3>
+      <div class="panel-heading">
+        <div>
+          <h3>社区热点</h3>
+          <p>自动汇总近期公开帖子中的讨论重点。</p>
+        </div>
+      </div>
       <n-alert type="info" :show-icon="false">{{ summary?.summary || '暂无社区热点总结' }}</n-alert>
     </section>
 
     <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall" appear>
-      <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
+      <article
+        v-for="post in posts"
+        :key="post.id"
+        class="post-card"
+        role="link"
+        tabindex="0"
+        @click="$router.push(`/forum/${post.id}`)"
+        @keydown.enter.self="$router.push(`/forum/${post.id}`)"
+        @keydown.space.self.prevent="$router.push(`/forum/${post.id}`)"
+      >
         <img v-if="post.imageUrls?.[0]" class="post-cover" :src="post.imageUrls[0]" alt="帖子封面" />
         <n-space justify="space-between" align="center">
           <strong>{{ post.title }}</strong>

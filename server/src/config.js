@@ -7,17 +7,18 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+const isProduction = process.env.NODE_ENV === 'production';
 
 export const config = {
   rootDir,
   port: Number(process.env.PORT || 3000),
-  jwtSecret: process.env.JWT_SECRET || 'campus-user-secret',
-  adminJwtSecret: process.env.ADMIN_JWT_SECRET || 'campus-admin-secret',
+  jwtSecret: readRequiredInProduction('JWT_SECRET', 'campus-user-secret'),
+  adminJwtSecret: readRequiredInProduction('ADMIN_JWT_SECRET', 'campus-admin-secret'),
   uploadDir: path.resolve(rootDir, process.env.UPLOAD_DIR || 'uploads'),
   publicDir: path.resolve(rootDir, 'public'),
   adminAccount: {
-    username: 'admin',
-    password: '123456'
+    username: readRequiredInProduction('ADMIN_USERNAME', 'admin'),
+    password: readRequiredInProduction('ADMIN_PASSWORD', '123456')
   },
   db: {
     host: process.env.DB_HOST || 'localhost',
@@ -28,3 +29,12 @@ export const config = {
     trustServerCertificate: String(process.env.DB_TRUST_SERVER_CERTIFICATE || 'true') === 'true'
   }
 };
+
+function readRequiredInProduction(name, fallback) {
+  const value = process.env[name];
+  if (value) return value;
+  if (isProduction) {
+    throw new Error(`${name} must be set when NODE_ENV=production`);
+  }
+  return fallback;
+}

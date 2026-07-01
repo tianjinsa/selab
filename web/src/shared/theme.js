@@ -8,23 +8,100 @@ const systemDark = ref(false);
 let mediaQuery = null;
 let initialized = false;
 
+const fontFamily = 'Inter, "MiSans", "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif';
+
+const sharedThemeOverrides = {
+  Button: {
+    borderRadiusMedium: '999px',
+    borderRadiusLarge: '999px',
+    fontWeight: '760',
+    heightMedium: '38px',
+    heightLarge: '44px',
+    paddingMedium: '0 16px',
+    paddingLarge: '0 20px'
+  },
+  Input: {
+    borderRadius: '8px',
+    heightMedium: '38px',
+    heightLarge: '44px'
+  },
+  Select: {
+    peers: {
+      InternalSelection: {
+        borderRadius: '8px',
+        heightMedium: '38px',
+        heightLarge: '44px'
+      }
+    }
+  },
+  Tag: {
+    borderRadius: '999px',
+    fontWeightStrong: '760'
+  },
+  Tabs: {
+    tabFontWeightActive: '760'
+  }
+};
+
 const lightThemeOverrides = {
   common: {
     borderRadius: '8px',
-    primaryColor: '#146c60',
-    primaryColorHover: '#1a8173',
-    primaryColorPressed: '#0b4f47',
-    primaryColorSuppl: '#1a8173'
+    borderRadiusSmall: '6px',
+    fontFamily,
+    fontWeightStrong: '760',
+    primaryColor: '#0f766e',
+    primaryColorHover: '#12877e',
+    primaryColorPressed: '#0b5f59',
+    primaryColorSuppl: '#12877e',
+    infoColor: '#2f67b1',
+    warningColor: '#b7791f',
+    errorColor: '#b42318',
+    bodyColor: '#f2f7f5',
+    cardColor: '#fffffc',
+    modalColor: '#fffffc',
+    tableColor: '#fffffc',
+    popoverColor: '#fffffc',
+    borderColor: '#d6e2de',
+    textColor1: '#14202b',
+    textColor2: '#46566a',
+    textColor3: '#647184'
+  },
+  ...sharedThemeOverrides,
+  DataTable: {
+    thColor: '#f4f8f7',
+    tdColorHover: 'rgba(15, 118, 110, 0.06)',
+    borderColor: '#d6e2de'
   }
 };
 
 const darkThemeOverrides = {
   common: {
     borderRadius: '8px',
-    primaryColor: '#4dd7c0',
-    primaryColorHover: '#79e4d2',
-    primaryColorPressed: '#2aa992',
-    primaryColorSuppl: '#79e4d2'
+    borderRadiusSmall: '6px',
+    fontFamily,
+    fontWeightStrong: '760',
+    primaryColor: '#5eead4',
+    primaryColorHover: '#7cf3df',
+    primaryColorPressed: '#2dd4bf',
+    primaryColorSuppl: '#7cf3df',
+    infoColor: '#93b4ff',
+    warningColor: '#f2bd63',
+    errorColor: '#ff837a',
+    bodyColor: '#0a1013',
+    cardColor: '#131b20',
+    modalColor: '#131b20',
+    tableColor: '#131b20',
+    popoverColor: '#182226',
+    borderColor: '#2a3940',
+    textColor1: '#eef7f4',
+    textColor2: '#c4d0d3',
+    textColor3: '#91a2a8'
+  },
+  ...sharedThemeOverrides,
+  DataTable: {
+    thColor: '#182226',
+    tdColorHover: 'rgba(94, 234, 212, 0.08)',
+    borderColor: '#2a3940'
   }
 };
 
