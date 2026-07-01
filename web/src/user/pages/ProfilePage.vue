@@ -40,10 +40,8 @@
               :custom-request="uploadAvatar"
             >
               <button type="button" class="avatar-upload-trigger" :class="{ loading: avatarUploading }">
-                <n-avatar round :size="72" :src="assetUrl(form.avatarUrl)">
-                  {{ avatarText(form.nickname) }}
-                </n-avatar>
-                <span><Camera :size="15" />点击更换</span>
+                <UserAvatar :size="72" :src="form.avatarUrl" :name="form.nickname" />
+                <span class="avatar-upload-hint"><Camera :size="15" />点击更换</span>
               </button>
             </n-upload>
             <div>
@@ -107,6 +105,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useMessage } from 'naive-ui';
 import { Camera, Eye, ImagePlus, RotateCcw } from '@lucide/vue';
 import { assetUrl, request } from '../../shared/http.js';
+import UserAvatar from '../../shared/UserAvatar.vue';
+import { uploadFile } from '../../shared/uploadManager.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const message = useMessage();
@@ -150,17 +150,17 @@ async function uploadCover({ file, onFinish, onError }) {
 async function uploadProfileImage(file, field, loadingRef, successText, onFinish, onError) {
   loadingRef.value = true;
   try {
-    const body = new FormData();
-    body.append('file', file.file);
-    const uploadData = await request('/api/files/upload', { method: 'POST', body });
+    const uploadData = await uploadFile('/api/files/upload', file.file, {
+      label: file.name || file.file?.name || (field === 'avatarUrl' ? '头像图片' : '主页背景')
+    });
     const profileData = await request('/api/profile', { method: 'PATCH', body: { [field]: uploadData.url } });
     session.user = profileData.user;
     syncForm();
     message.success(successText);
-    onFinish();
+    onFinish?.();
   } catch (error) {
     message.error(error.message || '上传失败');
-    onError();
+    onError?.();
   } finally {
     loadingRef.value = false;
   }
@@ -209,7 +209,4 @@ async function changePassword() {
   }
 }
 
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
-}
 </script>

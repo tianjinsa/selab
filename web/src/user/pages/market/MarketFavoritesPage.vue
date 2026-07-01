@@ -29,9 +29,7 @@
           <p class="muted">{{ product.category?.name || '未分类' }} · {{ product.condition }} · {{ product.tradeMethod }}</p>
           <p class="market-favorite-price">{{ formatMoney(product.price) }}</p>
           <button type="button" class="comment-author inline" @click="$router.push(`/users/${product.sellerId}`)">
-            <n-avatar round :size="24" :src="assetUrl(product.seller?.avatarUrl)">
-              {{ avatarText(product.seller?.nickname) }}
-            </n-avatar>
+            <UserAvatar :size="24" :src="product.seller?.avatarUrl" :name="product.seller?.nickname" />
             <strong>{{ product.seller?.nickname || '同学' }}</strong>
             <small class="muted">信用分 {{ product.seller?.creditScore ?? '-' }}</small>
           </button>
@@ -61,6 +59,7 @@ import { onMounted, ref } from 'vue';
 import { useMessage } from 'naive-ui';
 import { Eye, Plus, Star, Store } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import UserAvatar from '../../../shared/UserAvatar.vue';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
 const message = useMessage();
@@ -76,10 +75,6 @@ async function toggleFavorite(product) {
   await request(`/api/market/products/${product.id}/favorite`, { method: 'POST' });
   message.success('已取消收藏');
   await load();
-}
-
-function avatarText(name = '') {
-  return String(name || '同').slice(0, 1);
 }
 
 function formatTime(value) {

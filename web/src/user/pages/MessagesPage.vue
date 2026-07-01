@@ -112,6 +112,7 @@ import { useMessage } from 'naive-ui';
 import { Download, FileText, ImagePlus, Paperclip, Send } from '@lucide/vue';
 import { assetUrl, request, websocketUrl } from '../../shared/http.js';
 import { createReconnectableWebSocket } from '../../shared/realtimeSocket.js';
+import { uploadFile } from '../../shared/uploadManager.js';
 import { loadUserSession, userSession as session } from '../session.js';
 
 const route = useRoute();
@@ -213,9 +214,7 @@ async function uploadAndSendAttachment({ file, onFinish, onError }) {
   }
   uploadingAttachment.value = true;
   try {
-    const body = new FormData();
-    body.append('file', file.file);
-    const data = await request('/api/files/upload-attachment', { method: 'POST', body });
+    const data = await uploadFile('/api/files/upload-attachment', file.file, { label: file.name || file.file?.name || '私信附件' });
     const asset = data.asset || {};
     const kind = asset.kind === 'image' ? 'image' : 'file';
     const attachment = {
@@ -227,10 +226,10 @@ async function uploadAndSendAttachment({ file, onFinish, onError }) {
     };
     await sendPayload({ content: '', type: kind, attachment });
     notice.success(kind === 'image' ? '图片已发送' : '文件已发送');
-    onFinish();
+    onFinish?.();
   } catch (error) {
     notice.error(error.message || '上传失败');
-    onError();
+    onError?.();
   } finally {
     uploadingAttachment.value = false;
   }
