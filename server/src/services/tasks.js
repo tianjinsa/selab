@@ -122,6 +122,29 @@ export async function updateTaskDraft(store, user, taskId, body) {
   return decorateTask(store, await store.update('tasks', task.id, payload));
 }
 
+export async function resubmitRejectedTask(store, user, taskId, body) {
+  assertCanPublish(user);
+  const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
+  if (!task) throw notFound('任务不存在');
+  if (task.publisherId !== user.id) throw forbidden('只能修改自己发布的任务');
+  if (task.moderationStatus !== 'rejected') throw badRequest('只有审核未通过的任务可以修改后重发');
+  const payload = assertTaskPayload(store, body);
+  const updated = await store.update('tasks', task.id, {
+    ...payload,
+    status: 'editing',
+    assigneeId: '',
+    hiddenAt: '',
+    closedAt: '',
+    cancelReason: '',
+    paidAt: '',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: ''
+  });
+  await writeTaskKeywords(store, updated);
+  return decorateTask(store, updated, user.id, true);
+}
+
 export async function publishTaskAfterPayment(store, user, taskId) {
   const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
   if (!task) throw notFound('任务不存在');

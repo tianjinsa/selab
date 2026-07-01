@@ -20,13 +20,16 @@ function hasSuccessfulFlow(store, query) {
 }
 
 async function recordPaymentFlowOnce(store, payload) {
-  const existing = store.collection('paymentFlows').find((flow) => (
-    flow.userId === payload.userId
-    && flow.relatedType === payload.relatedType
-    && flow.relatedId === payload.relatedId
-    && flow.type === payload.type
-    && flow.status === 'success'
-  ));
+  const existing = store.collection('paymentFlows').find((flow) => {
+    if (payload.dedupeKey) {
+      return flow.dedupeKey === payload.dedupeKey && flow.status === 'success';
+    }
+    return flow.userId === payload.userId
+      && flow.relatedType === payload.relatedType
+      && flow.relatedId === payload.relatedId
+      && flow.type === payload.type
+      && flow.status === 'success';
+  });
   if (existing) return { flow: existing, created: false };
   const flow = await store.insert('paymentFlows', {
     ...payload,
@@ -59,11 +62,12 @@ async function refundRejectedTask(store, task, reason) {
   });
   const amount = Number(task.reward || 0);
   if (!paid || amount <= 0) return { entityPatch, refunds: [] };
+  const refundAttemptKey = String(task.paidAt || task.updatedAt || task.id);
 
   await creditWallet(store, {
     userId: task.publisherId,
     relatedType: 'task',
-    relatedId: task.id,
+    relatedId: `${task.id}:${refundAttemptKey}`,
     amount,
     title: `任务审核退款：${task.title}`,
     source: 'task_moderation_refund'
@@ -73,6 +77,7 @@ async function refundRejectedTask(store, task, reason) {
     relatedType: 'task',
     relatedId: task.id,
     type: 'task_moderation_refund',
+    dedupeKey: `task_moderation_refund:${task.id}:${refundAttemptKey}`,
     amount,
     title: `任务审核未通过退款：${task.title}`
   });

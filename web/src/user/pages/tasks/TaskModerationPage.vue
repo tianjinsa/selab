@@ -99,6 +99,14 @@
           <n-space>
             <n-button size="small" secondary @click="$router.push(`/tasks/${task.id}`)">查看</n-button>
             <n-button
+              v-if="task.moderationStatus === 'rejected'"
+              size="small"
+              type="primary"
+              @click="$router.push(`/tasks/${task.id}/edit?resubmit=1`)"
+            >
+              修改重发
+            </n-button>
+            <n-button
               v-if="task.moderationStatus !== 'rejected'"
               size="small"
               secondary

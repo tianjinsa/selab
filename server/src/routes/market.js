@@ -24,6 +24,7 @@ import {
   payOrder,
   receiveOrder,
   rejectPurchase,
+  resubmitRejectedProduct,
   requestCategory,
   resolveCategoryRequest,
   scanOrderTimeouts,
@@ -82,6 +83,12 @@ router.post('/category-requests', requireUser, asyncHandler(async (req, res) => 
 
 router.get('/products/:id', requireUser, asyncHandler(async (req, res) => {
   res.json({ product: getProductDetail(req.store, req.params.id, req.user.id) });
+}));
+
+router.patch('/products/:id/resubmit', requireUser, asyncHandler(async (req, res) => {
+  const product = await resubmitRejectedProduct(req.store, req.user, req.params.id, req.body);
+  await enqueueContentModeration(req.store, req.realtime, 'product', product.id);
+  res.json({ product });
 }));
 
 router.post('/products/:id/favorite', requireUser, asyncHandler(async (req, res) => {

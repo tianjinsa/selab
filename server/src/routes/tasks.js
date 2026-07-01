@@ -17,6 +17,7 @@ import {
   listTasks,
   publishTaskAfterPayment,
   rejectApplication,
+  resubmitRejectedTask,
   scanTaskTimeouts,
   submitDelivery,
   taskAreas,
@@ -75,6 +76,11 @@ router.get('/:id', requireUser, asyncHandler(async (req, res) => {
 
 router.patch('/:id', requireUser, asyncHandler(async (req, res) => {
   const task = await updateTaskDraft(req.store, req.user, req.params.id, req.body);
+  res.json({ task });
+}));
+
+router.patch('/:id/resubmit', requireUser, asyncHandler(async (req, res) => {
+  const task = await resubmitRejectedTask(req.store, req.user, req.params.id, req.body);
   res.json({ task });
 }));
 

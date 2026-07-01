@@ -2,13 +2,16 @@
   <section class="surface panel">
     <n-space justify="space-between" align="center">
       <div>
-        <h2 style="margin: 0;">{{ taskId ? '编辑待支付任务' : '发布任务' }}</h2>
-        <p class="muted">提交后先进入模拟支付，支付成功任务才会正式出现在市场。</p>
+        <h2 style="margin: 0;">{{ pageTitle }}</h2>
+        <p class="muted">{{ pageDescription }}</p>
       </div>
       <n-button secondary @click="$router.push('/tasks')">返回市场</n-button>
     </n-space>
     <n-alert v-if="$route.query.cancelled" type="warning" :show-icon="false" style="margin-top: 14px;">
       已取消支付，你可以继续修改任务；如果再次退出，本次草稿不会自动发布。
+    </n-alert>
+    <n-alert v-if="isResubmitMode" type="error" :show-icon="false" style="margin-top: 14px;">
+      该任务此前已退款。修改后需要重新完成模拟支付，支付成功后才会再次进入审核。
     </n-alert>
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-grid :cols="2" :x-gap="16" responsive="screen">
@@ -65,7 +68,7 @@
       <n-alert type="info" :show-icon="false" style="margin-bottom: 14px;">
         酬金范围：{{ meta.rewardMin }} - {{ meta.rewardMax }} 元。支付、结算和退款都会记录模拟流水。
       </n-alert>
-      <n-button type="primary" :loading="saving" @click="submit">提交并进入模拟支付</n-button>
+      <n-button type="primary" :loading="saving" @click="submit">{{ submitText }}</n-button>
     </n-form>
   </section>
 </template>
@@ -82,6 +85,7 @@ const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 const taskId = computed(() => route.params.id);
+const loadedTask = ref(null);
 const meta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
 const saving = ref(false);
 const uploadingCount = ref(0);
@@ -101,6 +105,17 @@ const form = reactive({
 
 const categoryOptions = computed(() => meta.value.categories.map((item) => ({ label: item, value: item })));
 const areaOptions = computed(() => meta.value.areas.map((item) => ({ label: item, value: item })));
+const isResubmitMode = computed(() => Boolean(taskId.value) && (route.query.resubmit === '1' || loadedTask.value?.moderationStatus === 'rejected'));
+const pageTitle = computed(() => {
+  if (isResubmitMode.value) return '修改并重新提交任务';
+  return taskId.value ? '编辑待支付任务' : '发布任务';
+});
+const pageDescription = computed(() => (
+  isResubmitMode.value
+    ? '根据审核意见调整内容后重新支付发布，支付成功后会重新进入审核。'
+    : '提交后先进入模拟支付，支付成功任务才会正式出现在市场。'
+));
+const submitText = computed(() => (isResubmitMode.value ? '修改后去支付' : '提交并进入模拟支付'));
 
 onMounted(async () => {
   meta.value = await request('/api/tasks/meta');
@@ -108,6 +123,7 @@ onMounted(async () => {
   form.campusArea = meta.value.areas[0] || '';
   if (taskId.value) {
     const data = await request(`/api/tasks/${taskId.value}`);
+    loadedTask.value = data.task;
     Object.assign(form, data.task);
     form.imageUrls = Array.isArray(data.task.imageUrls) ? data.task.imageUrls : [];
     deadlineValue.value = new Date(data.task.deadlineAt).getTime();
@@ -121,6 +137,12 @@ async function submit() {
       ...form,
       deadlineAt: new Date(deadlineValue.value).toISOString()
     };
+    if (isResubmitMode.value) {
+      const data = await request(`/api/tasks/${taskId.value}/resubmit`, { method: 'PATCH', body: payload });
+      message.success('任务已更新，请重新完成模拟支付');
+      router.push(`/tasks/${data.task.id}/payment`);
+      return;
+    }
     const data = taskId.value
       ? await request(`/api/tasks/${taskId.value}`, { method: 'PATCH', body: payload })
       : await request('/api/tasks', { method: 'POST', body: payload });

@@ -62,6 +62,7 @@ export const userRouter = createRouter({
     { path: '/market/grade', component: MarketGradePage },
     { path: '/market/orders', component: MarketOrdersPage },
     { path: '/market/moderation', component: MarketModerationPage },
+    { path: '/market/:id/edit', component: MarketCreatePage },
     { path: '/market/:id', component: MarketDetailPage },
     { path: '/ai', component: AiChatPage }
   ]

@@ -2,11 +2,14 @@
   <section class="surface panel">
     <n-space justify="space-between" align="center">
       <div>
-        <h2 style="margin: 0;">发布二手商品</h2>
-        <p class="muted">商品分类必须选择管理员配置的分类；没有合适分类可先提交分类申请。</p>
+        <h2 style="margin: 0;">{{ pageTitle }}</h2>
+        <p class="muted">{{ pageDescription }}</p>
       </div>
       <n-button secondary @click="$router.push('/market')">返回市场</n-button>
     </n-space>
+    <n-alert v-if="isResubmitMode" type="error" :show-icon="false" style="margin-top: 14px;">
+      修改后会重新进入审核流程，审核通过后商品才会重新展示。因审核未通过产生的订单退款记录会保留。
+    </n-alert>
     <n-form :model="form" label-placement="top" style="margin-top: 16px;">
       <n-grid :cols="2" :x-gap="14" responsive="screen">
         <n-form-item-gi label="商品名称"><n-input v-model:value="form.title" /></n-form-item-gi>
@@ -43,8 +46,8 @@
         </div>
       </n-form-item>
       <n-space>
-        <n-button type="primary" :loading="saving" @click="submit">发布商品</n-button>
-        <n-button secondary @click="showCategoryRequest = !showCategoryRequest">申请新增分类</n-button>
+        <n-button type="primary" :loading="saving" @click="submit">{{ submitText }}</n-button>
+        <n-button v-if="!productId" secondary @click="showCategoryRequest = !showCategoryRequest">申请新增分类</n-button>
       </n-space>
     </n-form>
 
@@ -60,14 +63,16 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { ImagePlus, X } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 import { uploadFile } from '../../../shared/uploadManager.js';
 
 const router = useRouter();
+const route = useRoute();
 const message = useMessage();
+const productId = computed(() => route.params.id);
 const meta = ref({ categories: [], conditions: [], tradeMethods: [] });
 const saving = ref(false);
 const uploadingCount = ref(0);
@@ -79,22 +84,51 @@ const categoryRequest = reactive({ name: '', reason: '' });
 const categoryOptions = computed(() => meta.value.categories.map((item) => ({ label: item.name, value: item.id })));
 const conditionOptions = computed(() => meta.value.conditions.map((item) => ({ label: item, value: item })));
 const tradeOptions = computed(() => meta.value.tradeMethods.map((item) => ({ label: item, value: item })));
+const isResubmitMode = computed(() => Boolean(productId.value));
+const pageTitle = computed(() => (isResubmitMode.value ? '修改并重新提交商品' : '发布二手商品'));
+const pageDescription = computed(() => (
+  isResubmitMode.value
+    ? '根据审核意见调整商品信息后重新提交审核。'
+    : '商品分类必须选择管理员配置的分类；没有合适分类可先提交分类申请。'
+));
+const submitText = computed(() => (isResubmitMode.value ? '修改后重新提交审核' : '发布商品'));
 
 onMounted(async () => {
   meta.value = await request('/api/market/meta');
   form.categoryId = meta.value.categories[0]?.id || '';
   form.condition = meta.value.conditions[0] || '';
   form.tradeMethod = meta.value.tradeMethods[0] || '';
+  if (productId.value) {
+    const data = await request(`/api/market/products/${productId.value}`);
+    Object.assign(form, {
+      title: data.product.title || '',
+      categoryId: data.product.categoryId || form.categoryId,
+      price: Number(data.product.price || 20),
+      condition: data.product.condition || form.condition,
+      detail: data.product.detail || '',
+      tradeMethod: data.product.tradeMethod || form.tradeMethod,
+      pickupLocation: data.product.pickupLocation || '',
+      imageUrls: Array.isArray(data.product.imageUrls) ? data.product.imageUrls : []
+    });
+  }
 });
 
 async function submit() {
   saving.value = true;
   try {
-    await request('/api/market/products', {
-      method: 'POST',
-      body: { ...form, imageUrls: form.imageUrls }
-    });
-    message.success('商品已提交审核，审核通过后会展示');
+    if (isResubmitMode.value) {
+      await request(`/api/market/products/${productId.value}/resubmit`, {
+        method: 'PATCH',
+        body: { ...form, imageUrls: form.imageUrls }
+      });
+      message.success('商品已重新提交审核');
+    } else {
+      await request('/api/market/products', {
+        method: 'POST',
+        body: { ...form, imageUrls: form.imageUrls }
+      });
+      message.success('商品已提交审核，审核通过后会展示');
+    }
     router.push('/market/moderation');
   } catch (error) {
     message.error(error.message || '发布失败');

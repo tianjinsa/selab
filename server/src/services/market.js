@@ -110,6 +110,28 @@ export async function createProduct(store, user, body) {
   return decorateProduct(store, product, user.id, true);
 }
 
+export async function resubmitRejectedProduct(store, user, productId, body) {
+  assertCanPublish(user);
+  const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
+  if (!product) throw notFound('商品不存在');
+  if (product.sellerId !== user.id) throw forbidden('只能修改自己发布的商品');
+  if (product.moderationStatus !== 'rejected') throw badRequest('只有审核未通过的商品可以修改后重发');
+  if (product.status === 'sold') throw badRequest('已售出的商品不能重新提交审核');
+  const payload = assertProductPayload(store, body);
+  const updated = await store.update('products', product.id, {
+    ...payload,
+    status: 'on_sale',
+    hiddenAt: '',
+    lockedOrderId: '',
+    takeDownReason: '',
+    moderationStatus: 'pending',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: ''
+  });
+  return decorateProduct(store, updated, user.id, true);
+}
+
 export function listProducts(store, query = {}, viewerId = '') {
   let products = store.collection('products').filter((item) => !item.deletedAt && !item.hiddenAt);
   if (!query.includeUnavailable) products = products.filter((item) => ['on_sale', 'trading'].includes(item.status));
