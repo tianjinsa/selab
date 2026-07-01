@@ -92,6 +92,9 @@ const router = useRouter();
 const { naiveTheme, naiveThemeOverrides } = useThemeMode();
 let unreadSocket = null;
 const topbarScrolled = ref(false);
+const TOPBAR_COLLAPSE_SCROLL_Y = 56;
+const TOPBAR_EXPAND_SCROLL_Y = 16;
+let topbarScrollFrame = 0;
 
 const isTopbarCompact = computed(() => route.path !== '/' || topbarScrolled.value);
 
@@ -132,6 +135,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   unreadSocket?.close();
   window.removeEventListener('scroll', updateTopbarScrollState);
+  if (topbarScrollFrame) window.cancelAnimationFrame(topbarScrollFrame);
 });
 
 watch(
@@ -182,6 +186,21 @@ function unreadBadgeText(value) {
 }
 
 function updateTopbarScrollState() {
-  topbarScrolled.value = window.scrollY > 36;
+  if (topbarScrollFrame) return;
+  topbarScrollFrame = window.requestAnimationFrame(() => {
+    topbarScrollFrame = 0;
+    applyTopbarScrollState();
+  });
+}
+
+function applyTopbarScrollState() {
+  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  if (topbarScrolled.value) {
+    if (scrollY < TOPBAR_EXPAND_SCROLL_Y) topbarScrolled.value = false;
+    return;
+  }
+  if (scrollY > TOPBAR_COLLAPSE_SCROLL_Y) {
+    topbarScrolled.value = true;
+  }
 }
 </script>
