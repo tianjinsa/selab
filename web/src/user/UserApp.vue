@@ -24,6 +24,7 @@
               <router-link class="nav-item" to="/ai"><Bot :size="18" />智能体</router-link>
               <router-link class="nav-item" to="/messages"><Mail :size="18" />私信</router-link>
               <router-link class="nav-item" to="/notifications"><Bell :size="18" />通知</router-link>
+              <router-link class="nav-item" to="/wallet"><WalletCards :size="18" />钱包</router-link>
               <router-link class="nav-item" to="/profile"><UserRound :size="18" />个人中心</router-link>
             </nav>
           </aside>
@@ -61,7 +62,7 @@
 <script setup>
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound } from '@lucide/vue';
+import { Bell, Bot, ClipboardList, Home, LogOut, Mail, MessagesSquare, ShoppingBag, UserRound, WalletCards } from '@lucide/vue';
 import ThemeToggle from '../shared/ThemeToggle.vue';
 import { useThemeMode } from '../shared/theme.js';
 import { clearUserSession, loadUserSession, userSession as session } from './session.js';
@@ -77,6 +78,7 @@ const routeTitle = computed(() => {
     '/users': '同学主页',
     '/messages': '统一私信',
     '/notifications': '通知中心',
+    '/wallet': '主系统钱包',
     '/tasks': '校园任务互助',
     '/tasks/workbench': '任务工作台',
     '/forum': '校园社区论坛',

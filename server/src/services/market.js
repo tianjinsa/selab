@@ -3,6 +3,7 @@ import { assertCleanContent } from '../utils/content.js';
 import { createNotification } from './notifications.js';
 import { getOrCreateConversation, sendMessage } from './chat.js';
 import { isModerationApproved } from './contentModeration.js';
+import { creditWallet } from './wallet.js';
 
 const conditions = ['全新', '几乎全新', '轻微使用', '明显使用', '功能正常'];
 const tradeMethods = ['线下自提', '校内面交', '宿舍楼下', '其他'];
@@ -686,7 +687,15 @@ async function completeOrder(store, order, reason) {
     type: 'product_finish_settlement',
     amount: order.price,
     status: 'success',
-    title: `订单完成打款：${product?.title || order.id}`
+    title: `商品收入入账钱包：${product?.title || order.id}`
+  });
+  await creditWallet(store, {
+    userId: order.sellerId,
+    relatedType: 'order',
+    relatedId: order.id,
+    amount: order.price,
+    title: `商品收入：${product?.title || order.id}`,
+    source: 'product_finish_settlement'
   });
 }
 
