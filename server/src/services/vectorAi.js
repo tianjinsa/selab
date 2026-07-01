@@ -187,7 +187,7 @@ async function requestEmbedding(settings, input) {
     body: JSON.stringify({
       model: settings.model || 'text-embedding-3-small',
       input,
-      dimensions: VECTOR_DIMENSIONS
+      encoding_format: 'float'
     })
   });
   if (!response.ok) return null;
@@ -204,7 +204,7 @@ async function requestEmbeddingStrict(settings, input) {
     body: JSON.stringify({
       model: settings.model || 'text-embedding-3-small',
       input,
-      dimensions: VECTOR_DIMENSIONS
+      encoding_format: 'float'
     }),
     signal: AbortSignal.timeout?.(20000)
   });
