@@ -21,7 +21,7 @@
     <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
       <article v-for="product in products" :key="product.id" class="module-card market-favorite-card">
         <div>
-          <img v-if="product.imageUrls?.[0]" class="post-cover" :src="product.imageUrls[0]" alt="商品图" />
+          <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
           <n-space justify="space-between" align="center">
             <strong>{{ product.title }}</strong>
             <n-tag>{{ productStatusText[product.status] || product.status }}</n-tag>
@@ -29,7 +29,7 @@
           <p class="muted">{{ product.category?.name || '未分类' }} · {{ product.condition }} · {{ product.tradeMethod }}</p>
           <p class="market-favorite-price">{{ formatMoney(product.price) }}</p>
           <button type="button" class="comment-author inline" @click="$router.push(`/users/${product.sellerId}`)">
-            <n-avatar round :size="24" :src="product.seller?.avatarUrl || undefined">
+            <n-avatar round :size="24" :src="assetUrl(product.seller?.avatarUrl)">
               {{ avatarText(product.seller?.nickname) }}
             </n-avatar>
             <strong>{{ product.seller?.nickname || '同学' }}</strong>
@@ -60,7 +60,7 @@
 import { onMounted, ref } from 'vue';
 import { useMessage } from 'naive-ui';
 import { Eye, Plus, Star, Store } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
 const message = useMessage();

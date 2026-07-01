@@ -35,7 +35,7 @@
         </div>
         <div v-if="form.imageUrls.length" class="image-preview-grid">
           <div v-for="url in form.imageUrls" :key="url" class="image-preview-item">
-            <img :src="url" alt="帖子图片预览" />
+            <img :src="assetUrl(url)" alt="帖子图片预览" />
             <n-button circle quaternary size="small" @click="removeImage(url)">
               <template #icon><X :size="15" /></template>
             </n-button>
@@ -52,7 +52,7 @@ import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
 import { X } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 
 const router = useRouter();
 const message = useMessage();

@@ -11,7 +11,7 @@
         </div>
         <n-button secondary @click="$router.push('/market')">返回市场</n-button>
       </n-space>
-      <img v-if="product.imageUrls?.[0]" class="post-cover" :src="product.imageUrls[0]" alt="商品图" style="max-height: 420px;" />
+      <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" style="max-height: 420px;" />
       <p style="font-size: 26px; font-weight: 800;">{{ formatMoney(product.price) }}</p>
       <p>{{ product.detail }}</p>
       <n-descriptions bordered :column="2">
@@ -69,7 +69,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from 'naive-ui';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 import { userSession as session } from '../../session.js';
 import { formatMoney, orderStatusText, productStatusText } from './marketFormat.js';
 

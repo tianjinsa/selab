@@ -32,7 +32,7 @@
 
     <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall" appear>
       <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
-        <img v-if="post.imageUrls?.[0]" class="post-cover" :src="post.imageUrls[0]" alt="帖子封面" />
+        <img v-if="post.imageUrls?.[0]" class="post-cover" :src="assetUrl(post.imageUrls[0])" alt="帖子封面" />
         <n-space justify="space-between" align="center">
           <strong>{{ post.title }}</strong>
           <n-tag size="small">{{ post.type }}</n-tag>
@@ -43,7 +43,7 @@
         </n-space>
         <div class="post-card-footer">
           <button type="button" class="comment-author inline" @click.stop="$router.push(`/users/${post.authorId}`)">
-            <n-avatar round :size="24" :src="post.author?.avatarUrl || undefined">
+            <n-avatar round :size="24" :src="assetUrl(post.author?.avatarUrl)">
               {{ avatarText(post.author?.nickname) }}
             </n-avatar>
             <strong>{{ post.author?.nickname || '同学' }}</strong>
@@ -66,7 +66,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Bookmark, Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 
 const route = useRoute();
 const posts = ref([]);

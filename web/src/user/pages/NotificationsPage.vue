@@ -47,7 +47,7 @@
           :class="{ active: activeConversationId === conversation.id, unread: conversation.unreadCount }"
           @click="selectConversation(conversation.id)"
         >
-          <n-avatar round :size="42" :src="conversation.peer?.avatarUrl || undefined">
+          <n-avatar round :size="42" :src="assetUrl(conversation.peer?.avatarUrl)">
             {{ avatarText(conversation.peer?.nickname) }}
           </n-avatar>
           <span>
@@ -91,7 +91,7 @@
       <template v-if="activeCategory === 'messages'">
         <div v-if="activeConversation" class="message-detail-card">
           <div class="message-detail-header">
-            <n-avatar round :size="52" :src="activeConversation.peer?.avatarUrl || undefined">
+            <n-avatar round :size="52" :src="assetUrl(activeConversation.peer?.avatarUrl)">
               {{ avatarText(activeConversation.peer?.nickname) }}
             </n-avatar>
             <div>
@@ -164,7 +164,7 @@ import {
   ShoppingBag,
   Trash2
 } from '@lucide/vue';
-import { request } from '../../shared/http.js';
+import { assetUrl, request } from '../../shared/http.js';
 import { userSession as session } from '../session.js';
 
 const router = useRouter();

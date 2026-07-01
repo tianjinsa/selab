@@ -74,7 +74,7 @@
             <article v-for="order in buying" :key="order.id" class="workbench-task-card">
               <div class="workbench-card-head">
                 <div class="market-order-product">
-                  <img v-if="order.product?.imageUrls?.[0]" :src="order.product.imageUrls[0]" alt="商品图" />
+                  <img v-if="order.product?.imageUrls?.[0]" :src="assetUrl(order.product.imageUrls[0])" alt="商品图" />
                   <span>
                     <strong>{{ order.product?.title || '商品已不存在' }}</strong>
                     <small>{{ formatMoney(order.price) }} · 卖家 {{ order.seller?.nickname || '同学' }}</small>
@@ -105,7 +105,7 @@
             <article v-for="order in selling" :key="order.id" class="workbench-task-card">
               <div class="workbench-card-head">
                 <div class="market-order-product">
-                  <img v-if="order.product?.imageUrls?.[0]" :src="order.product.imageUrls[0]" alt="商品图" />
+                  <img v-if="order.product?.imageUrls?.[0]" :src="assetUrl(order.product.imageUrls[0])" alt="商品图" />
                   <span>
                     <strong>{{ order.product?.title || '商品已不存在' }}</strong>
                     <small>{{ formatMoney(order.price) }} · 买家 {{ order.buyer?.nickname || '同学' }}</small>
@@ -136,7 +136,7 @@
             <article v-for="product in products" :key="product.id" class="workbench-task-card">
               <div class="workbench-card-head">
                 <div class="market-order-product">
-                  <img v-if="product.imageUrls?.[0]" :src="product.imageUrls[0]" alt="商品图" />
+                  <img v-if="product.imageUrls?.[0]" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
                   <span>
                     <strong>{{ product.title }}</strong>
                     <small>{{ product.category?.name }} · {{ product.condition }} · {{ formatMoney(product.price) }}</small>
@@ -192,7 +192,7 @@ import {
   Truck,
   WalletCards
 } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 import { formatMoney, orderStatusText, orderStatusType, productStatusText, productStatusType } from './marketFormat.js';
 
 const message = useMessage();

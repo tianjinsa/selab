@@ -28,7 +28,7 @@
     <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
       <article v-for="product in products" :key="product.id" class="module-card">
         <div>
-          <img v-if="product.imageUrls?.[0]" class="post-cover" :src="product.imageUrls[0]" alt="商品图" />
+          <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
           <n-space justify="space-between" align="center">
             <strong>{{ product.title }}</strong>
             <n-tag>{{ productStatusText[product.status] }}</n-tag>
@@ -51,7 +51,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Star } from '@lucide/vue';
-import { request } from '../../../shared/http.js';
+import { assetUrl, request } from '../../../shared/http.js';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
 const route = useRoute();
