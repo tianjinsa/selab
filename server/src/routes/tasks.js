@@ -28,6 +28,7 @@ import {
 } from '../services/tasks.js';
 import { badRequest } from '../utils/errors.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
+import { paginateItems } from '../utils/pagination.js';
 
 const router = express.Router();
 
@@ -42,7 +43,8 @@ router.get('/meta', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.get('/', requireUser, asyncHandler(async (req, res) => {
-  res.json({ tasks: listTasks(req.store, req.query, req.user.id) });
+  const page = paginateItems(listTasks(req.store, req.query, req.user.id), req.query, { limit: 12, maxLimit: 40 });
+  res.json({ tasks: page.items, pageInfo: page.pageInfo });
 }));
 
 router.post('/', requireUser, asyncHandler(async (req, res) => {

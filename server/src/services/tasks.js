@@ -154,6 +154,7 @@ export function listTasks(store, query = {}, viewerId = '') {
     .filter((task) => !task.deletedAt && !task.hiddenAt)
     .filter((task) => ['open', 'accepted', 'submitted', 'timeout', 'completed'].includes(task.status))
     .filter((task) => isModerationApproved(task));
+  if (query.publisherId) tasks = tasks.filter((task) => task.publisherId === query.publisherId);
   if (query.status) tasks = tasks.filter((task) => task.status === query.status);
   if (query.category) tasks = tasks.filter((task) => task.category === query.category);
   if (query.campusArea) tasks = tasks.filter((task) => task.campusArea === query.campusArea);
@@ -165,8 +166,20 @@ export function listTasks(store, query = {}, viewerId = '') {
   const maxReward = query.maxReward === undefined || query.maxReward === '' ? null : Number(query.maxReward);
   if (Number.isFinite(minReward)) tasks = tasks.filter((task) => task.reward >= minReward);
   if (Number.isFinite(maxReward)) tasks = tasks.filter((task) => task.reward <= maxReward);
-  tasks = tasks.sort((a, b) => String(b.publishedAt || b.createdAt).localeCompare(String(a.publishedAt || a.createdAt)));
-  return tasks.map((task) => decorateTask(store, task, viewerId));
+  const decorated = tasks.map((task) => decorateTask(store, task, viewerId));
+  if (query.sort === 'recommended') {
+    return decorated.sort((a, b) => compareRecommended(
+      taskRecommendationScore(a, viewerId, query.recommendSeed),
+      taskRecommendationScore(b, viewerId, query.recommendSeed),
+      a,
+      b,
+      (task) => task.publishedAt || task.createdAt
+    ));
+  }
+  if (query.sort === 'hot') {
+    return decorated.sort((a, b) => taskHeatScore(b) - taskHeatScore(a));
+  }
+  return decorated.sort((a, b) => String(b.publishedAt || b.createdAt).localeCompare(String(a.publishedAt || a.createdAt)));
 }
 
 export function taskWorkbench(store, userId) {
@@ -854,4 +867,34 @@ export function decorateTask(store, task, viewerId = '', detail = false) {
     base.disputes = store.collection('taskDisputes').filter((item) => item.taskId === task.id);
   }
   return base;
+}
+
+function taskHeatScore(task) {
+  return Number(task.viewCount || 0) + Number(task.applicationCount || 0) * 5 + Number(task.reward || 0) / 10;
+}
+
+function taskRecommendationScore(task, viewerId = '', seed = '') {
+  const activityAt = task.publishedAt || task.createdAt;
+  const ageHours = Math.max(1, (Date.now() - new Date(activityAt).getTime()) / (60 * 60 * 1000));
+  const recency = 32 / Math.sqrt(ageHours);
+  const ownPenalty = viewerId && task.publisherId === viewerId ? -10 : 0;
+  const statusBoost = task.status === 'open' ? 14 : task.status === 'accepted' ? 4 : 0;
+  return taskHeatScore(task) + recency + statusBoost + ownPenalty + stableJitter(task.id, seed);
+}
+
+function stableJitter(id = '', seed = '') {
+  const value = `${seed}:${id}`;
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 1009;
+  }
+  return hash / 1009;
+}
+
+function compareRecommended(scoreA, scoreB, itemA, itemB, timeGetter) {
+  const scoreDiff = scoreB - scoreA;
+  if (scoreDiff !== 0) return scoreDiff;
+  const timeDiff = String(timeGetter(itemB) || '').localeCompare(String(timeGetter(itemA) || ''));
+  if (timeDiff !== 0) return timeDiff;
+  return String(itemB.id || '').localeCompare(String(itemA.id || ''));
 }

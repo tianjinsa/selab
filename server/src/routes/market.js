@@ -31,6 +31,7 @@ import {
   updateOwnProductVisibility
 } from '../services/market.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
+import { paginateItems } from '../utils/pagination.js';
 
 const router = express.Router();
 
@@ -39,7 +40,8 @@ router.get('/meta', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.get('/products', requireUser, asyncHandler(async (req, res) => {
-  res.json({ products: listProducts(req.store, req.query, req.user.id) });
+  const page = paginateItems(listProducts(req.store, req.query, req.user.id), req.query, { limit: 12, maxLimit: 40 });
+  res.json({ products: page.items, pageInfo: page.pageInfo });
 }));
 
 router.post('/products', requireUser, asyncHandler(async (req, res) => {

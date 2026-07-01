@@ -3,6 +3,9 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { requireUser } from '../services/auth.js';
 import { notFound } from '../utils/errors.js';
 import { listPosts } from '../services/forum.js';
+import { listProducts } from '../services/market.js';
+import { listTasks } from '../services/tasks.js';
+import { paginateItems } from '../utils/pagination.js';
 import {
   getOrCreateConversation,
   listConversations,
@@ -36,6 +39,8 @@ router.get('/users/:id', requireUser, asyncHandler(async (req, res) => {
   if (!target) throw notFound('用户不存在');
   const follows = req.store.collection('follows');
   const posts = listPosts(req.store, { authorId: target.id }, req.user.id);
+  const tasks = listTasks(req.store, { publisherId: target.id }, req.user.id);
+  const products = listProducts(req.store, { sellerId: target.id }, req.user.id);
   res.json({
     user: {
       id: target.id,
@@ -51,10 +56,37 @@ router.get('/users/:id', requireUser, asyncHandler(async (req, res) => {
     followed: follows.some((item) => item.followerId === req.user.id && item.followingId === target.id),
     stats: {
       postCount: posts.length,
+      taskCount: tasks.length,
+      productCount: products.length,
       followerCount: follows.filter((item) => item.followingId === target.id).length,
       followingCount: follows.filter((item) => item.followerId === target.id).length
     },
-    posts
+    posts: posts.slice(0, 6),
+    tasks: tasks.slice(0, 6),
+    products: products.slice(0, 6)
+  });
+}));
+
+router.get('/users/:id/content', requireUser, asyncHandler(async (req, res) => {
+  const target = req.store.collection('users').find((user) => user.id === req.params.id && !user.isBanned);
+  if (!target) throw notFound('用户不存在');
+  const type = String(req.query.type || 'posts');
+  const source = type === 'tasks'
+    ? listTasks(req.store, { publisherId: target.id }, req.user.id)
+    : type === 'products'
+      ? listProducts(req.store, { sellerId: target.id }, req.user.id)
+      : listPosts(req.store, { authorId: target.id }, req.user.id);
+  const page = paginateItems(source, req.query, { limit: 12, maxLimit: 30 });
+  res.json({
+    type: ['posts', 'tasks', 'products'].includes(type) ? type : 'posts',
+    user: {
+      id: target.id,
+      nickname: target.nickname,
+      avatarUrl: target.avatarUrl,
+      creditScore: target.creditScore
+    },
+    items: page.items,
+    pageInfo: page.pageInfo
   });
 }));
 

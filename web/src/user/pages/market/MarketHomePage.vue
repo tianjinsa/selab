@@ -7,6 +7,10 @@
           <p class="muted">分类由管理员维护，购买申请会进入卖家私信卡片。</p>
         </div>
         <n-space>
+          <n-button secondary :loading="feed.refreshing.value" @click="refreshProducts">
+            <template #icon><RefreshCw :size="16" /></template>
+            刷新
+          </n-button>
           <n-button secondary @click="$router.push('/market/favorites')">
             <template #icon><Star :size="16" /></template>
             我的收藏
@@ -16,13 +20,17 @@
           <n-button type="primary" @click="$router.push('/market/new')">发布商品</n-button>
         </n-space>
       </n-space>
-      <n-grid :cols="5" :x-gap="10" responsive="screen" style="margin-top: 16px;">
+      <n-grid :cols="6" :x-gap="10" responsive="screen" style="margin-top: 16px;">
         <n-grid-item><n-select v-model:value="filters.categoryId" clearable placeholder="分类" :options="categoryOptions" /></n-grid-item>
-        <n-grid-item><n-input v-model:value="filters.keyword" clearable placeholder="关键词" @keyup.enter="load" /></n-grid-item>
+        <n-grid-item><n-input v-model:value="filters.keyword" clearable placeholder="关键词" @keyup.enter="refreshProducts" /></n-grid-item>
         <n-grid-item><n-input-number v-model:value="filters.minPrice" clearable placeholder="最低价" /></n-grid-item>
         <n-grid-item><n-input-number v-model:value="filters.maxPrice" clearable placeholder="最高价" /></n-grid-item>
-        <n-grid-item><n-button block secondary @click="load">筛选</n-button></n-grid-item>
+        <n-grid-item><n-select v-model:value="filters.sort" :options="sortOptions" /></n-grid-item>
+        <n-grid-item><n-button block secondary @click="refreshProducts">筛选</n-button></n-grid-item>
       </n-grid>
+      <div v-if="products.length" class="feed-window-note">
+        已加载 {{ feed.offset.value }}/{{ feed.total.value || feed.offset.value }}，当前保留 {{ products.length }} 项
+      </div>
     </section>
 
     <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3" appear>
@@ -43,34 +51,62 @@
         </n-space>
       </article>
     </transition-group>
-    <section v-else class="surface empty-state">当前筛选下没有商品</section>
+    <section v-else-if="feed.isEmpty.value" class="surface empty-state">当前筛选下没有商品</section>
+    <section class="feed-load-state">
+      <span v-if="feed.loading.value">正在加载更多...</span>
+      <span v-else-if="feed.finished.value">已经到底了</span>
+      <n-button v-else secondary @click="feed.loadMore">加载更多</n-button>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { Star } from '@lucide/vue';
+import { RefreshCw, Star } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import { useWindowedFeed } from '../../../shared/useWindowedFeed.js';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
 const route = useRoute();
 const meta = ref({ categories: [] });
-const products = ref([]);
-const filters = reactive({ categoryId: null, keyword: '', minPrice: null, maxPrice: null });
+const filters = reactive({ categoryId: null, keyword: '', minPrice: null, maxPrice: null, sort: 'recommended' });
+const sortOptions = [
+  { label: '推荐', value: 'recommended' },
+  { label: '最新发布', value: 'new' },
+  { label: '热门优先', value: 'hot' }
+];
 const categoryOptions = computed(() => meta.value.categories.map((item) => ({ label: item.name, value: item.id })));
+const feed = useWindowedFeed({
+  pageSize: 12,
+  maxItems: 48,
+  loadPage: async ({ limit, offset, seed }) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== null && value !== '') params.set(key, value);
+    }
+    if (filters.sort === 'new') params.delete('sort');
+    params.set('limit', limit);
+    params.set('offset', offset);
+    params.set('recommendSeed', seed);
+    const data = await request(`/api/market/products?${params.toString()}`);
+    return { items: data.products || [], pageInfo: data.pageInfo };
+  }
+});
+const products = computed(() => feed.items.value);
 
 onMounted(async () => {
   meta.value = await request('/api/market/meta');
   filters.keyword = String(route.query.keyword || '');
-  await load();
+  window.addEventListener('scroll', feed.handleWindowScroll, { passive: true });
+  await feed.loadMore();
 });
 
-async function load() {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value !== null && value !== '') params.set(key, value);
-  }
-  products.value = (await request(`/api/market/products?${params.toString()}`)).products;
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', feed.handleWindowScroll);
+});
+
+async function refreshProducts() {
+  await feed.refresh();
 }
 </script>

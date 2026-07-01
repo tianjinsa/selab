@@ -84,6 +84,15 @@ export function listPosts(store, query = {}, viewerId = '') {
   }
   if (query.authorId) posts = posts.filter((post) => post.authorId === query.authorId);
   const decorated = posts.map((post) => decoratePost(store, post, viewerId));
+  if (query.sort === 'recommended') {
+    return decorated.sort((a, b) => compareRecommended(
+      recommendationScore(store, a, viewerId, query.recommendSeed),
+      recommendationScore(store, b, viewerId, query.recommendSeed),
+      a,
+      b,
+      (post) => post.createdAt
+    ));
+  }
   if (query.sort === 'hot') {
     return decorated.sort((a, b) => heatScore(b) - heatScore(a));
   }
@@ -494,6 +503,36 @@ function heatScore(post, range = 'all') {
   if (range !== 'all') return base;
   const ageDays = Math.max(1, (Date.now() - new Date(post.createdAt).getTime()) / (24 * 60 * 60 * 1000));
   return base / Math.sqrt(ageDays);
+}
+
+function recommendationScore(store, post, viewerId = '', seed = '') {
+  const ageHours = Math.max(1, (Date.now() - new Date(post.createdAt).getTime()) / (60 * 60 * 1000));
+  const recency = 28 / Math.sqrt(ageHours);
+  const followBoost = viewerId && store.collection('follows').some((item) => item.followerId === viewerId && item.followingId === post.authorId) ? 18 : 0;
+  const likedTagNames = new Set(
+    store.collection('postFavorites')
+      .filter((item) => item.userId === viewerId)
+      .flatMap((item) => postTags(store, item.postId))
+  );
+  const tagBoost = (post.tags || []).filter((tag) => likedTagNames.has(tag)).length * 5;
+  return heatScore(post) + recency + followBoost + tagBoost + stableJitter(post.id, seed);
+}
+
+function stableJitter(id = '', seed = '') {
+  const value = `${seed}:${id}`;
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 1009;
+  }
+  return hash / 1009;
+}
+
+function compareRecommended(scoreA, scoreB, itemA, itemB, timeGetter) {
+  const scoreDiff = scoreB - scoreA;
+  if (scoreDiff !== 0) return scoreDiff;
+  const timeDiff = String(timeGetter(itemB) || '').localeCompare(String(timeGetter(itemA) || ''));
+  if (timeDiff !== 0) return timeDiff;
+  return String(itemB.id || '').localeCompare(String(itemA.id || ''));
 }
 
 function reportTarget(store, report) {

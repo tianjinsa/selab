@@ -114,6 +114,7 @@ export function listProducts(store, query = {}, viewerId = '') {
   let products = store.collection('products').filter((item) => !item.deletedAt && !item.hiddenAt);
   if (!query.includeUnavailable) products = products.filter((item) => ['on_sale', 'trading'].includes(item.status));
   products = products.filter((item) => isModerationApproved(item));
+  if (query.sellerId) products = products.filter((item) => item.sellerId === query.sellerId);
   if (query.categoryId) products = products.filter((item) => item.categoryId === query.categoryId);
   if (query.keyword) {
     const keyword = String(query.keyword).trim();
@@ -126,6 +127,15 @@ export function listProducts(store, query = {}, viewerId = '') {
   if (Number.isFinite(minPrice)) products = products.filter((item) => item.price >= minPrice);
   if (Number.isFinite(maxPrice)) products = products.filter((item) => item.price <= maxPrice);
   const decorated = products.map((product) => decorateProduct(store, product, viewerId));
+  if (query.sort === 'recommended') {
+    return decorated.sort((a, b) => compareRecommended(
+      productRecommendationScore(a, viewerId, query.recommendSeed),
+      productRecommendationScore(b, viewerId, query.recommendSeed),
+      a,
+      b,
+      (product) => product.createdAt
+    ));
+  }
   if (query.sort === 'hot') return decorated.sort((a, b) => productHeat(b) - productHeat(a));
   return decorated.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
@@ -811,6 +821,31 @@ async function updateProductCards(store, realtime, productId) {
 
 function productHeat(product) {
   return Number(product.viewCount || 0) + Number(product.favoriteCount || 0) * 4;
+}
+
+function productRecommendationScore(product, viewerId = '', seed = '') {
+  const ageHours = Math.max(1, (Date.now() - new Date(product.createdAt).getTime()) / (60 * 60 * 1000));
+  const recency = 24 / Math.sqrt(ageHours);
+  const saleBoost = product.status === 'on_sale' ? 12 : 3;
+  const ownPenalty = viewerId && product.sellerId === viewerId ? -8 : 0;
+  return productHeat(product) + recency + saleBoost + ownPenalty + stableJitter(product.id, seed);
+}
+
+function stableJitter(id = '', seed = '') {
+  const value = `${seed}:${id}`;
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % 1009;
+  }
+  return hash / 1009;
+}
+
+function compareRecommended(scoreA, scoreB, itemA, itemB, timeGetter) {
+  const scoreDiff = scoreB - scoreA;
+  if (scoreDiff !== 0) return scoreDiff;
+  const timeDiff = String(timeGetter(itemB) || '').localeCompare(String(timeGetter(itemA) || ''));
+  if (timeDiff !== 0) return timeDiff;
+  return String(itemB.id || '').localeCompare(String(itemA.id || ''));
 }
 
 export function decorateProduct(store, product, viewerId = '', detail = false) {

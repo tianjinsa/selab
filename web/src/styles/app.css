@@ -1859,7 +1859,7 @@ a {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -2010,6 +2010,60 @@ a {
 
 .user-posts {
   margin-top: 16px;
+}
+
+.profile-content-section {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-content-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.profile-content-head h3 {
+  margin: 0;
+}
+
+.profile-content-head p {
+  margin: 6px 0 0;
+}
+
+.profile-preview-grid {
+  margin-top: 0;
+}
+
+.profile-preview-card {
+  min-height: 0;
+}
+
+.profile-preview-card p {
+  line-height: 1.65;
+}
+
+.profile-content-page {
+  gap: 16px;
+}
+
+.profile-content-pagination {
+  display: flex;
+  justify-content: center;
+}
+
+.feed-window-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.feed-load-state {
+  display: grid;
+  place-items: center;
+  min-height: 74px;
+  color: var(--muted);
 }
 
 .ranking-page {

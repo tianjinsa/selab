@@ -7,6 +7,10 @@
           <p class="muted">图文、求助和经验分享会进入统一通知与互动体系。</p>
         </div>
         <n-space>
+          <n-button secondary :loading="feed.refreshing.value" @click="refreshPosts">
+            <template #icon><RefreshCw :size="16" /></template>
+            刷新
+          </n-button>
           <n-button secondary @click="$router.push('/forum/studio')">
             <template #icon><BarChart3 :size="16" /></template>
             创作中心
@@ -20,13 +24,16 @@
         </n-space>
       </n-space>
       <n-grid :cols="4" :x-gap="10" responsive="screen" style="margin-top: 16px;">
-        <n-grid-item><n-input v-model:value="filters.keyword" placeholder="关键词" clearable @keyup.enter="loadPosts" /></n-grid-item>
-        <n-grid-item><n-input v-model:value="filters.tag" placeholder="Tag" clearable @keyup.enter="loadPosts" /></n-grid-item>
+        <n-grid-item><n-input v-model:value="filters.keyword" placeholder="关键词" clearable @keyup.enter="refreshPosts" /></n-grid-item>
+        <n-grid-item><n-input v-model:value="filters.tag" placeholder="Tag" clearable @keyup.enter="refreshPosts" /></n-grid-item>
         <n-grid-item>
-          <n-select v-model:value="filters.sort" :options="[{label:'最新发布',value:'new'},{label:'热门优先',value:'hot'}]" />
+          <n-select v-model:value="filters.sort" :options="sortOptions" />
         </n-grid-item>
-        <n-grid-item><n-button secondary block @click="loadPosts">筛选</n-button></n-grid-item>
+        <n-grid-item><n-button secondary block @click="refreshPosts">筛选</n-button></n-grid-item>
       </n-grid>
+      <div v-if="posts.length" class="feed-window-note">
+        已加载 {{ feed.offset.value }}/{{ feed.total.value || feed.offset.value }}，当前保留 {{ posts.length }} 项
+      </div>
     </section>
 
     <section class="surface panel">
@@ -60,37 +67,63 @@
         </div>
       </article>
     </transition-group>
-    <section v-else class="surface empty-state">当前没有帖子</section>
+    <section v-else-if="feed.isEmpty.value" class="surface empty-state">当前没有帖子</section>
+    <section class="feed-load-state">
+      <span v-if="feed.loading.value">正在加载更多...</span>
+      <span v-else-if="feed.finished.value">已经到底了</span>
+      <n-button v-else secondary @click="feed.loadMore">加载更多</n-button>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { BarChart3, Bookmark, Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
+import { BarChart3, Bookmark, Eye, Heart, MessageCircle, RefreshCw, Share2, Star } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
+import { useWindowedFeed } from '../../../shared/useWindowedFeed.js';
 import UserAvatar from '../../../shared/UserAvatar.vue';
 
 const route = useRoute();
-const posts = ref([]);
 const summary = ref(null);
-const filters = reactive({ keyword: '', tag: '', sort: 'new' });
+const filters = reactive({ keyword: '', tag: '', sort: 'recommended' });
+const sortOptions = [
+  { label: '推荐', value: 'recommended' },
+  { label: '最新发布', value: 'new' },
+  { label: '热门优先', value: 'hot' }
+];
+const feed = useWindowedFeed({
+  pageSize: 12,
+  maxItems: 48,
+  loadPage: async ({ limit, offset, seed }) => {
+    const params = new URLSearchParams();
+    if (filters.keyword) params.set('keyword', filters.keyword);
+    if (filters.tag) params.set('tag', filters.tag);
+    if (filters.sort !== 'new') params.set('sort', filters.sort);
+    params.set('limit', limit);
+    params.set('offset', offset);
+    params.set('recommendSeed', seed);
+    const data = await request(`/api/forum/posts?${params.toString()}`);
+    return { items: data.posts || [], pageInfo: data.pageInfo };
+  }
+});
+const posts = computed(() => feed.items.value);
 
 onMounted(async () => {
   filters.keyword = String(route.query.keyword || '');
-  await Promise.all([loadPosts(), loadSummary()]);
+  window.addEventListener('scroll', feed.handleWindowScroll, { passive: true });
+  await Promise.all([feed.loadMore(), loadSummary()]);
 });
 
-async function loadPosts() {
-  const params = new URLSearchParams();
-  if (filters.keyword) params.set('keyword', filters.keyword);
-  if (filters.tag) params.set('tag', filters.tag);
-  if (filters.sort === 'hot') params.set('sort', 'hot');
-  posts.value = (await request(`/api/forum/posts?${params.toString()}`)).posts;
-}
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', feed.handleWindowScroll);
+});
 
 async function loadSummary() {
   summary.value = (await request('/api/forum/summary')).summary;
 }
 
+async function refreshPosts() {
+  await Promise.all([feed.refresh(), loadSummary()]);
+}
 </script>
