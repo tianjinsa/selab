@@ -354,6 +354,9 @@ async function handleSocketMessage(event) {
     await loadSessions();
     await selectSession(sessionId.value);
   }
+  if (packet.event === 'ai.session.updated') {
+    mergeSession(packet.payload.session);
+  }
   if (packet.event === 'ai.run.started') {
     running.value = true;
     if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
@@ -414,6 +417,17 @@ async function handleSocketMessage(event) {
 async function refreshCurrentSession() {
   await loadSessions();
   if (sessionId.value) await selectSession(sessionId.value);
+}
+
+function mergeSession(session) {
+  if (!session?.id) return;
+  const index = sessions.value.findIndex((item) => item.id === session.id);
+  if (index >= 0) {
+    sessions.value.splice(index, 1, { ...sessions.value[index], ...session });
+  } else {
+    sessions.value.unshift(session);
+  }
+  sessions.value = [...sessions.value].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
 async function send() {

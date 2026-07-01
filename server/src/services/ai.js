@@ -29,6 +29,31 @@ function now() {
   return new Date().toISOString();
 }
 
+function createTransientAiMessage(store, item) {
+  const message = {
+    id: item.id || randomUUID(),
+    createdAt: item.createdAt || now(),
+    updatedAt: item.updatedAt || now(),
+    ...item
+  };
+  store.collection('aiMessages').push(message);
+  return message;
+}
+
+async function markSessionRunning(store, session, runId, userContent) {
+  const patch = {
+    status: 'running',
+    currentRunId: runId
+  };
+  if (!session || session.titleSource === 'auto' || !session.titleSource) {
+    const currentTitle = String(session?.title || '').trim();
+    patch.title = currentTitle && currentTitle !== '新的咨询' ? currentTitle : userContent.slice(0, 18);
+    patch.titleSource = 'auto';
+    patch.titleStatus = 'pending';
+  }
+  return store.update('aiSessions', session.id, patch);
+}
+
 function publicUser(store, userId) {
   const user = store.collection('users').find((item) => item.id === userId);
   return user ? { id: user.id, nickname: user.nickname, studentId: user.studentId } : null;
@@ -57,10 +82,15 @@ export function listAiSessions(store, userId) {
     .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
 }
 
-export async function createAiSession(store, userId, title = '新的咨询') {
+export async function createAiSession(store, userId, title = '新的咨询', options = {}) {
+  const normalizedTitle = String(title || '新的咨询').trim() || '新的咨询';
+  const autoTitle = normalizedTitle === '新的咨询';
+  const titleSource = options.titleSource || (autoTitle ? 'auto' : 'manual');
   return store.insert('aiSessions', {
     userId,
-    title,
+    title: normalizedTitle,
+    titleSource,
+    titleStatus: options.titleStatus || (titleSource === 'manual' ? 'done' : 'pending'),
     status: 'idle',
     currentRunId: '',
     stoppedAt: ''
@@ -84,7 +114,11 @@ export async function updateAiSession(store, userId, sessionId, body = {}) {
   const session = getAiSession(store, userId, sessionId).session;
   const title = String(body.title || '').trim();
   if (!title) throw badRequest('会话标题不能为空');
-  const updated = await store.update('aiSessions', session.id, { title: title.slice(0, 40) });
+  const updated = await store.update('aiSessions', session.id, {
+    title: title.slice(0, 40),
+    titleSource: 'manual',
+    titleStatus: 'done'
+  });
   return updated;
 }
 
@@ -108,7 +142,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
   if (!content) throw badRequest('请输入咨询内容');
   const session = payload.sessionId
     ? getAiSession(store, userId, payload.sessionId).session
-    : await createAiSession(store, userId, content.slice(0, 18));
+    : await createAiSession(store, userId, content.slice(0, 18), { titleSource: 'auto', titleStatus: 'pending' });
   if (session.status === 'running') throw badRequest('当前会话已有回答在生成');
 
   const runId = randomUUID();
@@ -119,7 +153,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     status: 'done',
     cards: []
   });
-  const assistant = await store.insert('aiMessages', {
+  const assistant = createTransientAiMessage(store, {
     sessionId: session.id,
     role: 'assistant',
     content: '',
@@ -131,11 +165,11 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     reasoningContent: '',
     runId
   });
-  await store.update('aiSessions', session.id, { status: 'running', currentRunId: runId, title: session.title || content.slice(0, 18) });
+  await markSessionRunning(store, session, runId, content);
   realtime.sendToUser(userId, 'ai.run.started', { sessionId: session.id, runId, assistantMessageId: assistant.id });
 
   const controller = new AbortController();
-  activeRuns.set(runId, { controller, userId, sessionId: session.id, assistantMessageId: assistant.id });
+  activeRuns.set(runId, { controller, userId, sessionId: session.id, assistantMessageId: assistant.id, userContent: content });
 
   runAgent(store, realtime, user, session.id, assistant.id, content, runId, controller)
     .catch(async (error) => {
@@ -160,7 +194,9 @@ export async function updateAiUserMessage(store, userId, sessionId, messageId, b
     editedAt: now()
   });
   await store.update('aiSessions', session.id, {
-    title: session.title || content.slice(0, 18)
+    title: session.title || content.slice(0, 18),
+    titleSource: session.titleSource || 'auto',
+    titleStatus: session.titleStatus || 'pending'
   });
   return updated;
 }
@@ -218,7 +254,7 @@ export async function cancelAiRun(store, userId, sessionId) {
 
 async function createAssistantRun(store, realtime, user, sessionId, userContent, title = '') {
   const runId = randomUUID();
-  const assistant = await store.insert('aiMessages', {
+  const assistant = createTransientAiMessage(store, {
     sessionId,
     role: 'assistant',
     content: '',
@@ -230,15 +266,12 @@ async function createAssistantRun(store, realtime, user, sessionId, userContent,
     reasoningContent: '',
     runId
   });
-  await store.update('aiSessions', sessionId, {
-    status: 'running',
-    currentRunId: runId,
-    title: title || userContent.slice(0, 18)
-  });
+  const session = store.collection('aiSessions').find((item) => item.id === sessionId);
+  await markSessionRunning(store, session || { id: sessionId, title, titleSource: 'auto' }, runId, userContent);
   realtime.sendToUser(user.id, 'ai.run.started', { sessionId, runId, assistantMessageId: assistant.id });
 
   const controller = new AbortController();
-  activeRuns.set(runId, { controller, userId: user.id, sessionId, assistantMessageId: assistant.id });
+  activeRuns.set(runId, { controller, userId: user.id, sessionId, assistantMessageId: assistant.id, userContent });
 
   runAgent(store, realtime, user, sessionId, assistant.id, userContent, runId, controller)
     .catch(async (error) => {
@@ -284,6 +317,7 @@ async function runAgent(store, realtime, user, sessionId, assistantMessageId, us
     );
     if (!result.toolCalls.length) {
       await markAssistantDone(store, realtime, user.id, sessionId, assistantMessageId, runId);
+      scheduleSessionTitleGeneration(store, realtime, user, sessionId, userContent, assistantMessageId);
       return;
     }
     conversation.push({
@@ -465,9 +499,10 @@ async function runLocalFallback(store, realtime, user, sessionId, assistantMessa
     await appendAssistantContent(store, realtime, user.id, assistantMessageId, char);
     await new Promise((resolve) => setTimeout(resolve, 8));
   }
-  await store.update('aiMessages', assistantMessageId, { cards });
+  replaceAssistantCards(store, assistantMessageId, cards);
   realtime.sendToUser(user.id, 'ai.cards', { sessionId, messageId: assistantMessageId, cards });
   await markAssistantDone(store, realtime, user.id, sessionId, assistantMessageId, runId);
+  scheduleSessionTitleGeneration(store, realtime, user, sessionId, userContent, assistantMessageId);
 }
 
 async function runLocalTool(store, realtime, user, assistantMessageId, toolName, args, handler) {
@@ -523,7 +558,6 @@ async function appendAssistantContent(store, realtime, userId, messageId, delta)
   message.runState = 'responding';
   const part = appendTextStreamPart(message, 'content', delta);
   message.updatedAt = now();
-  await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.token', { sessionId: message.sessionId, messageId, delta, partId: part.id, channel: 'content', runState: message.runState });
 }
 
@@ -534,7 +568,6 @@ async function appendAssistantReasoning(store, realtime, userId, messageId, delt
   message.runState = 'responding';
   const part = appendTextStreamPart(message, 'reasoning', delta);
   message.updatedAt = now();
-  await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.reasoning', { sessionId: message.sessionId, messageId, delta, partId: part.id, channel: 'reasoning', runState: message.runState });
 }
 
@@ -589,7 +622,6 @@ async function recordToolEvent(store, realtime, userId, messageId, event) {
   else if (next.status === 'error') message.runState = 'error';
   else if (message.status === 'running') message.runState = 'responding';
   message.updatedAt = now();
-  await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.tool_call', {
     sessionId: message.sessionId,
     messageId,
@@ -650,12 +682,100 @@ async function markAssistantDone(store, realtime, userId, sessionId, messageId, 
   realtime.sendToUser(userId, 'ai.run.done', { sessionId, runId, messageId, status: 'done' });
 }
 
+function scheduleSessionTitleGeneration(store, realtime, user, sessionId, userContent, assistantMessageId) {
+  setTimeout(() => {
+    generateSessionTitle(store, realtime, user, sessionId, userContent, assistantMessageId)
+      .catch(() => {});
+  }, 0);
+}
+
+async function generateSessionTitle(store, realtime, user, sessionId, userContent, assistantMessageId) {
+  const session = store.collection('aiSessions').find((item) => item.id === sessionId && item.userId === user.id);
+  if (!shouldGenerateTitle(store, session)) return;
+  await updateSessionTitleState(store, realtime, user.id, session.id, { titleStatus: 'generating' });
+  const settings = store.collection('settings');
+  const config = settings.aiConfig || {};
+  const message = store.collection('aiMessages').find((item) => item.id === assistantMessageId);
+  let generated = '';
+  try {
+    generated = await generateTitleByModel(config, userContent, message?.content || '');
+  } catch {
+    generated = '';
+  }
+  const aiTitle = sanitizeGeneratedTitle(generated);
+  const title = aiTitle || fallbackTitle(userContent);
+  const latest = store.collection('aiSessions').find((item) => item.id === sessionId && item.userId === user.id);
+  if (!shouldGenerateTitle(store, latest)) return;
+  await updateSessionTitleState(store, realtime, user.id, session.id, {
+    title,
+    titleSource: aiTitle ? 'ai' : 'auto',
+    titleStatus: aiTitle ? 'done' : 'fallback'
+  });
+}
+
+function shouldGenerateTitle(store, session) {
+  if (!session || session.titleSource === 'manual' || session.titleSource === 'ai') return false;
+  const userMessageCount = store.collection('aiMessages')
+    .filter((item) => item.sessionId === session.id && item.role === 'user')
+    .length;
+  return userMessageCount <= 1;
+}
+
+async function updateSessionTitleState(store, realtime, userId, sessionId, patch) {
+  const updated = await store.update('aiSessions', sessionId, patch);
+  if (updated) realtime.sendToUser(userId, 'ai.session.updated', { session: updated });
+  return updated;
+}
+
+async function generateTitleByModel(config, userContent, assistantContent) {
+  if (!config.baseUrl || !config.model || !config.apiKey) return '';
+  const prompt = [
+    '请为这段校园服务智能体对话生成一个简洁中文标题。',
+    '要求：6到14个字，不要引号，不要句号，不要使用“关于”。',
+    `用户消息：${String(userContent || '').slice(0, 500)}`,
+    `助手回复摘要：${String(assistantContent || '').slice(0, 800)}`
+  ].join('\n');
+  const response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: 'system', content: '你只输出会话标题，不解释。' },
+        { role: 'user', content: prompt }
+      ],
+      stream: false,
+      temperature: 0.2
+    })
+  });
+  if (!response.ok) return '';
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+function sanitizeGeneratedTitle(value = '') {
+  return String(value)
+    .replace(/["'“”‘’]/g, '')
+    .replace(/^标题[:：]/, '')
+    .replace(/[。.!！?？：:，,、]+$/g, '')
+    .replace(/\s+/g, '')
+    .trim()
+    .slice(0, 18);
+}
+
+function fallbackTitle(value = '') {
+  const title = String(value || '').replace(/\s+/g, '').slice(0, 18);
+  return title || '新的咨询';
+}
+
 async function setAssistantRunState(store, realtime, userId, messageId, runState) {
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   if (!message || message.runState === runState) return;
   message.runState = runState;
   message.updatedAt = now();
-  await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.message_state', {
     sessionId: message.sessionId,
     messageId,
@@ -840,8 +960,14 @@ async function addAiCard(store, realtime, userId, messageId, card) {
   if (!message) return;
   message.cards = [...(message.cards || []), card];
   message.updatedAt = now();
-  await store.saveCollection('aiMessages');
   realtime.sendToUser(userId, 'ai.cards', { sessionId: message.sessionId, messageId, cards: message.cards });
+}
+
+function replaceAssistantCards(store, messageId, cards) {
+  const message = store.collection('aiMessages').find((item) => item.id === messageId);
+  if (!message) return;
+  message.cards = Array.isArray(cards) ? cards : [];
+  message.updatedAt = now();
 }
 
 function searchKnowledge(store, keyword = '') {
