@@ -35,23 +35,30 @@
 
           <template v-else>
             <div v-if="item.role === 'assistant' && reasoningBlocks(item).length" class="reasoning-panel" :class="{ expanded: isReasoningExpanded(item.id) }">
-              <button type="button" class="reasoning-heading" @click="toggleReasoning(item.id)">
+              <button
+                type="button"
+                class="reasoning-heading"
+                :aria-expanded="isReasoningExpanded(item.id)"
+                @click="toggleReasoning(item.id)"
+              >
                 <Brain :size="15" />
                 <span>{{ reasoningSummaryText(item) }}</span>
               </button>
-              <div v-if="isReasoningExpanded(item.id)" class="reasoning-content">
-                <template v-for="block in reasoningBlocks(item)" :key="block.id">
-                  <div v-if="block.type === 'text'" class="reasoning-text markdown-body" v-html="renderMarkdown(block.text)" />
-                  <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
-                    <Wrench :size="13" />
-                    <div>
-                      <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
-                      <span>{{ toolStatusText(block.tool.status) }}</span>
-                      <small v-if="block.tool.summary">{{ block.tool.summary }}</small>
-                      <small v-if="block.tool.error" class="tool-error-text">{{ block.tool.error }}</small>
+              <div class="reasoning-content-shell" :aria-hidden="!isReasoningExpanded(item.id)">
+                <div class="reasoning-content">
+                  <template v-for="block in reasoningBlocks(item)" :key="block.id">
+                    <div v-if="block.type === 'text'" class="reasoning-text markdown-body" v-html="renderMarkdown(block.text)" />
+                    <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
+                      <Wrench :size="13" />
+                      <div>
+                        <strong>{{ block.tool.displayName || block.tool.toolName }}</strong>
+                        <span>{{ toolStatusText(block.tool.status) }}</span>
+                        <small v-if="block.tool.summary">{{ block.tool.summary }}</small>
+                        <small v-if="block.tool.error" class="tool-error-text">{{ block.tool.error }}</small>
+                      </div>
                     </div>
-                  </div>
-                </template>
+                  </template>
+                </div>
               </div>
             </div>
 

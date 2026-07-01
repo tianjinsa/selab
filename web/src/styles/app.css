@@ -3691,12 +3691,37 @@ a:focus-visible,
   background: rgba(46, 95, 168, 0.08);
 }
 
+.reasoning-content-shell {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    grid-template-rows var(--motion-mid) var(--motion-ease),
+    opacity var(--motion-mid) var(--motion-ease),
+    transform var(--motion-mid) var(--motion-ease);
+}
+
+.reasoning-panel.expanded .reasoning-content-shell {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .reasoning-content {
-  overflow: visible;
+  min-height: 0;
+  overflow: hidden;
   padding: 0 10px 10px;
   white-space: pre-wrap;
   font-size: 12px;
   line-height: 1.65;
+  transition: padding var(--motion-mid) var(--motion-ease);
+}
+
+.reasoning-panel:not(.expanded) .reasoning-content {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .reasoning-content .markdown-body pre {
