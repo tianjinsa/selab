@@ -27,6 +27,7 @@ import {
   takeDownProduct,
   toggleProductFavorite
 } from '../services/market.js';
+import { enqueueContentModeration } from '../services/contentModeration.js';
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.get('/products', requireUser, asyncHandler(async (req, res) => {
 
 router.post('/products', requireUser, asyncHandler(async (req, res) => {
   const product = await createProduct(req.store, req.user, req.body);
+  await enqueueContentModeration(req.store, req.realtime, 'product', product.id);
   res.status(201).json({ product });
 }));
 

@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { badRequest } from '../utils/errors.js';
 import { config } from '../config.js';
 import { requireAdmin, sanitizeUser, signAdminToken } from '../services/auth.js';
+import { listAdminModerationItems, scanContentModerationQueue } from '../services/contentModeration.js';
 
 const router = express.Router();
 
@@ -42,6 +43,8 @@ router.get('/dashboard', requireAdmin, asyncHandler(async (req, res) => {
       products: req.store.collection('products').filter((item) => !item.deletedAt).length,
       orders: req.store.collection('orders').length,
       pendingReports: req.store.collection('reports').filter((item) => item.status === 'pending').length,
+      moderationPending: req.store.collection('contentModerationItems').filter((item) => item.status === 'pending').length,
+      moderationRejected: req.store.collection('contentModerationItems').filter((item) => item.status === 'rejected').length,
       pendingDisputes: req.store.collection('taskDisputes').filter((item) => item.status === 'pending').length
         + req.store.collection('orderDisputes').filter((item) => item.status === 'pending').length,
       aiRisks: req.store.collection('aiRiskAlerts').length
@@ -60,8 +63,17 @@ router.get('/review-items', requireAdmin, asyncHandler(async (req, res) => {
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
     orderDisputes: req.store.collection('orderDisputes')
       .map((item) => ({ ...item, order: req.store.collection('orders').find((order) => order.id === item.orderId), user: userBrief(req.store, item.userId) }))
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
+    moderationItems: listAdminModerationItems(req.store)
   });
+}));
+
+router.get('/moderation-items', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ items: listAdminModerationItems(req.store, req.query) });
+}));
+
+router.post('/moderation/scan', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(await scanContentModerationQueue(req.store, req.realtime, { limit: req.body.limit || 50 }));
 }));
 
 router.post('/reports/:id/resolve', requireAdmin, asyncHandler(async (req, res) => {

@@ -24,6 +24,7 @@ import {
   updateTaskDraft
 } from '../services/tasks.js';
 import { badRequest } from '../utils/errors.js';
+import { enqueueContentModeration } from '../services/contentModeration.js';
 
 const router = express.Router();
 
@@ -65,6 +66,7 @@ router.patch('/:id', requireUser, asyncHandler(async (req, res) => {
 
 router.post('/:id/pay', requireUser, asyncHandler(async (req, res) => {
   const task = await publishTaskAfterPayment(req.store, req.user, req.params.id);
+  await enqueueContentModeration(req.store, req.realtime, 'task', task.id);
   res.json({ task });
 }));
 

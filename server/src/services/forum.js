@@ -60,6 +60,10 @@ export async function createPost(store, user, body) {
     type: body.type || '经验分享帖',
     imageUrls,
     visibility: body.visibility || 'public',
+    moderationStatus: 'pending',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: '',
     viewCount: 0,
     shareCount: 0,
     deletedAt: ''
@@ -98,6 +102,65 @@ export function listFavoritePosts(store, userId) {
     .sort((a, b) => String(b.favoritedAt || '').localeCompare(String(a.favoritedAt || '')));
 }
 
+export function forumStudio(store, userId) {
+  const posts = store.collection('posts')
+    .filter((post) => post.authorId === userId && !post.deletedAt)
+    .map((post) => decoratePost(store, post, userId, false))
+    .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const stats = posts.reduce((acc, post) => {
+    acc.total += 1;
+    acc.views += Number(post.viewCount || 0);
+    acc.likes += Number(post.likeCount || 0);
+    acc.comments += Number(post.commentCount || 0);
+    acc.favorites += Number(post.favoriteCount || 0);
+    acc.shares += Number(post.shareCount || 0);
+    const status = post.moderationStatus || 'approved';
+    acc[status] = Number(acc[status] || 0) + 1;
+    if (post.visibility !== 'public') acc.hidden += 1;
+    return acc;
+  }, {
+    total: 0,
+    approved: 0,
+    pending: 0,
+    rejected: 0,
+    hidden: 0,
+    views: 0,
+    likes: 0,
+    comments: 0,
+    favorites: 0,
+    shares: 0
+  });
+  return { stats, posts };
+}
+
+export async function resubmitRejectedPost(store, user, postId, body) {
+  assertCanPost(user);
+  const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
+  if (!post) throw notFound('帖子不存在');
+  if (post.authorId !== user.id) throw forbidden('只能修改自己发布的帖子');
+  if (post.moderationStatus !== 'rejected') throw badRequest('只有审核未通过的帖子可以修改后重发');
+  const title = String(body.title || '').trim();
+  const content = String(body.content || '').trim();
+  if (!title) throw badRequest('请输入帖子标题');
+  if (!content) throw badRequest('请输入正文内容');
+  assertCleanContent(store, title, content);
+  const tags = normalizeTags(store, body.tags);
+  const imageUrls = normalizePostImageUrls(body.imageUrls);
+  const updated = await store.update('posts', post.id, {
+    title,
+    content,
+    type: body.type || post.type || '经验分享帖',
+    imageUrls,
+    visibility: 'public',
+    moderationStatus: 'pending',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: ''
+  });
+  await savePostTags(store, post.id, tags);
+  return decoratePost(store, updated, user.id, true);
+}
+
 export function listFollowingUsers(store, userId) {
   const users = store.collection('users');
   return store.collection('follows')
@@ -126,6 +189,7 @@ export function listFollowingUsers(store, userId) {
 export function getPostDetail(store, postId, viewerId = '', options = {}) {
   const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
   if (!post) throw notFound('帖子不存在');
+  if (post.visibility !== 'public' && post.authorId !== viewerId) throw notFound('帖子不存在');
   if (options.trackView !== false) {
     post.viewCount = Number(post.viewCount || 0) + 1;
     store.saveCollection('posts').catch(() => {});

@@ -3,6 +3,20 @@
     <section class="surface panel">
       <n-space justify="space-between" align="center">
         <div>
+          <h2 style="margin: 0;">AI 内容审核</h2>
+          <p class="muted">帖子、任务和商品共用同一个审核队列；违规内容会保留发布时快照，便于追溯。</p>
+        </div>
+        <n-space>
+          <n-button secondary :loading="scanning" @click="scanModeration">立即扫描</n-button>
+          <n-button secondary @click="load">刷新</n-button>
+        </n-space>
+      </n-space>
+      <n-data-table style="margin-top: 12px;" :columns="moderationColumns" :data="moderationItems" :pagination="{ pageSize: 8 }" />
+    </section>
+
+    <section class="surface panel">
+      <n-space justify="space-between" align="center">
+        <div>
           <h2 style="margin: 0;">举报处理</h2>
           <p class="muted">属实处理会下架/删除目标内容，并扣除内容归属用户 4 分信用分。</p>
         </div>
@@ -20,11 +34,33 @@
       <h2 style="margin-top: 0;">订单纠纷</h2>
       <n-data-table :columns="orderDisputeColumns" :data="orderDisputes" :pagination="{ pageSize: 6 }" />
     </section>
+
+    <n-modal v-model:show="snapshotVisible" preset="card" title="违规快照" class="moderation-snapshot-modal">
+      <n-descriptions bordered :column="2" size="small">
+        <n-descriptions-item label="类型">{{ entityTypeText(activeSnapshot?.entityType) }}</n-descriptions-item>
+        <n-descriptions-item label="状态">{{ moderationStatusText(activeSnapshot?.status) }}</n-descriptions-item>
+        <n-descriptions-item label="标题">{{ activeSnapshot?.snapshot?.title || activeSnapshot?.title || '-' }}</n-descriptions-item>
+        <n-descriptions-item label="用户">{{ activeSnapshot?.owner?.nickname || '-' }}</n-descriptions-item>
+        <n-descriptions-item label="风险">{{ riskText(activeSnapshot?.riskLevel) }}</n-descriptions-item>
+        <n-descriptions-item label="命中分类">{{ categoryText(activeSnapshot?.categories || []) }}</n-descriptions-item>
+      </n-descriptions>
+      <n-alert v-if="activeSnapshot?.reason || activeSnapshot?.error" type="warning" :show-icon="false" style="margin-top: 12px;">
+        {{ activeSnapshot.reason || activeSnapshot.error }}
+      </n-alert>
+      <div class="snapshot-block">
+        <strong>提取文本</strong>
+        <pre>{{ activeSnapshot?.snapshot?.text || '-' }}</pre>
+      </div>
+      <div class="snapshot-block">
+        <strong>原始字段</strong>
+        <pre>{{ snapshotRaw }}</pre>
+      </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
-import { h, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { NButton, NTag, useDialog, useMessage } from 'naive-ui';
 import { request } from '../../shared/http.js';
 
@@ -33,6 +69,40 @@ const message = useMessage();
 const reports = ref([]);
 const taskDisputes = ref([]);
 const orderDisputes = ref([]);
+const moderationItems = ref([]);
+const scanning = ref(false);
+const snapshotVisible = ref(false);
+const activeSnapshot = ref(null);
+
+const snapshotRaw = computed(() => JSON.stringify(activeSnapshot.value?.snapshot?.raw || {}, null, 2));
+
+const moderationColumns = [
+  { title: '类型', key: 'entityType', width: 90, render: (row) => entityTypeText(row.entityType) },
+  { title: '标题', key: 'title', render: (row) => row.title || row.snapshot?.title || '-' },
+  { title: '用户', key: 'owner', width: 110, render: (row) => row.owner?.nickname || '-' },
+  {
+    title: '状态',
+    key: 'status',
+    width: 110,
+    render: (row) => h(NTag, { type: moderationStatusType(row.status) }, { default: () => moderationStatusText(row.status) })
+  },
+  {
+    title: '风险',
+    key: 'riskLevel',
+    width: 110,
+    render: (row) => h(NTag, { type: riskTagType(row.riskLevel) }, { default: () => riskText(row.riskLevel) })
+  },
+  { title: '命中分类', key: 'categories', render: (row) => categoryText(row.categories || []) },
+  { title: '原因', key: 'reason', render: (row) => row.reason || row.error || '-' },
+  {
+    title: '操作',
+    key: 'actions',
+    width: 110,
+    render(row) {
+      return h(NButton, { size: 'small', secondary: true, onClick: () => showSnapshot(row) }, { default: () => '查看快照' });
+    }
+  }
+];
 
 const reportColumns = [
   { title: '类型', key: 'type', width: 90 },
@@ -96,6 +166,23 @@ async function load() {
   reports.value = data.reports;
   taskDisputes.value = data.taskDisputes;
   orderDisputes.value = data.orderDisputes;
+  moderationItems.value = data.moderationItems || [];
+}
+
+async function scanModeration() {
+  scanning.value = true;
+  try {
+    const result = await request('/api/admin/moderation/scan', { method: 'POST', body: { limit: 50 } }, 'admin');
+    message.success(`审核完成：通过 ${result.approved || 0}，打回 ${result.rejected || 0}`);
+    await load();
+  } finally {
+    scanning.value = false;
+  }
+}
+
+function showSnapshot(row) {
+  activeSnapshot.value = row;
+  snapshotVisible.value = true;
 }
 
 function resolveReport(row, valid) {
@@ -122,5 +209,61 @@ async function resolveOrder(row, action) {
   await request(`/api/admin/order-disputes/${row.id}/resolve`, { method: 'POST', body: { action, reason: '管理员综合审核处理' } }, 'admin');
   message.success('订单纠纷已处理');
   await load();
+}
+
+function entityTypeText(type) {
+  return { post: '帖子', task: '任务', product: '商品' }[type] || type || '-';
+}
+
+function moderationStatusText(status) {
+  return {
+    pending: '待审核',
+    processing: '审核中',
+    approved: '已通过',
+    rejected: '违规打回',
+    error: '审核出错',
+    superseded: '已失效'
+  }[status] || status || '-';
+}
+
+function moderationStatusType(status) {
+  return {
+    pending: 'warning',
+    processing: 'info',
+    approved: 'success',
+    rejected: 'error',
+    error: 'error',
+    superseded: 'default'
+  }[status] || 'default';
+}
+
+function riskText(level) {
+  return {
+    low: '低风险',
+    medium: '中风险',
+    high: '高风险',
+    critical: '严重'
+  }[level] || '未知';
+}
+
+function riskTagType(level) {
+  return {
+    low: 'success',
+    medium: 'warning',
+    high: 'error',
+    critical: 'error'
+  }[level] || 'default';
+}
+
+function categoryText(categories) {
+  if (!categories.length) return '-';
+  const map = {
+    antisocial: '反社会/极端暴力',
+    self_harm: '自残自杀',
+    illegal: '违法违规',
+    sexual: '色情低俗',
+    fraud: '诈骗交易'
+  };
+  return categories.map((item) => map[item] || item).join('、');
 }
 </script>

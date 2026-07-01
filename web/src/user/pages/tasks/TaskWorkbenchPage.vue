@@ -87,7 +87,16 @@
                 </n-tag>
                 <n-tag v-if="task.assignee" size="small" type="info" :bordered="false">接单者 {{ task.assignee.nickname }}</n-tag>
                 <n-tag v-if="task.deadlineAt" size="small" :bordered="false">截止 {{ formatDateTime(task.deadlineAt) }}</n-tag>
+                <n-tag size="small" :type="moderationType(task.moderationStatus)" :bordered="false">
+                  {{ moderationText(task.moderationStatus) }}
+                </n-tag>
               </div>
+              <n-alert v-if="task.moderationStatus === 'pending'" type="warning" :show-icon="false" class="workbench-inline-alert">
+                任务正在审核，通过后才会出现在任务市场。
+              </n-alert>
+              <n-alert v-if="task.moderationStatus === 'rejected'" type="error" :show-icon="false" class="workbench-inline-alert">
+                {{ task.moderationReason || '任务审核未通过，暂不会对外展示。' }}
+              </n-alert>
               <n-space>
                 <n-button size="small" secondary @click="$router.push(`/tasks/${task.id}`)">查看</n-button>
                 <n-button v-if="task.status === 'editing'" size="small" type="primary" @click="$router.push(`/tasks/${task.id}/payment`)">继续支付</n-button>
@@ -232,6 +241,22 @@ function applicationStatusType(status) {
     rejected: 'error',
     expired: 'default'
   }[status] || 'default';
+}
+
+function moderationText(status = 'approved') {
+  return {
+    pending: '审核中',
+    approved: '审核通过',
+    rejected: '审核未通过'
+  }[status || 'approved'] || status;
+}
+
+function moderationType(status = 'approved') {
+  return {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'error'
+  }[status || 'approved'] || 'default';
 }
 
 function flowTypeText(type) {

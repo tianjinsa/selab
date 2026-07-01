@@ -18,6 +18,7 @@ import ForumCreatePage from './pages/forum/ForumCreatePage.vue';
 import ForumDetailPage from './pages/forum/ForumDetailPage.vue';
 import ForumRankingPage from './pages/forum/ForumRankingPage.vue';
 import ForumCollectionsPage from './pages/forum/ForumCollectionsPage.vue';
+import ForumStudioPage from './pages/forum/ForumStudioPage.vue';
 import MarketHomePage from './pages/market/MarketHomePage.vue';
 import MarketCreatePage from './pages/market/MarketCreatePage.vue';
 import MarketDetailPage from './pages/market/MarketDetailPage.vue';
@@ -44,6 +45,7 @@ export const userRouter = createRouter({
     { path: '/tasks/:id', component: TaskDetailPage },
     { path: '/forum', component: ForumHomePage },
     { path: '/forum/new', component: ForumCreatePage },
+    { path: '/forum/studio', component: ForumStudioPage },
     { path: '/forum/collections', component: ForumCollectionsPage },
     { path: '/forum/rankings', component: ForumRankingPage },
     { path: '/forum/:id', component: ForumDetailPage },
