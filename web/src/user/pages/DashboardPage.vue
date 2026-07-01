@@ -46,6 +46,10 @@
             <Mail :size="16" />
             <span>打开统一私信</span>
           </button>
+          <button type="button" @click="$router.push('/wallet')">
+            <WalletCards :size="16" />
+            <span>查看钱包余额</span>
+          </button>
           <button type="button" @click="$router.push('/profile')">
             <UserRound :size="16" />
             <span>完善个人资料</span>
@@ -173,7 +177,8 @@ import {
   Share2,
   ShoppingBag,
   Star,
-  UserRound
+  UserRound,
+  WalletCards
 } from '@lucide/vue';
 import { useRouter } from 'vue-router';
 import { request } from '../../shared/http.js';

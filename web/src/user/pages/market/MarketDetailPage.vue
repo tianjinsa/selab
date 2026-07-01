@@ -128,7 +128,7 @@ async function deliver(id) {
 
 async function receive(id) {
   await request(`/api/market/orders/${id}/receive`, { method: 'POST' });
-  message.success('订单已完成，模拟打款流水已记录');
+  message.success('订单已完成，收入已入账卖家钱包');
   await load();
 }
 

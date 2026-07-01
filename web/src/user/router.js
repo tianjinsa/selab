@@ -6,6 +6,7 @@ import ProfilePage from './pages/ProfilePage.vue';
 import UserProfilePage from './pages/UserProfilePage.vue';
 import MessagesPage from './pages/MessagesPage.vue';
 import NotificationsPage from './pages/NotificationsPage.vue';
+import WalletPage from './pages/WalletPage.vue';
 import PlaceholderPage from './pages/PlaceholderPage.vue';
 import TaskMarketPage from './pages/tasks/TaskMarketPage.vue';
 import TaskFormPage from './pages/tasks/TaskFormPage.vue';
@@ -36,6 +37,7 @@ export const userRouter = createRouter({
     { path: '/users/:id', component: UserProfilePage },
     { path: '/messages/:id?', component: MessagesPage },
     { path: '/notifications', component: NotificationsPage },
+    { path: '/wallet', component: WalletPage },
     { path: '/tasks', component: TaskMarketPage },
     { path: '/tasks/new', component: TaskFormPage },
     { path: '/tasks/ranking', component: TaskRankingPage },

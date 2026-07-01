@@ -4,6 +4,7 @@ import { assertCleanContent, extractTaskKeywords } from '../utils/content.js';
 import { createNotification } from './notifications.js';
 import { getOrCreateConversation, sendMessage } from './chat.js';
 import { isModerationApproved } from './contentModeration.js';
+import { creditWallet } from './wallet.js';
 
 const areas = ['东区', '西区', '南区', '北区', '宿舍区', '教学区', '快递点', '食堂', '图书馆', '其他'];
 
@@ -647,7 +648,15 @@ async function completeTask(store, task, reason) {
     type: 'task_finish_settlement',
     amount: task.reward,
     status: 'success',
-    title: `任务完成结算：${task.title}`
+    title: `任务收入入账钱包：${task.title}`
+  });
+  await creditWallet(store, {
+    userId: task.assigneeId,
+    relatedType: 'task',
+    relatedId: task.id,
+    amount: task.reward,
+    title: `任务收入：${task.title}`,
+    source: 'task_finish_settlement'
   });
 }
 

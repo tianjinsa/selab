@@ -13,6 +13,7 @@ import taskRoutes from './routes/tasks.js';
 import forumRoutes from './routes/forum.js';
 import marketRoutes from './routes/market.js';
 import aiRoutes from './routes/ai.js';
+import walletRoutes from './routes/wallet.js';
 import { ApiError } from './utils/errors.js';
 
 export function createApp(store, realtime) {
@@ -46,6 +47,7 @@ export function createApp(store, realtime) {
   app.use('/api/forum', forumRoutes);
   app.use('/api/market', marketRoutes);
   app.use('/api/ai', aiRoutes);
+  app.use('/api/wallet', walletRoutes);
 
   if (fs.existsSync(config.publicDir)) {
     app.use(express.static(config.publicDir));
