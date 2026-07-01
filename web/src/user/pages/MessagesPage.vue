@@ -18,13 +18,21 @@
         </n-alert>
       </div>
       <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
-        <div v-for="conversation in conversations" :key="conversation.id" class="conversation-item" :class="{ active: activeId === conversation.id }" @click="selectConversation(conversation.id)">
-          <n-space justify="space-between">
+        <article
+          v-for="conversation in conversations"
+          :key="conversation.id"
+          class="conversation-item"
+          :class="{ active: activeId === conversation.id }"
+          @click="selectConversation(conversation.id)"
+        >
+          <div class="conversation-main">
             <strong>{{ conversation.peer?.nickname || '同学' }}</strong>
+            <div class="muted conversation-preview">{{ conversationPreview(conversation.lastMessage) }}</div>
+          </div>
+          <div class="conversation-actions">
             <n-badge v-if="conversation.unreadCount" :value="conversation.unreadCount" />
-          </n-space>
-          <div class="muted" style="margin-top: 4px;">{{ conversationPreview(conversation.lastMessage) }}</div>
-        </div>
+          </div>
+        </article>
       </transition-group>
       <div v-if="!conversations.length" class="empty-state">搜索同学后开始第一段私信</div>
     </aside>
