@@ -7,6 +7,7 @@ import {
   checkLabelSimilarity,
   classifyProductCategories,
   generateForumTags,
+  generateTaskTags,
   recommendEntityCategory,
   requestNewCategoryWithSimilarity,
   requestNewTaskCategoryWithSimilarity,
@@ -71,6 +72,12 @@ router.post('/task-categories/ai-arbitrate', requireUser, asyncHandler(async (re
 router.post('/task-tags/check-similarity', requireUser, asyncHandler(async (req, res) => {
   const tags = Array.isArray(req.body.tags) ? req.body.tags : [];
   res.json({ similarity: await checkLabelSimilarity(req.store, 'taskTag', tags) });
+}));
+
+router.post('/task-tags/ai-generate', requireUser, asyncHandler(async (req, res) => {
+  const tags = await generateTaskTags(req.store, req.body || {});
+  const similarity = await checkLabelSimilarity(req.store, 'taskTag', tags);
+  res.json({ tags, similarity });
 }));
 
 export default router;

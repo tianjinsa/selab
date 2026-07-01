@@ -44,7 +44,10 @@
       <n-form-item label="任务标签">
         <div class="tag-ai-field">
           <n-dynamic-tags v-model:value="form.tags" :max="5" />
-          <span class="muted">最多 5 个，每个最长 20 个字符；发布前会自动检测相似标签。</span>
+          <n-button secondary :loading="generatingTaskTags" @click="generateTaskTagsForForm">
+            AI 帮我写标签
+          </n-button>
+          <span class="muted">最多 5 个，每个最长 20 个字符；发布前会自动补全并检测相似标签。</span>
         </div>
       </n-form-item>
       <n-form-item label="交付要求">
@@ -110,6 +113,7 @@ const meta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
 const saving = ref(false);
 const aiChecking = ref(false);
 const categoryChecking = ref(false);
+const generatingTaskTags = ref(false);
 const showCategoryRequest = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
@@ -160,6 +164,7 @@ async function submit() {
   saving.value = true;
   aiChecking.value = true;
   try {
+    await supplementTaskTagsIfNeeded();
     const categoryDecision = await resolveCategoryRecommendation();
     if (!categoryDecision) return;
     const decision = await resolveTagSimilarity(await checkTaskTagSimilarity(form.tags));
@@ -187,6 +192,58 @@ async function submit() {
     aiChecking.value = false;
     saving.value = false;
   }
+}
+
+async function generateTaskTagsForForm() {
+  if (!form.title.trim() && !form.detail.trim()) {
+    message.warning('请先填写任务标题或详情');
+    return;
+  }
+  generatingTaskTags.value = true;
+  aiChecking.value = true;
+  try {
+    const data = await request('/api/task-tags/ai-generate', {
+      method: 'POST',
+      body: {
+        title: form.title,
+        detail: form.detail,
+        category: form.category,
+        deliveryRequirement: form.deliveryRequirement
+      }
+    });
+    mergeTaskTags(data.tags || []);
+    const decision = await resolveTagSimilarity(data.similarity || []);
+    if (decision?.replacements) {
+      form.tags = applyTagReplacements(form.tags, decision.replacements);
+    }
+    message.success('AI 任务标签已生成');
+  } catch (error) {
+    message.error(error.message || 'AI 标签生成失败');
+  } finally {
+    generatingTaskTags.value = false;
+    aiChecking.value = false;
+  }
+}
+
+async function supplementTaskTagsIfNeeded() {
+  if (form.tags.length >= 3 || (!form.title.trim() && !form.detail.trim())) return;
+  const data = await request('/api/task-tags/ai-generate', {
+    method: 'POST',
+    body: {
+      title: form.title,
+      detail: form.detail,
+      category: form.category,
+      deliveryRequirement: form.deliveryRequirement
+    }
+  });
+  mergeTaskTags(data.tags || []);
+}
+
+function mergeTaskTags(tags = []) {
+  form.tags = [...new Set([
+    ...form.tags,
+    ...tags.map((item) => String(item || '').replace(/^#/, '').trim()).filter(Boolean)
+  ].map((item) => item.slice(0, 20)))].slice(0, 5);
 }
 
 async function resolveCategoryRecommendation() {

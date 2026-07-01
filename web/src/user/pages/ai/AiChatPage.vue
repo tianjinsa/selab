@@ -271,6 +271,7 @@ const taskDraftVisible = ref(false);
 const taskDraftSubmitting = ref(false);
 const publishedTask = ref(null);
 const taskMeta = ref({ categories: [], areas: [], rewardMin: 1, rewardMax: 500 });
+const taskDraftTags = ref([]);
 const taskDraftForm = reactive({
   title: '',
   category: '',
@@ -968,6 +969,7 @@ async function openTaskDraft(card) {
     deliveryRequirement: String(card.deliveryRequirement || ''),
     contactNote: String(card.contactNote || '')
   });
+  taskDraftTags.value = [];
   publishedTask.value = null;
   taskDraftVisible.value = true;
 }
@@ -975,6 +977,7 @@ async function openTaskDraft(card) {
 async function publishTaskDraft() {
   taskDraftSubmitting.value = true;
   try {
+    await supplementAiTaskDraftTagsIfNeeded();
     const categoryDecision = await resolveAiTaskDraftCategoryRecommendation();
     if (!categoryDecision) return;
     const payload = {
@@ -986,6 +989,7 @@ async function publishTaskDraft() {
       detail: taskDraftForm.detail,
       deliveryRequirement: taskDraftForm.deliveryRequirement,
       contactNote: taskDraftForm.contactNote,
+      tags: taskDraftTags.value,
       imageUrls: []
     };
     const draftData = await request('/api/tasks', { method: 'POST', body: payload });
@@ -1008,7 +1012,7 @@ async function resolveAiTaskDraftCategoryRecommendation() {
       detail: taskDraftForm.detail,
       deliveryRequirement: taskDraftForm.deliveryRequirement,
       category: taskDraftForm.category,
-      tags: []
+      tags: taskDraftTags.value
     }
   });
   if (!data.changed || !data.recommended?.label) return true;
@@ -1032,7 +1036,7 @@ async function resolveAiTaskDraftCategoryRecommendation() {
                 detail: taskDraftForm.detail,
                 deliveryRequirement: taskDraftForm.deliveryRequirement,
                 category: taskDraftForm.category,
-                tags: [],
+                tags: taskDraftTags.value,
                 apply: true,
                 acceptedLabel: data.recommended.label
               }
@@ -1057,6 +1061,26 @@ function ensureAiTaskCategory(label) {
   const name = String(label || '').trim();
   if (!name || taskMeta.value.categories.includes(name)) return;
   taskMeta.value.categories.push(name);
+}
+
+async function supplementAiTaskDraftTagsIfNeeded() {
+  if (taskDraftTags.value.length >= 3 || (!taskDraftForm.title.trim() && !taskDraftForm.detail.trim())) return;
+  const data = await request('/api/task-tags/ai-generate', {
+    method: 'POST',
+    body: {
+      title: taskDraftForm.title,
+      detail: taskDraftForm.detail,
+      category: taskDraftForm.category,
+      deliveryRequirement: taskDraftForm.deliveryRequirement
+    }
+  });
+  const replacements = Object.fromEntries((data.similarity || [])
+    .filter((item) => item.matches?.length)
+    .map((item) => [item.input, item.matches[0].label]));
+  taskDraftTags.value = [...new Set([
+    ...taskDraftTags.value,
+    ...(data.tags || []).map((item) => String(item || '').replace(/^#/, '').trim()).filter(Boolean)
+  ].map((item) => String(replacements[item] || item).slice(0, 20)))].slice(0, 5);
 }
 
 function clampNumber(value, min, max) {

@@ -2,6 +2,7 @@ import sql from 'mssql';
 import { createHash } from 'node:crypto';
 import { config } from '../config.js';
 import { badRequest } from '../utils/errors.js';
+import { extractTaskKeywords } from '../utils/content.js';
 
 const VECTOR_DIMENSIONS = 1024;
 const DUPLICATE_DISTANCE = 0.08;
@@ -529,6 +530,34 @@ export async function generateForumTags(store, { title = '', content = '' } = {}
     fallback
   );
   return [...new Set((result.tags || []).map((item) => String(item || '').replace(/^#/, '').trim()).filter(Boolean))]
+    .slice(0, 5);
+}
+
+export async function generateTaskTags(store, {
+  title = '',
+  detail = '',
+  category = '',
+  deliveryRequirement = ''
+} = {}) {
+  const source = `${title} ${detail} ${category} ${deliveryRequirement}`;
+  const fallback = () => ({
+    tags: extractTaskKeywords(source)
+  });
+  const result = await chatJson(
+    store,
+    '你是校园任务互助标签助手。只输出 JSON，格式为 {"tags":["标签1"]}，生成 3-5 个中文短标签，不要带 #，标签应体现任务类型、场景或技能需求。',
+    [
+      `任务标题：${title}`,
+      `任务分类：${category}`,
+      `任务详情：${detail}`,
+      `交付要求：${deliveryRequirement}`
+    ].join('\n'),
+    fallback
+  );
+  return [...new Set((result.tags || [])
+    .map((item) => String(item || '').replace(/^#/, '').trim())
+    .filter(Boolean)
+    .map((item) => item.slice(0, 20)))]
     .slice(0, 5);
 }
 
