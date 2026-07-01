@@ -276,6 +276,7 @@ const taskDraftForm = reactive({
   deliveryRequirement: '',
   contactNote: ''
 });
+const hiddenToolNames = new Set(['report_risk']);
 let socket = null;
 let reconnectNoticeShown = false;
 
@@ -393,7 +394,7 @@ async function handleSocketMessage(event) {
     if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
     const target = messages.value.find((item) => item.id === packet.payload.messageId)
       || ensureAssistantMessage(packet.payload);
-    if (target) {
+    if (target && shouldDisplayToolEvent(packet.payload.toolEvent)) {
       target.runState = packet.payload.runState || target.runState;
       mergeToolEvent(target, packet.payload.toolEvent);
     }
@@ -677,7 +678,7 @@ function mergeTextPart(message, partId, channel, delta) {
 }
 
 function toolEventMap(message) {
-  return new Map((message.toolEvents || []).map((event) => [event.id, event]));
+  return new Map((message.toolEvents || []).filter(shouldDisplayToolEvent).map((event) => [event.id, event]));
 }
 
 function messageBlocks(message, channel) {
@@ -734,6 +735,7 @@ function ensureAssistantMessage(payload = {}) {
 function mergeToolEvent(message, event) {
   if (!event) return;
   const nextEvent = normalizeToolEvent(event);
+  if (!shouldDisplayToolEvent(nextEvent)) return;
   const events = Array.isArray(message.toolEvents) ? [...message.toolEvents] : [];
   const index = events.findIndex((item) => item.id === nextEvent.id);
   if (index >= 0) events.splice(index, 1, normalizeToolEvent({ ...events[index], ...nextEvent }));
@@ -756,7 +758,7 @@ function ensureToolPart(message, event) {
 }
 
 function visibleToolEvents(message) {
-  const events = Array.isArray(message.toolEvents) ? message.toolEvents : [];
+  const events = Array.isArray(message.toolEvents) ? message.toolEvents.filter(shouldDisplayToolEvent) : [];
   if (events.length) return events;
   const cards = Array.isArray(message.cards) ? message.cards : [];
   const byType = new Map();
@@ -781,6 +783,12 @@ function visibleToolEvents(message) {
       ? `${meta[type][2]}：${items[0]?.title || '未命名任务'}`
       : `${meta[type][2]} ${items.length} 条`
   }));
+}
+
+function shouldDisplayToolEvent(event = {}) {
+  const toolName = String(event?.toolName || '');
+  const hidden = toolName && [...hiddenToolNames].some((name) => name === toolName || name.startsWith(toolName));
+  return Boolean(event?.id) && !hidden;
 }
 
 function scrollBottom() {
