@@ -15,6 +15,88 @@ import marketRoutes from './routes/market.js';
 import aiRoutes from './routes/ai.js';
 import walletRoutes from './routes/wallet.js';
 import { ApiError } from './utils/errors.js';
+import { collectionNames } from './data/defaultData.js';
+
+const BASE_COLLECTIONS = ['settings', 'users'];
+const CHAT_COLLECTIONS = ['conversations', 'messages', 'notifications'];
+const FORUM_COLLECTIONS = [
+  'posts',
+  'comments',
+  'tags',
+  'postTags',
+  'postLikes',
+  'postFavorites',
+  'follows',
+  'reports',
+  'contentModerationItems',
+  'forumWordClouds',
+  'forumAiSummaries',
+  'notifications',
+  'userCreditLogs'
+];
+const TASK_COLLECTIONS = [
+  'tasks',
+  'taskApplications',
+  'taskDeliveries',
+  'taskReviews',
+  'taskDisputes',
+  'taskKeywords',
+  'paymentFlows',
+  'reports',
+  'contentModerationItems',
+  'walletTransactions',
+  'notifications',
+  ...CHAT_COLLECTIONS
+];
+const MARKET_COLLECTIONS = [
+  'products',
+  'productFavorites',
+  'categoryRequests',
+  'orders',
+  'orderReviews',
+  'orderDisputes',
+  'paymentFlows',
+  'reports',
+  'contentModerationItems',
+  'walletTransactions',
+  'notifications',
+  ...CHAT_COLLECTIONS
+];
+const AI_COLLECTIONS = [
+  'aiSessions',
+  'aiMessages',
+  'aiToolCalls',
+  'aiRiskAlerts',
+  'aiConsultationStats',
+  'knowledgeEntries',
+  'tasks',
+  'products',
+  'posts',
+  'contentModerationItems',
+  'notifications'
+];
+
+function collectionsForRequest(req) {
+  const pathName = req.path;
+  if (!pathName.startsWith('/api')) return [];
+  if (pathName === '/api/health') return ['settings'];
+  if (pathName.startsWith('/api/admin')) return ['settings', ...collectionNames];
+  if (pathName.startsWith('/api/auth') || pathName.startsWith('/api/profile')) return BASE_COLLECTIONS;
+  if (pathName.startsWith('/api/notifications')) return [...BASE_COLLECTIONS, 'notifications'];
+  if (pathName.startsWith('/api/files')) return [...BASE_COLLECTIONS, 'fileAssets'];
+  if (pathName.startsWith('/api/wallet')) return [...BASE_COLLECTIONS, 'walletTransactions'];
+  if (pathName.startsWith('/api/forum')) return [...BASE_COLLECTIONS, ...FORUM_COLLECTIONS];
+  if (pathName.startsWith('/api/tasks')) return [...BASE_COLLECTIONS, ...TASK_COLLECTIONS];
+  if (pathName.startsWith('/api/market')) return [...BASE_COLLECTIONS, ...MARKET_COLLECTIONS];
+  if (pathName.startsWith('/api/ai')) return [...BASE_COLLECTIONS, ...AI_COLLECTIONS, ...TASK_COLLECTIONS, ...MARKET_COLLECTIONS, ...FORUM_COLLECTIONS];
+  if (pathName.startsWith('/api/users')) {
+    return [...BASE_COLLECTIONS, ...CHAT_COLLECTIONS, ...FORUM_COLLECTIONS, ...TASK_COLLECTIONS, ...MARKET_COLLECTIONS];
+  }
+  if (pathName.startsWith('/api/conversations') || pathName.startsWith('/api/messages')) {
+    return [...BASE_COLLECTIONS, ...CHAT_COLLECTIONS];
+  }
+  return ['settings', ...collectionNames];
+}
 
 export function createApp(store, realtime) {
   const app = express();
@@ -26,9 +108,7 @@ export function createApp(store, realtime) {
     req.store = store;
     req.realtime = realtime;
     try {
-      if (req.path.startsWith('/api')) {
-        await store.refreshFromDatabase?.();
-      }
+      await store.loadCollections?.(collectionsForRequest(req), { force: true });
       next();
     } catch (error) {
       next(error);

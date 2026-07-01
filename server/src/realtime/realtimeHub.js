@@ -2,8 +2,12 @@ import { WebSocketServer } from 'ws';
 import { verifyUserToken } from '../services/auth.js';
 import { markConversationRead, sendMessage } from '../services/chat.js';
 import { cancelAiRun, startAiRun } from '../services/ai.js';
+import { collectionNames } from '../data/defaultData.js';
 
 const WS_OPEN = 1;
+const WS_AUTH_COLLECTIONS = ['settings', 'users'];
+const WS_CHAT_COLLECTIONS = ['settings', 'users', 'conversations', 'messages', 'notifications'];
+const WS_AI_COLLECTIONS = ['settings', ...collectionNames];
 
 export class RealtimeHub {
   constructor(store) {
@@ -15,7 +19,14 @@ export class RealtimeHub {
 
   attach(server) {
     this.wss = new WebSocketServer({ server, path: '/ws' });
-    this.wss.on('connection', (ws, req) => this.handleConnection(ws, req));
+    this.wss.on('connection', (ws, req) => {
+      this.handleConnection(ws, req).catch(() => {
+        try {
+          ws.send(JSON.stringify({ event: 'auth.error', payload: { message: 'WebSocket 鉴权失败' } }));
+        } catch {}
+        ws.close();
+      });
+    });
     this.heartbeatTimer = setInterval(() => this.pingClients(), 30 * 1000);
   }
 
@@ -28,8 +39,9 @@ export class RealtimeHub {
     }
   }
 
-  handleConnection(ws, req) {
+  async handleConnection(ws, req) {
     try {
+      await this.store.loadCollections?.(WS_AUTH_COLLECTIONS, { force: true });
       const url = new URL(req.url, 'http://localhost');
       const token = url.searchParams.get('token');
       if (!token) throw new Error('missing token');
@@ -69,22 +81,26 @@ export class RealtimeHub {
     }
     try {
       if (packet.event === 'chat.message.send') {
+        await this.store.loadCollections?.(WS_CHAT_COLLECTIONS, { force: true });
         const { conversationId, content, type, imageUrl, attachment, card } = packet.payload || {};
         const message = await sendMessage(this.store, this, ws.userId, conversationId, { content, type, imageUrl, attachment, card });
         ws.send(JSON.stringify({ event: 'chat.message.sent', payload: { conversationId, message } }));
         return;
       }
       if (packet.event === 'chat.message.read') {
+        await this.store.loadCollections?.(WS_CHAT_COLLECTIONS, { force: true });
         const { conversationId } = packet.payload || {};
         await markConversationRead(this.store, this, ws.userId, conversationId);
         return;
       }
       if (packet.event === 'ai.message.send') {
+        await this.store.loadCollections?.(WS_AI_COLLECTIONS, { force: true });
         const result = await startAiRun(this.store, this, ws.userId, packet.payload || {});
         ws.send(JSON.stringify({ event: 'ai.message.accepted', payload: result }));
         return;
       }
       if (packet.event === 'ai.run.cancel') {
+        await this.store.loadCollections?.(WS_AI_COLLECTIONS, { force: true });
         const { sessionId } = packet.payload || {};
         await cancelAiRun(this.store, ws.userId, sessionId);
         ws.send(JSON.stringify({ event: 'ai.run.cancelled', payload: { sessionId } }));

@@ -164,6 +164,7 @@ export async function hasFileBlob(filename) {
 
 export async function migrateLocalUploadsToDatabase(store) {
   await ensureSchema();
+  await store.loadCollections?.(['fileAssets'], { force: true });
   const activePool = await getPool();
   if (await isMigrationCompleted(activePool, LOCAL_UPLOADS_MIGRATION)) return;
 

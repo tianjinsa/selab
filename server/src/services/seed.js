@@ -6,8 +6,7 @@ function now() {
 }
 
 export async function seedInitialData(store) {
-  const users = store.collection('users');
-  if (users.length === 0) {
+  if (await store.count('users') === 0) {
     const passwordHash = await hashPassword('123456');
     await store.replaceCollection('users', [
       {
@@ -50,7 +49,7 @@ export async function seedInitialData(store) {
       }
     ]);
   }
-  if (store.collection('knowledgeEntries').length === 0) {
+  if (await store.count('knowledgeEntries') === 0) {
     await store.replaceCollection('knowledgeEntries', [
       {
         id: randomUUID(),

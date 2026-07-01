@@ -120,6 +120,21 @@ export async function enqueueContentModeration(store, realtime, entityType, enti
 }
 
 export async function scanContentModerationQueue(store, realtime, options = {}) {
+  await store.loadCollections?.([
+    'settings',
+    'users',
+    'contentModerationItems',
+    'posts',
+    'postTags',
+    'tasks',
+    'products',
+    'paymentFlows',
+    'orders',
+    'messages',
+    'conversations',
+    'notifications',
+    'walletTransactions'
+  ], { force: true });
   const limit = Number(options.limit || 20);
   const queue = store.collection('contentModerationItems')
     .filter((item) => item.status === 'pending')
