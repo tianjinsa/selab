@@ -59,6 +59,9 @@
             <n-tag size="small" :type="taskStatusType(task.status)">{{ taskStatusText[task.status] }}</n-tag>
           </n-space>
           <p class="muted">{{ task.category }} · {{ task.campusArea }} · {{ formatMoney(task.reward) }}</p>
+          <n-space v-if="task.tags?.length" size="small" class="task-tag-row">
+            <n-tag v-for="tag in task.tags.slice(0, 5)" :key="tag" size="small" :bordered="false">#{{ tag }}</n-tag>
+          </n-space>
           <p>{{ task.detail }}</p>
           <n-alert v-if="task.lowCreditWarning" type="warning" :show-icon="false">发布者信用分较低，请沟通确认后再接单。</n-alert>
         </div>

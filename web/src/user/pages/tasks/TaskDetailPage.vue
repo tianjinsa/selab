@@ -8,6 +8,9 @@
             <n-tag :type="taskStatusType(task.status)">{{ taskStatusText[task.status] }}</n-tag>
           </n-space>
           <p class="muted">{{ task.category }} · {{ task.campusArea }} · {{ formatMoney(task.reward) }}</p>
+          <n-space v-if="task.tags?.length" size="small" class="task-tag-row">
+            <n-tag v-for="tag in task.tags" :key="tag" size="small" :bordered="false">#{{ tag }}</n-tag>
+          </n-space>
         </div>
         <n-button secondary @click="$router.push('/tasks')">返回市场</n-button>
       </n-space>

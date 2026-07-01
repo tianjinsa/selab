@@ -1209,6 +1209,10 @@ a:focus-visible,
   font-size: 17px;
 }
 
+.task-tag-row {
+  margin: -2px 0 10px;
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
