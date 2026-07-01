@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { listTasks, getTaskDetail } from './tasks.js';
 import { listProducts, getProductDetail } from './market.js';
 import { listPosts, getPostDetail } from './forum.js';
-import { searchKnowledgeVectors } from './vectorAi.js';
+import { searchKnowledgeVectors, testEmbeddingConfig } from './vectorAi.js';
 import { createCounselorAlertsForUser } from './counselor.js';
 
 const activeRuns = new Map();
@@ -93,6 +93,23 @@ function sanitizeAiConfig(settings) {
     enableThinking: Boolean(config.enableThinking),
     thinkingType: config.thinkingType || '',
     reasoningEffort: config.reasoningEffort || ''
+  };
+}
+
+function draftAiConfig(store, body = {}) {
+  const current = store.collection('settings').aiConfig || {};
+  return {
+    ...current,
+    baseUrl: body.baseUrl ?? current.baseUrl ?? '',
+    apiKey: body.apiKey === undefined || body.apiKey === '' ? current.apiKey || '' : body.apiKey,
+    model: body.model ?? current.model ?? '',
+    embeddingBaseUrl: body.embeddingBaseUrl ?? current.embeddingBaseUrl ?? '',
+    embeddingApiKey: body.embeddingApiKey === undefined || body.embeddingApiKey === '' ? current.embeddingApiKey || '' : body.embeddingApiKey,
+    embeddingModel: body.embeddingModel ?? current.embeddingModel ?? 'text-embedding-3-small',
+    includeReasoning: Boolean(body.includeReasoning),
+    enableThinking: Boolean(body.enableThinking),
+    thinkingType: body.thinkingType ?? current.thinkingType ?? '',
+    reasoningEffort: body.reasoningEffort ?? current.reasoningEffort ?? ''
   };
 }
 
@@ -1185,22 +1202,63 @@ export function getAiAdminData(store) {
 }
 
 export async function updateAiConfig(store, body) {
-  const current = store.collection('settings').aiConfig || {};
-  const next = {
-    ...current,
-    baseUrl: body.baseUrl ?? current.baseUrl ?? '',
-    apiKey: body.apiKey === undefined || body.apiKey === '' ? current.apiKey || '' : body.apiKey,
-    model: body.model ?? current.model ?? '',
-    embeddingBaseUrl: body.embeddingBaseUrl ?? current.embeddingBaseUrl ?? '',
-    embeddingApiKey: body.embeddingApiKey === undefined || body.embeddingApiKey === '' ? current.embeddingApiKey || '' : body.embeddingApiKey,
-    embeddingModel: body.embeddingModel ?? current.embeddingModel ?? 'text-embedding-3-small',
-    includeReasoning: Boolean(body.includeReasoning),
-    enableThinking: Boolean(body.enableThinking),
-    thinkingType: body.thinkingType ?? current.thinkingType ?? '',
-    reasoningEffort: body.reasoningEffort ?? current.reasoningEffort ?? ''
-  };
+  const next = draftAiConfig(store, body);
   const settings = await store.updateSettings({ aiConfig: next });
   return sanitizeAiConfig(settings);
+}
+
+export async function testAiChatConfig(store, body = {}) {
+  const config = draftAiConfig(store, body);
+  if (!config.baseUrl) throw badRequest('请先填写对话 Base URL');
+  if (!config.apiKey) throw badRequest('请先填写对话 API Key');
+  if (!config.model) throw badRequest('请先填写对话模型名');
+  const startedAt = Date.now();
+  let response;
+  try {
+    response = await fetch(`${config.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify({
+        model: config.model,
+        stream: false,
+        temperature: 0,
+        max_tokens: 20,
+        messages: [
+          { role: 'system', content: '你只用于接口连通性测试。' },
+          { role: 'user', content: '请只回复 OK' }
+        ]
+      }),
+      signal: AbortSignal.timeout?.(20000)
+    });
+  } catch (error) {
+    throw badRequest(`对话模型测试失败：${error.message || error}`);
+  }
+  const text = await response.text();
+  if (!response.ok) {
+    throw badRequest(`对话模型测试失败：HTTP ${response.status} ${text.slice(0, 180)}`);
+  }
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw badRequest('对话模型测试失败：接口没有返回有效 JSON');
+  }
+  const content = data?.choices?.[0]?.message?.content || '';
+  if (!data?.choices?.length) throw badRequest('对话模型测试失败：返回结果中没有 choices');
+  return {
+    ok: true,
+    baseUrl: config.baseUrl,
+    model: config.model,
+    reply: String(content || '').trim(),
+    elapsedMs: Date.now() - startedAt
+  };
+}
+
+export async function testAiEmbeddingConfig(store, body = {}) {
+  return testEmbeddingConfig(store, body);
 }
 
 export async function createKnowledgeEntry(store, body) {

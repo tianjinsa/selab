@@ -29,7 +29,11 @@
             <n-select v-model:value="configForm.reasoningEffort" :options="reasoningEffortOptions" clearable placeholder="不发送" />
           </n-form-item-gi>
         </n-grid>
-        <n-button type="primary" @click="saveConfig">保存配置</n-button>
+        <n-space>
+          <n-button type="primary" @click="saveConfig">保存配置</n-button>
+          <n-button secondary :loading="chatTestLoading" @click="testChatModel">测试对话模型</n-button>
+          <n-button secondary :loading="embeddingTestLoading" @click="testEmbeddingModel">测试嵌入模型</n-button>
+        </n-space>
       </n-form>
       <n-alert class="panel-content-offset" type="info" :show-icon="false">
         当前状态：对话 {{ adminData?.config?.baseUrl || '未配置' }} / {{ adminData?.config?.model || '未配置' }}，对话 Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}；嵌入 {{ adminData?.config?.embeddingBaseUrl || '使用对话 Base URL' }} / {{ adminData?.config?.embeddingModel || 'text-embedding-3-small' }}，嵌入 Key {{ adminData?.config?.hasEmbeddingApiKey ? '已保存' : '未保存' }}{{ adminData?.config?.embeddingUsesChatProvider ? '（当前复用对话供应商）' : '' }}；思考 {{ adminData?.config?.enableThinking || adminData?.config?.includeReasoning ? '已开启' : '未开启' }}。
@@ -209,6 +213,8 @@ const showKnowledgeForm = ref(false);
 const showBaseForm = ref(false);
 const riskDetailVisible = ref(false);
 const riskDetailLoading = ref(false);
+const chatTestLoading = ref(false);
+const embeddingTestLoading = ref(false);
 const riskDetail = ref(null);
 const activeKnowledgeBaseId = ref('default');
 const editingKnowledgeId = ref('');
@@ -294,6 +300,32 @@ async function saveConfig() {
   await request('/api/ai/admin/config', { method: 'PATCH', body: configForm }, 'admin');
   message.success('AI 配置已保存');
   await load();
+}
+
+async function testChatModel() {
+  chatTestLoading.value = true;
+  try {
+    const data = await request('/api/ai/admin/config/test-chat', { method: 'POST', body: configForm }, 'admin');
+    const result = data.result || {};
+    message.success(`对话模型可用，耗时 ${result.elapsedMs || 0}ms，回复：${result.reply || '无文本'}`);
+  } catch (error) {
+    message.error(error.message || '对话模型测试失败');
+  } finally {
+    chatTestLoading.value = false;
+  }
+}
+
+async function testEmbeddingModel() {
+  embeddingTestLoading.value = true;
+  try {
+    const data = await request('/api/ai/admin/config/test-embedding', { method: 'POST', body: configForm }, 'admin');
+    const result = data.result || {};
+    message.success(`嵌入模型可用，耗时 ${result.elapsedMs || 0}ms，向量维度 ${result.dimensions || '-'}`);
+  } catch (error) {
+    message.error(error.message || '嵌入模型测试失败');
+  } finally {
+    embeddingTestLoading.value = false;
+  }
 }
 
 function openKnowledgeForm(item = null) {

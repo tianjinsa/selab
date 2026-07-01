@@ -118,14 +118,29 @@ function aiConfig(store) {
   return store.collection('settings').aiConfig || {};
 }
 
-function embeddingConfig(store) {
-  const settings = aiConfig(store);
+function embeddingSettingsFromAiConfig(settings = {}) {
   const usesDedicatedProvider = Boolean(settings.embeddingBaseUrl);
   return {
     baseUrl: settings.embeddingBaseUrl || settings.baseUrl || '',
     apiKey: usesDedicatedProvider ? settings.embeddingApiKey || '' : settings.embeddingApiKey || settings.apiKey || '',
     model: settings.embeddingModel || 'text-embedding-3-small'
   };
+}
+
+function embeddingConfig(store) {
+  return embeddingSettingsFromAiConfig(aiConfig(store));
+}
+
+function draftEmbeddingConfig(store, body = {}) {
+  const current = aiConfig(store);
+  return embeddingSettingsFromAiConfig({
+    ...current,
+    baseUrl: body.baseUrl ?? current.baseUrl ?? '',
+    apiKey: body.apiKey === undefined || body.apiKey === '' ? current.apiKey || '' : body.apiKey,
+    embeddingBaseUrl: body.embeddingBaseUrl ?? current.embeddingBaseUrl ?? '',
+    embeddingApiKey: body.embeddingApiKey === undefined || body.embeddingApiKey === '' ? current.embeddingApiKey || '' : body.embeddingApiKey,
+    embeddingModel: body.embeddingModel ?? current.embeddingModel ?? 'text-embedding-3-small'
+  });
 }
 
 function openAiBaseUrl(value = '') {
@@ -177,6 +192,58 @@ async function requestEmbedding(settings, input) {
   });
   if (!response.ok) return null;
   return response.json();
+}
+
+async function requestEmbeddingStrict(settings, input) {
+  const response = await fetch(`${openAiBaseUrl(settings.baseUrl)}/embeddings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${settings.apiKey}`
+    },
+    body: JSON.stringify({
+      model: settings.model || 'text-embedding-3-small',
+      input,
+      dimensions: VECTOR_DIMENSIONS
+    }),
+    signal: AbortSignal.timeout?.(20000)
+  });
+  const text = await response.text();
+  if (!response.ok) {
+    throw badRequest(`嵌入模型测试失败：HTTP ${response.status} ${text.slice(0, 180)}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw badRequest('嵌入模型测试失败：接口没有返回有效 JSON');
+  }
+}
+
+export async function testEmbeddingConfig(store, body = {}) {
+  const settings = draftEmbeddingConfig(store, body);
+  if (!settings.baseUrl) throw badRequest('请先填写嵌入 Base URL，或填写对话 Base URL 作为回退');
+  if (!settings.apiKey) throw badRequest('请先填写嵌入 API Key，或在未设置嵌入 Base URL 时保存/填写对话 API Key');
+  if (!settings.model) throw badRequest('请先填写嵌入模型名');
+  const startedAt = Date.now();
+  let data;
+  try {
+    data = await requestEmbeddingStrict(settings, '校园服务平台向量测试');
+  } catch (error) {
+    if (error.status) throw error;
+    throw badRequest(`嵌入模型测试失败：${error.message || error}`);
+  }
+  const embedding = data?.data?.[0]?.embedding;
+  if (!Array.isArray(embedding) || !embedding.length) {
+    throw badRequest('嵌入模型测试失败：返回结果中没有 embedding 向量');
+  }
+  return {
+    ok: true,
+    baseUrl: settings.baseUrl,
+    model: settings.model,
+    dimensions: embedding.length,
+    normalizedDimensions: VECTOR_DIMENSIONS,
+    elapsedMs: Date.now() - startedAt
+  };
 }
 
 function normalizeVector(source) {

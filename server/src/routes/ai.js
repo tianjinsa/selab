@@ -15,6 +15,8 @@ import {
   getAiSession,
   listAiSessions,
   regenerateAiRun,
+  testAiChatConfig,
+  testAiEmbeddingConfig,
   updateAiSession,
   updateAiUserMessage,
   updateAiConfig,
@@ -71,6 +73,14 @@ router.get('/admin/risks/:id', requireAdmin, asyncHandler(async (req, res) => {
 
 router.patch('/admin/config', requireAdmin, asyncHandler(async (req, res) => {
   res.json({ config: await updateAiConfig(req.store, req.body) });
+}));
+
+router.post('/admin/config/test-chat', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ result: await testAiChatConfig(req.store, req.body) });
+}));
+
+router.post('/admin/config/test-embedding', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ result: await testAiEmbeddingConfig(req.store, req.body) });
 }));
 
 router.post('/admin/knowledge', requireAdmin, asyncHandler(async (req, res) => {
