@@ -161,6 +161,30 @@ export async function resubmitRejectedPost(store, user, postId, body) {
   return decoratePost(store, updated, user.id, true);
 }
 
+export async function updateOwnPostVisibility(store, user, postId, visible) {
+  const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
+  if (!post) throw notFound('帖子不存在');
+  if (post.authorId !== user.id) throw forbidden('只能管理自己发布的帖子');
+  if (visible && post.moderationStatus === 'rejected') {
+    throw badRequest('违规打回帖子需要修改后重新提交审核');
+  }
+  const updated = await store.update('posts', post.id, {
+    visibility: visible ? 'public' : 'hidden'
+  });
+  return decoratePost(store, updated, user.id, true);
+}
+
+export async function deleteOwnPost(store, user, postId) {
+  const post = store.collection('posts').find((item) => item.id === postId && !item.deletedAt);
+  if (!post) throw notFound('帖子不存在');
+  if (post.authorId !== user.id) throw forbidden('只能删除自己发布的帖子');
+  await store.update('posts', post.id, {
+    visibility: 'hidden',
+    deletedAt: now()
+  });
+  return { ok: true };
+}
+
 export function listFollowingUsers(store, userId) {
   const users = store.collection('users');
   return store.collection('follows')
