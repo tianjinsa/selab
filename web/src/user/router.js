@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage.vue';
 import DashboardPage from './pages/DashboardPage.vue';
 import ProfilePage from './pages/ProfilePage.vue';
 import UserProfilePage from './pages/UserProfilePage.vue';
+import UserProfileContentPage from './pages/UserProfileContentPage.vue';
 import MessagesPage from './pages/MessagesPage.vue';
 import NotificationsPage from './pages/NotificationsPage.vue';
 import WalletPage from './pages/WalletPage.vue';
@@ -36,6 +37,7 @@ export const userRouter = createRouter({
     { path: '/login', component: LoginPage, meta: { public: true } },
     { path: '/', component: DashboardPage },
     { path: '/profile', component: ProfilePage },
+    { path: '/users/:id/content/:type', component: UserProfileContentPage },
     { path: '/users/:id', component: UserProfilePage },
     { path: '/messages/:id?', component: MessagesPage },
     { path: '/notifications', component: NotificationsPage },

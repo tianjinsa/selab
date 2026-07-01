@@ -65,6 +65,14 @@
         <strong>{{ stats.postCount }}</strong>
       </div>
       <div class="metric-card">
+        <span>{{ taskMetricLabel }}</span>
+        <strong>{{ stats.taskCount }}</strong>
+      </div>
+      <div class="metric-card">
+        <span>{{ productMetricLabel }}</span>
+        <strong>{{ stats.productCount }}</strong>
+      </div>
+      <div class="metric-card">
         <span>粉丝</span>
         <strong>{{ stats.followerCount }}</strong>
       </div>
@@ -74,13 +82,16 @@
       </div>
     </section>
 
-    <section class="surface panel">
-      <n-space justify="space-between" align="center">
-        <h3 style="margin: 0;">{{ postsTitle }}</h3>
-        <n-button secondary @click="$router.push('/forum')">返回社区</n-button>
-      </n-space>
+    <section class="surface panel profile-content-section">
+      <div class="profile-content-head">
+        <div>
+          <h3>{{ postsTitle }}</h3>
+          <p class="muted">共 {{ stats.postCount }} 篇，主页仅展示最近内容。</p>
+        </div>
+        <n-button secondary @click="openProfileContent('posts')">查看全部</n-button>
+      </div>
       <transition-group v-if="posts.length" name="card-flow" tag="div" class="waterfall user-posts" appear>
-        <article v-for="post in posts" :key="post.id" class="post-card" @click="$router.push(`/forum/${post.id}`)">
+        <article v-for="post in posts" :key="post.id" class="post-card profile-preview-card" @click="$router.push(`/forum/${post.id}`)">
           <img v-if="post.imageUrls?.[0]" class="post-cover" :src="assetUrl(post.imageUrls[0])" alt="帖子封面" />
           <n-space justify="space-between" align="center">
             <strong>{{ post.title }}</strong>
@@ -103,6 +114,56 @@
       </transition-group>
       <div v-else class="empty-state">还没有公开帖子</div>
     </section>
+
+    <section class="surface panel profile-content-section">
+      <div class="profile-content-head">
+        <div>
+          <h3>{{ tasksTitle }}</h3>
+          <p class="muted">共 {{ stats.taskCount }} 个，审核通过后才会展示。</p>
+        </div>
+        <n-button secondary @click="openProfileContent('tasks')">查看全部</n-button>
+      </div>
+      <transition-group v-if="tasks.length" name="card-flow" tag="div" class="grid grid-3 profile-preview-grid" appear>
+        <article v-for="task in tasks" :key="task.id" class="module-card profile-preview-card">
+          <div>
+            <img v-if="task.imageUrls?.[0]" class="post-cover" :src="assetUrl(task.imageUrls[0])" alt="任务图片" />
+            <n-space justify="space-between" align="center">
+              <strong>{{ task.title }}</strong>
+              <n-tag size="small" :type="taskStatusType(task.status)">{{ taskStatusText[task.status] }}</n-tag>
+            </n-space>
+            <p class="muted">{{ task.category }} · {{ task.campusArea }} · {{ formatTaskMoney(task.reward) }}</p>
+            <p>{{ (task.detail || '').slice(0, 96) }}</p>
+          </div>
+          <n-button secondary @click="$router.push(`/tasks/${task.id}`)">查看任务</n-button>
+        </article>
+      </transition-group>
+      <div v-else class="empty-state">还没有公开任务</div>
+    </section>
+
+    <section class="surface panel profile-content-section">
+      <div class="profile-content-head">
+        <div>
+          <h3>{{ productsTitle }}</h3>
+          <p class="muted">共 {{ stats.productCount }} 个，审核通过后才会展示。</p>
+        </div>
+        <n-button secondary @click="openProfileContent('products')">查看全部</n-button>
+      </div>
+      <transition-group v-if="products.length" name="card-flow" tag="div" class="grid grid-3 profile-preview-grid" appear>
+        <article v-for="product in products" :key="product.id" class="module-card profile-preview-card">
+          <div>
+            <img v-if="product.imageUrls?.[0]" class="post-cover" :src="assetUrl(product.imageUrls[0])" alt="商品图" />
+            <n-space justify="space-between" align="center">
+              <strong>{{ product.title }}</strong>
+              <n-tag size="small" :type="productStatusType(product.status)">{{ productStatusText[product.status] }}</n-tag>
+            </n-space>
+            <p class="muted">{{ product.category?.name || '未分类' }} · {{ product.condition }}</p>
+            <p class="market-favorite-price">{{ formatProductMoney(product.price) }}</p>
+          </div>
+          <n-button secondary @click="$router.push(`/market/${product.id}`)">查看商品</n-button>
+        </article>
+      </transition-group>
+      <div v-else class="empty-state">还没有公开商品</div>
+    </section>
   </div>
 </template>
 
@@ -114,13 +175,17 @@ import { Eye, Heart, MessageCircle, PenLine, Share2, ShieldCheck, Star, UserChec
 import { assetUrl, request } from '../../shared/http.js';
 import UserAvatar from '../../shared/UserAvatar.vue';
 import { loadUserSession, userSession as session } from '../session.js';
+import { formatMoney as formatTaskMoney, taskStatusText, taskStatusType } from './tasks/taskFormat.js';
+import { formatMoney as formatProductMoney, productStatusText, productStatusType } from './market/marketFormat.js';
 
 const route = useRoute();
 const router = useRouter();
 const message = useMessage();
 const profile = ref(null);
-const stats = ref({ postCount: 0, followerCount: 0, followingCount: 0 });
+const stats = ref({ postCount: 0, taskCount: 0, productCount: 0, followerCount: 0, followingCount: 0 });
 const posts = ref([]);
+const tasks = ref([]);
+const products = ref([]);
 const followed = ref(false);
 const profileViewMode = ref('owner');
 
@@ -147,7 +212,11 @@ const viewModeDescription = computed(() => {
   return '你可以维护资料、检查公开内容，并确认主页展示是否完整。';
 });
 const postMetricLabel = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的公开帖子' : '公开帖子'));
+const taskMetricLabel = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的公开任务' : '公开任务'));
+const productMetricLabel = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的在售商品' : '公开商品'));
 const postsTitle = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的公开帖子' : '公开帖子'));
+const tasksTitle = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的公开任务' : '公开任务'));
+const productsTitle = computed(() => (isSelf.value && profileViewMode.value === 'owner' ? '我的公开商品' : '公开商品'));
 
 onMounted(async () => {
   await loadUserSession();
@@ -162,6 +231,8 @@ async function loadProfile() {
   profile.value = data.user;
   stats.value = data.stats || stats.value;
   posts.value = data.posts || [];
+  tasks.value = data.tasks || [];
+  products.value = data.products || [];
   followed.value = Boolean(data.followed);
   if (data.user?.id !== session.user?.id) {
     profileViewMode.value = 'visitor';
@@ -179,6 +250,10 @@ async function toggleFollow() {
 async function startConversation() {
   const data = await request(`/api/conversations/by-user/${profile.value.id}`, { method: 'POST' });
   router.push(`/messages/${data.conversation.id}`);
+}
+
+function openProfileContent(type) {
+  router.push(`/users/${profile.value.id}/content/${type}`);
 }
 
 function formatDate(value) {

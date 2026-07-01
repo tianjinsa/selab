@@ -25,11 +25,13 @@ import {
   wordCloud
 } from '../services/forum.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
+import { paginateItems } from '../utils/pagination.js';
 
 const router = express.Router();
 
 router.get('/posts', requireUser, asyncHandler(async (req, res) => {
-  res.json({ posts: listPosts(req.store, req.query, req.user.id) });
+  const page = paginateItems(listPosts(req.store, req.query, req.user.id), req.query, { limit: 12, maxLimit: 40 });
+  res.json({ posts: page.items, pageInfo: page.pageInfo });
 }));
 
 router.post('/posts', requireUser, asyncHandler(async (req, res) => {
