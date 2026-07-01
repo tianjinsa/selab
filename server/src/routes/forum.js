@@ -8,7 +8,9 @@ import {
   forumRankings,
   generateForumSummary,
   getPostDetail,
+  listFavoritePosts,
   listForumReports,
+  listFollowingUsers,
   listPosts,
   resolveForumReport,
   sharePost,
@@ -50,6 +52,14 @@ router.get('/summary', requireUser, asyncHandler(async (req, res) => {
     });
   }
   res.json({ summary: await generateForumSummary(req.store), source: 'database' });
+}));
+
+router.get('/me/favorites', requireUser, asyncHandler(async (req, res) => {
+  res.json({ posts: listFavoritePosts(req.store, req.user.id) });
+}));
+
+router.get('/me/following', requireUser, asyncHandler(async (req, res) => {
+  res.json({ users: listFollowingUsers(req.store, req.user.id) });
 }));
 
 router.get('/posts/:id', requireUser, asyncHandler(async (req, res) => {

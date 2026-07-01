@@ -107,6 +107,18 @@ export function listProducts(store, query = {}, viewerId = '') {
   return decorated.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+export function listFavoriteProducts(store, userId) {
+  const products = store.collection('products');
+  return store.collection('productFavorites')
+    .filter((item) => item.userId === userId)
+    .map((favorite) => {
+      const product = products.find((item) => item.id === favorite.productId && !item.deletedAt);
+      return product ? { ...decorateProduct(store, product, userId), favoritedAt: favorite.createdAt } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b.favoritedAt || '').localeCompare(String(a.favoritedAt || '')));
+}
+
 export function getProductDetail(store, productId, viewerId = '') {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');

@@ -42,8 +42,19 @@ async function createSqlPersistence() {
     await master.close();
   }
 
-  const pool = await new sql.ConnectionPool(sqlConfig(config.db.database)).connect();
-  await pool.request().query(`
+  let pool = await connectAppPool();
+  let reconnecting = null;
+
+  async function connectAppPool() {
+    const next = new sql.ConnectionPool(sqlConfig(config.db.database));
+    next.on('error', (error) => {
+      console.error('SQL Server connection pool error:', error.message);
+    });
+    return next.connect();
+  }
+
+  async function ensureSchema(activePool) {
+    await activePool.request().query(`
     IF OBJECT_ID(N'dbo.AppCollections', N'U') IS NULL
     BEGIN
       CREATE TABLE dbo.AppCollections (
@@ -53,11 +64,39 @@ async function createSqlPersistence() {
       )
     END
   `);
+  }
+
+  async function reconnect() {
+    if (!reconnecting) {
+      const previous = pool;
+      reconnecting = (async () => {
+        await previous?.close().catch(() => {});
+        const next = await connectAppPool();
+        await ensureSchema(next);
+        pool = next;
+      })().finally(() => {
+        reconnecting = null;
+      });
+    }
+    await reconnecting;
+  }
+
+  async function runWithReconnect(operation) {
+    try {
+      return await operation(pool);
+    } catch (error) {
+      if (!isTransientSqlError(error)) throw error;
+      await reconnect();
+      return operation(pool);
+    }
+  }
+
+  await ensureSchema(pool);
 
   return {
     mode: 'sqlserver',
     async load() {
-      const result = await pool.request().query('SELECT name, payload FROM dbo.AppCollections');
+      const result = await runWithReconnect((activePool) => activePool.request().query('SELECT name, payload FROM dbo.AppCollections'));
       const data = createEmptyData();
       for (const row of result.recordset) {
         try {
@@ -70,7 +109,7 @@ async function createSqlPersistence() {
     },
     async save(name, payload) {
       const json = JSON.stringify(payload);
-      await pool.request()
+      await runWithReconnect((activePool) => activePool.request()
         .input('name', sql.NVarChar(100), name)
         .input('payload', sql.NVarChar(sql.MAX), json)
         .query(`
@@ -81,12 +120,24 @@ async function createSqlPersistence() {
             UPDATE SET payload = source.payload, updatedAt = SYSUTCDATETIME()
           WHEN NOT MATCHED THEN
             INSERT (name, payload) VALUES (source.name, source.payload);
-        `);
+        `));
     },
     async close() {
+      if (reconnecting) await reconnecting.catch(() => {});
       await pool.close();
     }
   };
+}
+
+function isTransientSqlError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+  return ['ESOCKET', 'ETIMEOUT', 'ECONNCLOSED', 'ENOTOPEN'].includes(code)
+    || message.includes('socket hang up')
+    || message.includes('connection lost')
+    || message.includes('connection is closed')
+    || message.includes('connection not yet open')
+    || message.includes('failed to connect');
 }
 
 async function createFilePersistence() {

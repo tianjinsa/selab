@@ -218,4 +218,8 @@ async function report(type, targetId) {
 function avatarText(name = '') {
   return String(name || '同').slice(0, 1);
 }
+
+function formatTime(value) {
+  return value ? new Date(value).toLocaleString() : '-';
+}
 </script>

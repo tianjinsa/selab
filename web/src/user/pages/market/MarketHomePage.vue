@@ -7,6 +7,10 @@
           <p class="muted">分类由管理员维护，购买申请会进入卖家私信卡片。</p>
         </div>
         <n-space>
+          <n-button secondary @click="$router.push('/market/favorites')">
+            <template #icon><Star :size="16" /></template>
+            我的收藏
+          </n-button>
           <n-button secondary @click="$router.push('/market/orders')">我的交易</n-button>
           <n-button secondary @click="$router.push('/market/grade')">年级推荐</n-button>
           <n-button type="primary" @click="$router.push('/market/new')">发布商品</n-button>
@@ -46,6 +50,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { Star } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 import { formatMoney, productStatusText } from './marketFormat.js';
 
