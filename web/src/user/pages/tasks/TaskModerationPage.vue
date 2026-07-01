@@ -47,10 +47,22 @@
           <h3 style="margin: 0;">审核列表</h3>
           <p class="muted" style="margin: 6px 0 0;">按最新审核变化排序。</p>
         </div>
-        <n-button text type="primary" :loading="loading" @click="load">
-          <template #icon><RefreshCcw :size="15" /></template>
-          刷新
-        </n-button>
+        <n-space>
+          <n-button
+            v-if="activeStatus === 'rejected' && stats.rejected"
+            secondary
+            type="error"
+            :loading="bulkDeleting"
+            @click="confirmDeleteRejected"
+          >
+            <template #icon><Trash2 :size="15" /></template>
+            全部删除
+          </n-button>
+          <n-button text type="primary" :loading="loading" @click="load">
+            <template #icon><RefreshCcw :size="15" /></template>
+            刷新
+          </n-button>
+        </n-space>
       </n-space>
 
       <n-tabs v-model:value="activeStatus" type="segment" animated style="margin-top: 14px;">
@@ -121,6 +133,7 @@ import { formatMoney, taskStatusText, taskStatusType } from './taskFormat.js';
 const dialog = useDialog();
 const message = useMessage();
 const loading = ref(false);
+const bulkDeleting = ref(false);
 const activeStatus = ref('all');
 const items = ref([]);
 const stats = ref({ total: 0, pending: 0, approved: 0, rejected: 0, hidden: 0 });
@@ -170,6 +183,33 @@ function confirmDelete(task) {
         await load();
       } catch (error) {
         message.error(error.message || '删除失败');
+      }
+    }
+  });
+}
+
+function confirmDeleteRejected() {
+  const count = Number(stats.value.rejected || 0);
+  if (!count) return;
+  dialog.warning({
+    title: '删除全部审核未通过任务',
+    content: `确认删除 ${count} 个审核未通过任务？可删除的任务会从任务市场和工作台移除。`,
+    positiveText: '全部删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      bulkDeleting.value = true;
+      try {
+        const result = await request('/api/tasks/moderation/rejected', { method: 'DELETE' });
+        if (result.failed?.length) {
+          message.warning(`已删除 ${result.deletedCount || 0} 个任务，${result.failed.length} 个因状态限制未删除`);
+        } else {
+          message.success(`已删除 ${result.deletedCount || 0} 个任务`);
+        }
+        await load();
+      } catch (error) {
+        message.error(error.message || '删除失败');
+      } finally {
+        bulkDeleting.value = false;
       }
     }
   });

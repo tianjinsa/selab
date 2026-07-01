@@ -194,6 +194,15 @@ export async function deleteOwnPost(store, user, postId) {
   return { ok: true };
 }
 
+export async function deleteRejectedOwnPosts(store, user) {
+  const targets = store.collection('posts')
+    .filter((post) => post.authorId === user.id && !post.deletedAt && post.moderationStatus === 'rejected');
+  for (const post of targets) {
+    await deleteOwnPost(store, user, post.id);
+  }
+  return { ok: true, deletedCount: targets.length };
+}
+
 export function listFollowingUsers(store, userId) {
   const users = store.collection('users');
   return store.collection('follows')

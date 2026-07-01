@@ -580,6 +580,22 @@ export async function deleteOwnProduct(store, user, productId) {
   return { ok: true };
 }
 
+export async function deleteRejectedOwnProducts(store, user) {
+  const targets = ownModerationProducts(store, user.id)
+    .filter((product) => product.moderationStatus === 'rejected');
+  const failed = [];
+  let deletedCount = 0;
+  for (const product of targets) {
+    try {
+      await deleteOwnProduct(store, user, product.id);
+      deletedCount += 1;
+    } catch (error) {
+      failed.push({ id: product.id, title: product.title, reason: error.message || '删除失败' });
+    }
+  }
+  return { ok: failed.length === 0, deletedCount, failed };
+}
+
 export function listMarketAdmin(store) {
   return {
     products: store.collection('products').map((item) => decorateProduct(store, item, '', true)),

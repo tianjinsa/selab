@@ -324,6 +324,22 @@ export async function deleteOwnTask(store, user, taskId) {
   return { ok: true };
 }
 
+export async function deleteRejectedOwnTasks(store, user) {
+  const targets = ownModerationTasks(store, user.id)
+    .filter((task) => task.moderationStatus === 'rejected');
+  const failed = [];
+  let deletedCount = 0;
+  for (const task of targets) {
+    try {
+      await deleteOwnTask(store, user, task.id);
+      deletedCount += 1;
+    } catch (error) {
+      failed.push({ id: task.id, title: task.title, reason: error.message || '删除失败' });
+    }
+  }
+  return { ok: failed.length === 0, deletedCount, failed };
+}
+
 export function getTaskDetail(store, taskId, viewerId = '') {
   const task = store.collection('tasks').find((item) => item.id === taskId);
   if (!task || task.deletedAt) throw notFound('任务不存在');

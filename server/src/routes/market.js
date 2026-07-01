@@ -10,6 +10,7 @@ import {
   createProduct,
   createProductReport,
   deleteOwnProduct,
+  deleteRejectedOwnProducts,
   deliverOrder,
   getProductDetail,
   gradeRecommendations,
@@ -64,6 +65,10 @@ router.get('/orders/workbench', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/moderation', requireUser, asyncHandler(async (req, res) => {
   res.json(await marketModerationCenter(req.store, req.user));
+}));
+
+router.delete('/moderation/rejected', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteRejectedOwnProducts(req.store, req.user));
 }));
 
 router.get('/favorites', requireUser, asyncHandler(async (req, res) => {

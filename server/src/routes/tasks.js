@@ -11,6 +11,7 @@ import {
   createTaskReport,
   createTaskReview,
   deleteOwnTask,
+  deleteRejectedOwnTasks,
   decorateTask,
   getTaskDetail,
   listTasks,
@@ -62,6 +63,10 @@ router.get('/workbench', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/moderation', requireUser, asyncHandler(async (req, res) => {
   res.json(await taskModerationCenter(req.store, req.user));
+}));
+
+router.delete('/moderation/rejected', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteRejectedOwnTasks(req.store, req.user));
 }));
 
 router.get('/:id', requireUser, asyncHandler(async (req, res) => {

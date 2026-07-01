@@ -6,6 +6,7 @@ import {
   createForumReport,
   createPost,
   deleteOwnPost,
+  deleteRejectedOwnPosts,
   forumStudio,
   forumRankings,
   generateForumSummary,
@@ -72,6 +73,10 @@ router.get('/me/following', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/me/studio', requireUser, asyncHandler(async (req, res) => {
   res.json(forumStudio(req.store, req.user.id));
+}));
+
+router.delete('/me/studio/rejected', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteRejectedOwnPosts(req.store, req.user));
 }));
 
 router.patch('/posts/:id/resubmit', requireUser, asyncHandler(async (req, res) => {

@@ -47,7 +47,19 @@
           <h3 style="margin: 0;">我的帖子</h3>
           <p class="muted" style="margin: 6px 0 0;">像内容后台一样集中处理发布、数据和违规重发。</p>
         </div>
-        <n-button text type="primary" :loading="loading" @click="load">刷新</n-button>
+        <n-space>
+          <n-button
+            v-if="activeStatus === 'rejected' && stats.rejected"
+            secondary
+            type="error"
+            :loading="bulkDeleting"
+            @click="confirmDeleteRejected"
+          >
+            <template #icon><Trash2 :size="15" /></template>
+            全部删除
+          </n-button>
+          <n-button text type="primary" :loading="loading" @click="load">刷新</n-button>
+        </n-space>
       </n-space>
 
       <n-tabs v-model:value="activeStatus" type="segment" animated style="margin-top: 14px;">
@@ -205,6 +217,7 @@ const message = useMessage();
 const dialog = useDialog();
 const loading = ref(false);
 const saving = ref(false);
+const bulkDeleting = ref(false);
 const uploadingCount = ref(0);
 const uploading = computed(() => uploadingCount.value > 0);
 const visibilityLoadingId = ref('');
@@ -313,6 +326,29 @@ function confirmDelete(post) {
         message.error(error.message || '删除失败');
       } finally {
         deletingPostId.value = '';
+      }
+    }
+  });
+}
+
+function confirmDeleteRejected() {
+  const count = Number(stats.value.rejected || 0);
+  if (!count) return;
+  dialog.warning({
+    title: '删除全部违规打回帖子',
+    content: `确认删除 ${count} 篇违规打回帖子？删除后不会在社区和创作中心显示。`,
+    positiveText: '全部删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      bulkDeleting.value = true;
+      try {
+        const result = await request('/api/forum/me/studio/rejected', { method: 'DELETE' });
+        message.success(`已删除 ${result.deletedCount || 0} 篇帖子`);
+        await load();
+      } catch (error) {
+        message.error(error.message || '删除失败');
+      } finally {
+        bulkDeleting.value = false;
       }
     }
   });
