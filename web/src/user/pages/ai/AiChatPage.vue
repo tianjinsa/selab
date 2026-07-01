@@ -245,7 +245,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, h, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { useDialog, useMessage } from 'naive-ui';
 import { Bot, Brain, Check, Edit3, Plus, RefreshCcw, Send, Trash2, Wrench, X } from '@lucide/vue';
 import { request, websocketUrl } from '../../../shared/http.js';
@@ -975,6 +975,8 @@ async function openTaskDraft(card) {
 async function publishTaskDraft() {
   taskDraftSubmitting.value = true;
   try {
+    const categoryDecision = await resolveAiTaskDraftCategoryRecommendation();
+    if (!categoryDecision) return;
     const payload = {
       title: taskDraftForm.title,
       category: taskDraftForm.category,
@@ -995,6 +997,66 @@ async function publishTaskDraft() {
   } finally {
     taskDraftSubmitting.value = false;
   }
+}
+
+async function resolveAiTaskDraftCategoryRecommendation() {
+  if (!taskDraftForm.title.trim() && !taskDraftForm.detail.trim()) return true;
+  const data = await request('/api/tasks/category-recommend', {
+    method: 'POST',
+    body: {
+      title: taskDraftForm.title,
+      detail: taskDraftForm.detail,
+      deliveryRequirement: taskDraftForm.deliveryRequirement,
+      category: taskDraftForm.category,
+      tags: []
+    }
+  });
+  if (!data.changed || !data.recommended?.label) return true;
+  return new Promise((resolve) => {
+    dialog.warning({
+      title: 'AI 推荐了更合适的任务分类',
+      content: () => h('div', { class: 'similarity-dialog-content' }, [
+        h('p', `当前选择：${data.current?.label || taskDraftForm.category}`),
+        h('p', `推荐分类：${data.recommended.label}${data.recommended.isNew ? '（新分类）' : '（已有分类）'}`),
+        data.reason ? h('p', data.reason) : null
+      ]),
+      positiveText: '使用推荐分类',
+      negativeText: '保持当前选择',
+      onPositiveClick: async () => {
+        try {
+          const applied = data.recommended.isNew
+            ? await request('/api/tasks/category-recommend', {
+              method: 'POST',
+              body: {
+                title: taskDraftForm.title,
+                detail: taskDraftForm.detail,
+                deliveryRequirement: taskDraftForm.deliveryRequirement,
+                category: taskDraftForm.category,
+                tags: [],
+                apply: true,
+                acceptedLabel: data.recommended.label
+              }
+            })
+            : data;
+          const recommended = applied.recommended || data.recommended;
+          ensureAiTaskCategory(recommended.label);
+          taskDraftForm.category = recommended.value || recommended.label;
+          resolve(true);
+        } catch (error) {
+          notice.error(error.message || '应用推荐分类失败');
+          resolve(null);
+        }
+      },
+      onNegativeClick: () => resolve(true),
+      onClose: () => resolve(null)
+    });
+  });
+}
+
+function ensureAiTaskCategory(label) {
+  const name = String(label || '').trim();
+  if (!name || taskMeta.value.categories.includes(name)) return;
+  taskMeta.value.categories.push(name);
 }
 
 function clampNumber(value, min, max) {
