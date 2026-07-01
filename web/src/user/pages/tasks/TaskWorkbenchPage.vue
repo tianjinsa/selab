@@ -7,6 +7,12 @@
         <p class="muted">集中处理发布、接单、验收、评价和资金流水，减少在市场和私信之间来回查找。</p>
       </div>
       <n-space>
+        <n-badge :value="stats.moderationUnread" :max="99" :show="stats.moderationUnread > 0">
+          <n-button secondary @click="$router.push('/tasks/moderation')">
+            <template #icon><ShieldCheck :size="16" /></template>
+            审核情况
+          </n-button>
+        </n-badge>
         <n-button secondary @click="$router.push('/tasks')">
           <template #icon><ClipboardList :size="16" /></template>
           任务市场
@@ -87,6 +93,7 @@
                 </n-tag>
                 <n-tag v-if="task.assignee" size="small" type="info" :bordered="false">接单者 {{ task.assignee.nickname }}</n-tag>
                 <n-tag v-if="task.deadlineAt" size="small" :bordered="false">截止 {{ formatDateTime(task.deadlineAt) }}</n-tag>
+                <n-tag v-if="task.hiddenAt" size="small" :bordered="false">已隐藏</n-tag>
                 <n-tag size="small" :type="moderationType(task.moderationStatus)" :bordered="false">
                   {{ moderationText(task.moderationStatus) }}
                 </n-tag>
@@ -99,6 +106,22 @@
               </n-alert>
               <n-space>
                 <n-button size="small" secondary @click="$router.push(`/tasks/${task.id}`)">查看</n-button>
+                <n-button
+                  size="small"
+                  secondary
+                  :type="task.hiddenAt ? 'success' : 'warning'"
+                  @click="toggleTaskVisibility(task)"
+                >
+                  <template #icon>
+                    <Eye v-if="task.hiddenAt" :size="15" />
+                    <EyeOff v-else :size="15" />
+                  </template>
+                  {{ task.hiddenAt ? '恢复公开' : '隐藏' }}
+                </n-button>
+                <n-button size="small" tertiary type="error" @click="confirmDeleteTask(task)">
+                  <template #icon><Trash2 :size="15" /></template>
+                  删除
+                </n-button>
                 <n-button v-if="task.status === 'editing'" size="small" type="primary" @click="$router.push(`/tasks/${task.id}/payment`)">继续支付</n-button>
                 <n-button v-if="task.status === 'submitted'" size="small" type="primary" @click="$router.push(`/tasks/${task.id}`)">去验收</n-button>
               </n-space>
@@ -172,22 +195,29 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useDialog, useMessage } from 'naive-ui';
 import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
   ClipboardCheck,
   ClipboardList,
+  Eye,
+  EyeOff,
   FileText,
   ListChecks,
   Plus,
   RefreshCcw,
+  ShieldCheck,
   Star,
+  Trash2,
   WalletCards
 } from '@lucide/vue';
 import { request } from '../../../shared/http.js';
 import { formatMoney, taskStatusText, taskStatusType } from './taskFormat.js';
 
+const dialog = useDialog();
+const message = useMessage();
 const data = ref(null);
 
 const emptyStats = {
@@ -198,6 +228,10 @@ const emptyStats = {
   assignedCompleted: 0,
   pendingApplications: 0,
   actionCount: 0,
+  moderationUnread: 0,
+  moderationTotal: 0,
+  moderationPending: 0,
+  moderationRejected: 0,
   income: 0,
   spending: 0
 };
@@ -213,6 +247,38 @@ onMounted(load);
 
 async function load() {
   data.value = await request('/api/tasks/workbench');
+}
+
+async function toggleTaskVisibility(task) {
+  const visible = Boolean(task.hiddenAt);
+  try {
+    await request(`/api/tasks/${task.id}/visibility`, {
+      method: 'PATCH',
+      body: { visible }
+    });
+    message.success(visible ? '任务已恢复公开' : '任务已隐藏');
+    await load();
+  } catch (error) {
+    message.error(error.message || '操作失败');
+  }
+}
+
+function confirmDeleteTask(task) {
+  dialog.warning({
+    title: '删除任务',
+    content: `确认删除「${task.title || '未命名任务'}」？删除后不会在任务市场和工作台展示。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await request(`/api/tasks/${task.id}`, { method: 'DELETE' });
+        message.success('任务已删除');
+        await load();
+      } catch (error) {
+        message.error(error.message || '删除失败');
+      }
+    }
+  });
 }
 
 function actionIcon(type) {
@@ -265,7 +331,8 @@ function flowTypeText(type) {
     task_finish_settlement: '任务收入入账钱包',
     task_cancel_refund: '任务取消退款',
     task_timeout_refund: '无人接单退款',
-    task_moderation_refund: '审核未通过退款'
+    task_moderation_refund: '审核未通过退款',
+    task_delete_refund: '任务删除退款'
   }[type] || type;
 }
 

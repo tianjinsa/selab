@@ -35,6 +35,20 @@ function assertCanPublish(user) {
   if (user.isPublishRestricted) throw forbidden('账号已被限制发布，不能发布商品');
 }
 
+function moderationActivityAt(entity) {
+  return entity.moderationCheckedAt || entity.moderationRejectedAt || entity.updatedAt || entity.createdAt || '';
+}
+
+function ownModerationProducts(store, userId) {
+  return store.collection('products')
+    .filter((product) => product.sellerId === userId && !product.deletedAt && product.moderationStatus);
+}
+
+function moderationUnreadCount(items, readAt = '') {
+  if (!readAt) return items.filter((item) => (item.moderationStatus || 'approved') !== 'approved').length;
+  return items.filter((item) => String(moderationActivityAt(item)).localeCompare(String(readAt)) > 0).length;
+}
+
 function categoryById(store, id) {
   return (store.collection('settings').productCategories || []).find((item) => item.id === id);
 }
@@ -89,13 +103,15 @@ export async function createProduct(store, user, body) {
     stock: 1,
     viewCount: 0,
     soldAt: '',
-    lockedOrderId: ''
+    lockedOrderId: '',
+    hiddenAt: '',
+    deletedAt: ''
   });
   return decorateProduct(store, product, user.id, true);
 }
 
 export function listProducts(store, query = {}, viewerId = '') {
-  let products = store.collection('products').filter((item) => !item.deletedAt);
+  let products = store.collection('products').filter((item) => !item.deletedAt && !item.hiddenAt);
   if (!query.includeUnavailable) products = products.filter((item) => ['on_sale', 'trading'].includes(item.status));
   products = products.filter((item) => isModerationApproved(item));
   if (query.categoryId) products = products.filter((item) => item.categoryId === query.categoryId);
@@ -119,7 +135,7 @@ export function listFavoriteProducts(store, userId) {
   return store.collection('productFavorites')
     .filter((item) => item.userId === userId)
     .map((favorite) => {
-      const product = products.find((item) => item.id === favorite.productId && !item.deletedAt && isModerationApproved(item));
+      const product = products.find((item) => item.id === favorite.productId && !item.deletedAt && !item.hiddenAt && isModerationApproved(item));
       return product ? { ...decorateProduct(store, product, userId), favoritedAt: favorite.createdAt } : null;
     })
     .filter(Boolean)
@@ -129,6 +145,7 @@ export function listFavoriteProducts(store, userId) {
 export function getProductDetail(store, productId, viewerId = '') {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
+  if (product.hiddenAt && product.sellerId !== viewerId) throw notFound('商品不存在');
   if (product.sellerId !== viewerId && !isModerationApproved(product)) throw notFound('商品不存在');
   product.viewCount = Number(product.viewCount || 0) + 1;
   store.saveCollection('products').catch(() => {});
@@ -138,6 +155,7 @@ export function getProductDetail(store, productId, viewerId = '') {
 export async function toggleProductFavorite(store, user, productId) {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
+  if (product.hiddenAt && product.sellerId !== user.id) throw notFound('商品不存在');
   if (product.sellerId !== user.id && !isModerationApproved(product)) throw notFound('商品不存在');
   const favorites = store.collection('productFavorites');
   const existing = favorites.find((item) => item.productId === productId && item.userId === user.id);
@@ -209,6 +227,7 @@ export function gradeRecommendations(store, user) {
 export async function applyPurchase(store, realtime, user, productId) {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
+  if (product.hiddenAt) throw notFound('商品不存在');
   if (product.sellerId === user.id) throw badRequest('不能购买自己发布的商品');
   if (!isModerationApproved(product)) throw badRequest('商品正在审核，暂不能购买');
   if (product.status !== 'on_sale') throw badRequest('商品当前不可购买');
@@ -440,6 +459,8 @@ export function marketWorkbench(store, userId) {
     .filter((product) => product.sellerId === userId && !product.deletedAt)
     .map((product) => decorateProduct(store, product, userId))
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+  const visibleOwnedProducts = ownedProducts.filter((product) => isModerationApproved(product));
+  const moderationRaw = ownModerationProducts(store, userId);
   const buying = orders
     .filter((order) => order.buyerId === userId)
     .map((order) => ({
@@ -476,8 +497,12 @@ export function marketWorkbench(store, userId) {
   return {
     stats: {
       actionCount: actionItems.length,
-      ownedProducts: ownedProducts.length,
-      onSaleProducts: ownedProducts.filter((product) => product.status === 'on_sale' && isModerationApproved(product)).length,
+      ownedProducts: visibleOwnedProducts.length,
+      onSaleProducts: visibleOwnedProducts.filter((product) => product.status === 'on_sale' && !product.hiddenAt).length,
+      moderationUnread: moderationUnreadCount(moderationRaw, store.collection('users').find((item) => item.id === userId)?.marketModerationReadAt || ''),
+      moderationTotal: moderationRaw.length,
+      moderationPending: moderationRaw.filter((product) => product.moderationStatus === 'pending').length,
+      moderationRejected: moderationRaw.filter((product) => product.moderationStatus === 'rejected').length,
       buyingActive: buying.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
       buyingCompleted: buying.filter((order) => order.status === 'completed').length,
       sellingActive: selling.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
@@ -489,9 +514,60 @@ export function marketWorkbench(store, userId) {
     actionItems,
     buying,
     selling,
-    products: ownedProducts,
+    products: visibleOwnedProducts,
     paymentFlows: paymentFlows.slice(0, 50)
   };
+}
+
+export async function marketModerationCenter(store, user) {
+  const itemsRaw = ownModerationProducts(store, user.id);
+  const readAt = user.marketModerationReadAt || '';
+  const unreadCount = moderationUnreadCount(itemsRaw, readAt);
+  const items = itemsRaw
+    .map((product) => decorateProduct(store, product, user.id))
+    .sort((a, b) => String(moderationActivityAt(b)).localeCompare(String(moderationActivityAt(a))));
+  await store.update('users', user.id, { marketModerationReadAt: now() });
+  return {
+    unreadCount,
+    stats: {
+      total: items.length,
+      pending: items.filter((product) => product.moderationStatus === 'pending').length,
+      approved: items.filter((product) => (product.moderationStatus || 'approved') === 'approved').length,
+      rejected: items.filter((product) => product.moderationStatus === 'rejected').length,
+      hidden: items.filter((product) => product.hiddenAt).length
+    },
+    items
+  };
+}
+
+export async function updateOwnProductVisibility(store, user, productId, visible) {
+  const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
+  if (!product) throw notFound('商品不存在');
+  if (product.sellerId !== user.id) throw forbidden('只能管理自己发布的商品');
+  if (visible && product.moderationStatus === 'rejected') throw badRequest('审核未通过的商品不能恢复公开');
+  const updated = await store.update('products', product.id, {
+    hiddenAt: visible ? '' : now()
+  });
+  return decorateProduct(store, updated, user.id, true);
+}
+
+export async function deleteOwnProduct(store, user, productId) {
+  const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
+  if (!product) throw notFound('商品不存在');
+  if (product.sellerId !== user.id) throw forbidden('只能删除自己发布的商品');
+  const activeOrder = store.collection('orders').find((order) => (
+    order.productId === product.id
+    && ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)
+  ));
+  if (activeOrder) throw badRequest('商品存在进行中的订单，不能直接删除');
+  await store.update('products', product.id, {
+    status: product.status === 'sold' ? product.status : 'off_shelf',
+    hiddenAt: now(),
+    deletedAt: now(),
+    lockedOrderId: '',
+    takeDownReason: product.takeDownReason || '卖家删除商品'
+  });
+  return { ok: true };
 }
 
 export function listMarketAdmin(store) {
