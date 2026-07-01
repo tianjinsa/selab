@@ -96,14 +96,38 @@
             </div>
             <n-button type="primary" @click="$router.push(`/messages/${activeConversation.id}`)">进入私信</n-button>
           </div>
-          <div v-if="activeMessages.length" class="message-detail-stream">
+          <div
+            v-if="activeMessages.length"
+            class="message-detail-stream message-detail-stream--clickable"
+            role="button"
+            tabindex="0"
+            @click="enterConversation(activeConversation.id)"
+            @keydown.enter="enterConversation(activeConversation.id)"
+            @keydown.space.prevent="enterConversation(activeConversation.id)"
+          >
             <div
               v-for="item in activeMessages"
               :key="item.id"
               class="message-detail-bubble"
               :class="{ mine: item.senderId === session.user?.id }"
             >
-              {{ messagePreview(item) }}
+              <div v-if="item.card" class="business-card message-preview-business-card">
+                <div class="business-card-title">
+                  <span>{{ item.card.title || '业务卡片' }}</span>
+                  <n-tag size="small" :type="cardStatusType(item.card.status)">{{ cardStatusText(item.card.status) }}</n-tag>
+                </div>
+                <p class="message-preview-card-title">{{ item.card.taskTitle || item.card.productTitle || item.content || '业务申请' }}</p>
+                <p class="muted message-preview-card-line">
+                  {{ cardActorLabel(item.card) }}：{{ item.card.applicantName || item.card.buyerName || '同学' }}
+                  <span v-if="item.card.applicantCredit || item.card.buyerCredit"> · 信用分 {{ item.card.applicantCredit || item.card.buyerCredit }}</span>
+                </p>
+                <p class="muted message-preview-card-line">
+                  金额：￥{{ item.card.reward || item.card.price || '-' }}
+                  <span v-if="item.card.expiresAt"> · 有效期至 {{ formatTime(item.card.expiresAt) }}</span>
+                </p>
+                <p class="message-preview-card-hint">请进入私信来操作</p>
+              </div>
+              <template v-else>{{ messagePreview(item) }}</template>
               <small>{{ formatTime(item.createdAt) }}</small>
             </div>
           </div>
@@ -262,6 +286,10 @@ async function selectConversation(id) {
   await loadCenter();
 }
 
+function enterConversation(id) {
+  if (id) router.push(`/messages/${id}`);
+}
+
 async function loadConversationMessages(id) {
   const data = await request(`/api/conversations/${id}/messages`);
   activeMessages.value = (data.messages || []).slice(-12);
@@ -338,6 +366,7 @@ function notificationTypeText(type) {
 
 function conversationPreview(messageItem) {
   if (!messageItem) return '还没有消息';
+  if (messageItem.card) return `[卡片] ${messageItem.card.title || messageItem.content || '业务申请'}`;
   return messagePreview(messageItem);
 }
 
@@ -347,6 +376,28 @@ function messagePreview(item) {
   if (item.type === 'image') return `图片：${item.attachment?.name || '图片'}`;
   if (item.type === 'file') return `文件：${item.attachment?.name || '附件'}`;
   return '新消息';
+}
+
+function cardStatusText(status) {
+  return {
+    pending: '待处理',
+    accepted: '已同意',
+    rejected: '已拒绝',
+    expired: '已失效'
+  }[status] || status || '待处理';
+}
+
+function cardStatusType(status) {
+  return {
+    pending: 'warning',
+    accepted: 'success',
+    rejected: 'error',
+    expired: 'default'
+  }[status] || 'default';
+}
+
+function cardActorLabel(card) {
+  return card?.type === 'product_purchase' ? '买家' : '申请人';
 }
 
 function formatTime(value) {
