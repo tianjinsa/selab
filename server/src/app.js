@@ -22,10 +22,17 @@ export function createApp(store, realtime) {
   app.use(express.json({ limit: '2mb' }));
   app.use('/uploads', express.static(config.uploadDir));
 
-  app.use((req, _res, next) => {
+  app.use(async (req, _res, next) => {
     req.store = store;
     req.realtime = realtime;
-    next();
+    try {
+      if (req.path.startsWith('/api')) {
+        await store.refreshFromDatabase?.();
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get('/api/health', (_req, res) => {

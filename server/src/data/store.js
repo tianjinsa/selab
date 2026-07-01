@@ -5,6 +5,8 @@ import { collectionNames, createEmptyData, normalizeData } from './defaultData.j
 
 const COLLECTION_NAME_MAX = 100;
 const ITEM_ID_MAX = 200;
+const SETTINGS_COLLECTION_NAME = 'settings';
+const SYNC_MIN_INTERVAL_MS = 300;
 
 function now() {
   return new Date().toISOString();
@@ -102,8 +104,17 @@ async function createSqlPersistence() {
           CONSTRAINT CK_AppSettings_Singleton CHECK (id = 1)
         )
       END
+
+      IF OBJECT_ID(N'dbo.AppCollectionVersions', N'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.AppCollectionVersions (
+          collectionName NVARCHAR(${COLLECTION_NAME_MAX}) NOT NULL CONSTRAINT PK_AppCollectionVersions PRIMARY KEY,
+          updatedAt DATETIME2 NOT NULL CONSTRAINT DF_AppCollectionVersions_updatedAt DEFAULT SYSUTCDATETIME()
+        )
+      END
     `);
     await migrateLegacyCollections(activePool);
+    await seedCollectionVersions(activePool);
   }
 
   async function reconnect() {
@@ -159,6 +170,29 @@ async function createSqlPersistence() {
     }
   }
 
+  async function seedCollectionVersions(activePool) {
+    await activePool.request()
+      .input('settingsName', sql.NVarChar(COLLECTION_NAME_MAX), SETTINGS_COLLECTION_NAME)
+      .query(`
+        MERGE dbo.AppCollectionVersions AS target
+        USING (
+          SELECT collectionName, MAX(updatedAt) AS updatedAt
+          FROM dbo.AppItems
+          GROUP BY collectionName
+          UNION ALL
+          SELECT @settingsName AS collectionName, updatedAt
+          FROM dbo.AppSettings
+          WHERE id = 1
+        ) AS source
+        ON target.collectionName = source.collectionName
+        WHEN MATCHED AND target.updatedAt < source.updatedAt THEN
+          UPDATE SET updatedAt = source.updatedAt
+        WHEN NOT MATCHED THEN
+          INSERT (collectionName, updatedAt)
+          VALUES (source.collectionName, source.updatedAt);
+      `);
+  }
+
   await ensureSchema(pool);
 
   return {
@@ -211,6 +245,17 @@ async function createSqlPersistence() {
     },
     async saveSettings(settings) {
       await runWithReconnect((activePool) => saveSettings(activePool, settings));
+    },
+    async loadCollection(name) {
+      const collectionName = normalizeCollectionName(name);
+      if (!collectionName) throw new Error(`Invalid collection name: ${name}`);
+      return runWithReconnect((activePool) => loadCollectionItems(activePool, collectionName));
+    },
+    async loadSettings() {
+      return runWithReconnect((activePool) => loadSettings(activePool));
+    },
+    async getVersions() {
+      return runWithReconnect((activePool) => readCollectionVersions(activePool));
     },
     async close() {
       if (reconnecting) await reconnecting.catch(() => {});
@@ -304,6 +349,48 @@ async function countSettingsRows(activePool) {
   return Number(result.recordset[0]?.total || 0);
 }
 
+async function loadCollectionItems(activePool, collectionName) {
+  const result = await activePool.request()
+    .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+    .query(`
+      SELECT itemId, payload
+      FROM dbo.AppItems
+      WHERE collectionName = @collectionName
+      ORDER BY sortIndex ASC, createdAt ASC, itemId ASC
+    `);
+  const items = [];
+  for (const row of result.recordset) {
+    const item = parseJson(row.payload, null);
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    if (!item.id) item.id = row.itemId;
+    items.push(item);
+  }
+  return prepareCollection(items);
+}
+
+async function loadSettings(activePool) {
+  const result = await activePool.request().query(`
+    SELECT TOP 1 payload
+    FROM dbo.AppSettings
+    WHERE id = 1
+  `);
+  const parsed = result.recordset[0]?.payload
+    ? parseJson(result.recordset[0].payload, null)
+    : null;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return createEmptyData().settings;
+  }
+  return normalizeData({ settings: parsed }).settings;
+}
+
+async function readCollectionVersions(activePool) {
+  const result = await activePool.request().query(`
+    SELECT collectionName, CONVERT(VARCHAR(33), updatedAt, 126) AS version
+    FROM dbo.AppCollectionVersions
+  `);
+  return Object.fromEntries(result.recordset.map((row) => [row.collectionName, row.version]));
+}
+
 async function upsertItem(activePool, collectionName, item, sortIndex = 0) {
   await activePool.request()
     .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
@@ -329,6 +416,14 @@ async function upsertItem(activePool, collectionName, item, sortIndex = 0) {
       WHEN NOT MATCHED THEN
         INSERT (collectionName, itemId, payload, sortIndex)
         VALUES (source.collectionName, source.itemId, source.payload, source.sortIndex);
+
+      MERGE dbo.AppCollectionVersions AS target
+      USING (SELECT @collectionName AS collectionName) AS source
+      ON target.collectionName = source.collectionName
+      WHEN MATCHED THEN
+        UPDATE SET updatedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (collectionName) VALUES (source.collectionName);
     `);
 }
 
@@ -352,6 +447,18 @@ async function replaceItems(activePool, collectionName, items) {
         `);
     }
 
+    await new sql.Request(transaction)
+      .input('collectionName', sql.NVarChar(COLLECTION_NAME_MAX), collectionName)
+      .query(`
+        MERGE dbo.AppCollectionVersions AS target
+        USING (SELECT @collectionName AS collectionName) AS source
+        ON target.collectionName = source.collectionName
+        WHEN MATCHED THEN
+          UPDATE SET updatedAt = SYSUTCDATETIME()
+        WHEN NOT MATCHED THEN
+          INSERT (collectionName) VALUES (source.collectionName);
+      `);
+
     await transaction.commit();
   } catch (error) {
     await transaction.rollback().catch(() => {});
@@ -361,6 +468,7 @@ async function replaceItems(activePool, collectionName, items) {
 
 async function saveSettings(activePool, settings) {
   await activePool.request()
+    .input('settingsName', sql.NVarChar(COLLECTION_NAME_MAX), SETTINGS_COLLECTION_NAME)
     .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(settings || {}))
     .query(`
       MERGE dbo.AppSettings WITH (HOLDLOCK) AS target
@@ -370,6 +478,14 @@ async function saveSettings(activePool, settings) {
         UPDATE SET payload = source.payload, updatedAt = SYSUTCDATETIME()
       WHEN NOT MATCHED THEN
         INSERT (id, payload) VALUES (source.id, source.payload);
+
+      MERGE dbo.AppCollectionVersions AS target
+      USING (SELECT @settingsName AS collectionName) AS source
+      ON target.collectionName = source.collectionName
+      WHEN MATCHED THEN
+        UPDATE SET updatedAt = SYSUTCDATETIME()
+      WHEN NOT MATCHED THEN
+        INSERT (collectionName) VALUES (source.collectionName);
     `);
 }
 
@@ -382,11 +498,48 @@ export async function createStore() {
   }
 
   const data = await persistence.load();
+  let versionState = await persistence.getVersions();
   let writeChain = Promise.resolve();
+  let syncChain = Promise.resolve();
+  let lastSyncAt = 0;
 
   function queueWrite(operation) {
     const next = writeChain.then(operation, operation);
     writeChain = next.catch(() => {});
+    return next;
+  }
+
+  function refreshFromDatabase(options = {}) {
+    const force = Boolean(options.force);
+    const minInterval = Number(options.minInterval ?? SYNC_MIN_INTERVAL_MS);
+    if (!force && Date.now() - lastSyncAt < minInterval) {
+      return Promise.resolve({ checked: false, changed: [] });
+    }
+
+    const next = syncChain.then(async () => {
+      if (!force && Date.now() - lastSyncAt < minInterval) {
+        return { checked: false, changed: [] };
+      }
+
+      await writeChain.catch(() => {});
+      const versions = await persistence.getVersions();
+      const changed = Object.entries(versions)
+        .filter(([name, version]) => versionState[name] !== version)
+        .map(([name]) => name);
+
+      for (const name of changed) {
+        if (name === SETTINGS_COLLECTION_NAME) {
+          data.settings = await persistence.loadSettings();
+        } else {
+          data[name] = await persistence.loadCollection(name);
+        }
+      }
+
+      versionState = versions;
+      lastSyncAt = Date.now();
+      return { checked: true, changed };
+    });
+    syncChain = next.catch(() => {});
     return next;
   }
 
@@ -459,7 +612,9 @@ export async function createStore() {
       return clone(data);
     },
     collectionNames,
+    refreshFromDatabase,
     async close() {
+      await syncChain.catch(() => {});
       await writeChain.catch(() => {});
       await persistence.close();
     }
