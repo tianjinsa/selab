@@ -6,6 +6,7 @@ import { createApp } from './app.js';
 import { RealtimeHub } from './realtime/realtimeHub.js';
 import { scanTaskTimeouts } from './services/tasks.js';
 import { scanOrderTimeouts } from './services/market.js';
+import { scanContentModerationQueue } from './services/contentModeration.js';
 
 const store = await createStore();
 await seedInitialData(store);
@@ -22,9 +23,11 @@ server.listen(config.port, () => {
 
 await scanTaskTimeouts(store).catch((error) => console.error('Task timeout scan failed:', error.message));
 await scanOrderTimeouts(store).catch((error) => console.error('Order timeout scan failed:', error.message));
+await scanContentModerationQueue(store, realtime).catch((error) => console.error('Content moderation scan failed:', error.message));
 setInterval(() => {
   scanTaskTimeouts(store).catch((error) => console.error('Task timeout scan failed:', error.message));
   scanOrderTimeouts(store).catch((error) => console.error('Order timeout scan failed:', error.message));
+  scanContentModerationQueue(store, realtime).catch((error) => console.error('Content moderation scan failed:', error.message));
 }, 60 * 60 * 1000);
 
 process.on('SIGINT', async () => {

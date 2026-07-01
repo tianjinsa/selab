@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { assertCleanContent, extractTaskKeywords } from '../utils/content.js';
 import { createNotification } from './notifications.js';
 import { getOrCreateConversation, sendMessage } from './chat.js';
+import { isModerationApproved } from './contentModeration.js';
 
 const areas = ['东区', '西区', '南区', '北区', '宿舍区', '教学区', '快递点', '食堂', '图书馆', '其他'];
 
@@ -110,6 +111,10 @@ export async function publishTaskAfterPayment(store, user, taskId) {
   });
   const updated = await store.update('tasks', task.id, {
     status: 'open',
+    moderationStatus: 'pending',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: '',
     publishedAt: now(),
     paidAt: now()
   });
@@ -119,7 +124,8 @@ export async function publishTaskAfterPayment(store, user, taskId) {
 
 export function listTasks(store, query = {}, viewerId = '') {
   let tasks = store.collection('tasks')
-    .filter((task) => ['open', 'accepted', 'submitted', 'timeout', 'completed'].includes(task.status));
+    .filter((task) => ['open', 'accepted', 'submitted', 'timeout', 'completed'].includes(task.status))
+    .filter((task) => isModerationApproved(task));
   if (query.status) tasks = tasks.filter((task) => task.status === query.status);
   if (query.category) tasks = tasks.filter((task) => task.category === query.category);
   if (query.campusArea) tasks = tasks.filter((task) => task.campusArea === query.campusArea);
@@ -204,6 +210,7 @@ export function taskWorkbench(store, userId) {
 export function getTaskDetail(store, taskId, viewerId = '') {
   const task = store.collection('tasks').find((item) => item.id === taskId);
   if (!task) throw notFound('任务不存在');
+  if (task.publisherId !== viewerId && task.assigneeId !== viewerId && !isModerationApproved(task)) throw notFound('任务不存在');
   task.viewCount = Number(task.viewCount || 0) + 1;
   store.saveCollection('tasks').catch(() => {});
   return decorateTask(store, task, viewerId, true);
@@ -213,6 +220,7 @@ export async function applyTask(store, realtime, user, taskId) {
   const task = store.collection('tasks').find((item) => item.id === taskId);
   if (!task) throw notFound('任务不存在');
   if (task.status !== 'open') throw badRequest('任务当前不可申请');
+  if (!isModerationApproved(task)) throw badRequest('任务正在审核，暂不能申请');
   if (task.publisherId === user.id) throw badRequest('不能申请自己发布的任务');
   if (user.creditScore < 4) throw forbidden('信用分低于 4 分，暂不能申请任务');
 

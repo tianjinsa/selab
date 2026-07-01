@@ -2,6 +2,7 @@ import { badRequest, forbidden, notFound } from '../utils/errors.js';
 import { assertCleanContent } from '../utils/content.js';
 import { createNotification } from './notifications.js';
 import { getOrCreateConversation, sendMessage } from './chat.js';
+import { isModerationApproved } from './contentModeration.js';
 
 const conditions = ['全新', '几乎全新', '轻微使用', '明显使用', '功能正常'];
 const tradeMethods = ['线下自提', '校内面交', '宿舍楼下', '其他'];
@@ -80,6 +81,10 @@ export async function createProduct(store, user, body) {
     ...payload,
     sellerId: user.id,
     status: 'on_sale',
+    moderationStatus: 'pending',
+    moderationReason: '',
+    moderationCheckedAt: '',
+    moderationRejectedAt: '',
     stock: 1,
     viewCount: 0,
     soldAt: '',
@@ -91,6 +96,7 @@ export async function createProduct(store, user, body) {
 export function listProducts(store, query = {}, viewerId = '') {
   let products = store.collection('products').filter((item) => !item.deletedAt);
   if (!query.includeUnavailable) products = products.filter((item) => ['on_sale', 'trading'].includes(item.status));
+  products = products.filter((item) => isModerationApproved(item));
   if (query.categoryId) products = products.filter((item) => item.categoryId === query.categoryId);
   if (query.keyword) {
     const keyword = String(query.keyword).trim();
@@ -112,7 +118,7 @@ export function listFavoriteProducts(store, userId) {
   return store.collection('productFavorites')
     .filter((item) => item.userId === userId)
     .map((favorite) => {
-      const product = products.find((item) => item.id === favorite.productId && !item.deletedAt);
+      const product = products.find((item) => item.id === favorite.productId && !item.deletedAt && isModerationApproved(item));
       return product ? { ...decorateProduct(store, product, userId), favoritedAt: favorite.createdAt } : null;
     })
     .filter(Boolean)
@@ -122,6 +128,7 @@ export function listFavoriteProducts(store, userId) {
 export function getProductDetail(store, productId, viewerId = '') {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
+  if (product.sellerId !== viewerId && !isModerationApproved(product)) throw notFound('商品不存在');
   product.viewCount = Number(product.viewCount || 0) + 1;
   store.saveCollection('products').catch(() => {});
   return decorateProduct(store, product, viewerId, true);
@@ -130,6 +137,7 @@ export function getProductDetail(store, productId, viewerId = '') {
 export async function toggleProductFavorite(store, user, productId) {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
+  if (product.sellerId !== user.id && !isModerationApproved(product)) throw notFound('商品不存在');
   const favorites = store.collection('productFavorites');
   const existing = favorites.find((item) => item.productId === productId && item.userId === user.id);
   if (existing) {
@@ -201,6 +209,7 @@ export async function applyPurchase(store, realtime, user, productId) {
   const product = store.collection('products').find((item) => item.id === productId && !item.deletedAt);
   if (!product) throw notFound('商品不存在');
   if (product.sellerId === user.id) throw badRequest('不能购买自己发布的商品');
+  if (!isModerationApproved(product)) throw badRequest('商品正在审核，暂不能购买');
   if (product.status !== 'on_sale') throw badRequest('商品当前不可购买');
   for (const order of store.collection('orders')) {
     if (order.productId === product.id && order.buyerId === user.id && order.status === 'applying') {
@@ -464,7 +473,7 @@ export function marketWorkbench(store, userId) {
     stats: {
       actionCount: actionItems.length,
       ownedProducts: ownedProducts.length,
-      onSaleProducts: ownedProducts.filter((product) => product.status === 'on_sale').length,
+      onSaleProducts: ownedProducts.filter((product) => product.status === 'on_sale' && isModerationApproved(product)).length,
       buyingActive: buying.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,
       buyingCompleted: buying.filter((order) => order.status === 'completed').length,
       sellingActive: selling.filter((order) => ['applying', 'waiting_payment', 'waiting_delivery', 'waiting_receive', 'dispute'].includes(order.status)).length,

@@ -147,8 +147,17 @@
               <div class="workbench-chip-row">
                 <n-tag size="small" :bordered="false">收藏 {{ product.favoriteCount || 0 }}</n-tag>
                 <n-tag size="small" :bordered="false">{{ product.tradeMethod }}</n-tag>
+                <n-tag size="small" :type="moderationType(product.moderationStatus)" :bordered="false">
+                  {{ moderationText(product.moderationStatus) }}
+                </n-tag>
                 <n-tag v-if="product.activeOrder" size="small" type="warning" :bordered="false">交易锁定中</n-tag>
               </div>
+              <n-alert v-if="product.moderationStatus === 'pending'" type="warning" :show-icon="false" class="workbench-inline-alert">
+                商品正在审核，通过后才会出现在二手市场。
+              </n-alert>
+              <n-alert v-if="product.moderationStatus === 'rejected'" type="error" :show-icon="false" class="workbench-inline-alert">
+                {{ product.moderationReason || '商品审核未通过，暂不会对外展示。' }}
+              </n-alert>
               <n-space>
                 <n-button size="small" secondary @click="$router.push(`/market/${product.id}`)">查看商品</n-button>
               </n-space>
@@ -301,6 +310,22 @@ function flowTypeText(type) {
     product_escrow_payment: '商品担保支付',
     product_finish_settlement: '订单完成打款'
   }[type] || type;
+}
+
+function moderationText(status = 'approved') {
+  return {
+    pending: '审核中',
+    approved: '审核通过',
+    rejected: '审核未通过'
+  }[status || 'approved'] || status;
+}
+
+function moderationType(status = 'approved') {
+  return {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'error'
+  }[status || 'approved'] || 'default';
 }
 
 function formatDateTime(value) {

@@ -5,6 +5,7 @@ import {
   createComment,
   createForumReport,
   createPost,
+  forumStudio,
   forumRankings,
   generateForumSummary,
   getPostDetail,
@@ -12,6 +13,7 @@ import {
   listForumReports,
   listFollowingUsers,
   listPosts,
+  resubmitRejectedPost,
   resolveForumReport,
   sharePost,
   toggleCommentLike,
@@ -20,6 +22,7 @@ import {
   togglePostLike,
   wordCloud
 } from '../services/forum.js';
+import { enqueueContentModeration } from '../services/contentModeration.js';
 
 const router = express.Router();
 
@@ -29,6 +32,7 @@ router.get('/posts', requireUser, asyncHandler(async (req, res) => {
 
 router.post('/posts', requireUser, asyncHandler(async (req, res) => {
   const post = await createPost(req.store, req.user, req.body);
+  await enqueueContentModeration(req.store, req.realtime, 'post', post.id);
   res.status(201).json({ post });
 }));
 
@@ -60,6 +64,16 @@ router.get('/me/favorites', requireUser, asyncHandler(async (req, res) => {
 
 router.get('/me/following', requireUser, asyncHandler(async (req, res) => {
   res.json({ users: listFollowingUsers(req.store, req.user.id) });
+}));
+
+router.get('/me/studio', requireUser, asyncHandler(async (req, res) => {
+  res.json(forumStudio(req.store, req.user.id));
+}));
+
+router.patch('/posts/:id/resubmit', requireUser, asyncHandler(async (req, res) => {
+  const post = await resubmitRejectedPost(req.store, req.user, req.params.id, req.body);
+  await enqueueContentModeration(req.store, req.realtime, 'post', post.id);
+  res.json({ post });
 }));
 
 router.get('/posts/:id', requireUser, asyncHandler(async (req, res) => {

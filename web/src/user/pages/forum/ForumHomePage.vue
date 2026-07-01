@@ -7,6 +7,10 @@
           <p class="muted">图文、求助和经验分享会进入统一通知与互动体系。</p>
         </div>
         <n-space>
+          <n-button secondary @click="$router.push('/forum/studio')">
+            <template #icon><BarChart3 :size="16" /></template>
+            创作中心
+          </n-button>
           <n-button secondary @click="$router.push('/forum/collections')">
             <template #icon><Bookmark :size="16" /></template>
             收藏/关注
@@ -65,7 +69,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { Bookmark, Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
+import { BarChart3, Bookmark, Eye, Heart, MessageCircle, Share2, Star } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 
 const route = useRoute();

@@ -5,6 +5,7 @@ export function createEmptyData() {
     conversations: [],
     messages: [],
     notifications: [],
+    contentModerationItems: [],
     fileAssets: [],
     adminLogs: [],
     settings: {
@@ -43,6 +44,7 @@ export const collectionNames = [
   'conversations',
   'messages',
   'notifications',
+  'contentModerationItems',
   'fileAssets',
   'adminLogs',
   'tasks',
