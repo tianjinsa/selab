@@ -131,6 +131,14 @@ export function vectorSettings() {
   };
 }
 
+export async function closeSemanticVectorStorage() {
+  if (connecting) await connecting.catch(() => null);
+  await pool?.close().catch(() => {});
+  pool = null;
+  connecting = null;
+  schemaReady = null;
+}
+
 export async function embedText(store, text) {
   const input = String(text || '').trim();
   if (!input) throw badRequest('向量化文本不能为空');

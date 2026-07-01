@@ -8,6 +8,7 @@ import { scanTaskTimeouts } from './services/tasks.js';
 import { scanOrderTimeouts } from './services/market.js';
 import { scanContentModerationQueue } from './services/contentModeration.js';
 import { closeFileBlobStorage, migrateLocalUploadsToDatabase } from './services/fileBlobs.js';
+import { closeSemanticVectorStorage } from './services/vectorAi.js';
 
 const store = await createStore();
 await seedInitialData(store);
@@ -37,6 +38,7 @@ async function runBackgroundScans() {
 
 process.on('SIGINT', async () => {
   realtime.close();
+  await closeSemanticVectorStorage();
   await closeFileBlobStorage();
   await store.close();
   process.exit(0);
