@@ -2,8 +2,19 @@ import express from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { badRequest } from '../utils/errors.js';
 import { config } from '../config.js';
-import { requireAdmin, sanitizeUser, signAdminToken } from '../services/auth.js';
+import { requireAdmin, requireAdminPrincipal, sanitizeUser, signAdminToken } from '../services/auth.js';
 import { listAdminModerationItems, scanContentModerationQueue } from '../services/contentModeration.js';
+import {
+  createCollege,
+  createCounselor,
+  deleteCollege,
+  deleteCounselor,
+  listColleges,
+  listCounselors,
+  loginCounselor,
+  updateCollege,
+  updateCounselor
+} from '../services/counselor.js';
 
 const router = express.Router();
 
@@ -13,16 +24,28 @@ function now() {
 
 router.post('/auth/login', asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  if (username !== config.adminAccount.username || password !== config.adminAccount.password) {
-    throw badRequest('管理员账号或密码错误');
+  if (username === config.adminAccount.username && password === config.adminAccount.password) {
+    return res.json({
+      token: signAdminToken(),
+      admin: { username: config.adminAccount.username, role: 'admin' }
+    });
   }
+  const counselor = await loginCounselor(req.store, username, password);
+  if (!counselor) throw badRequest('后台账号或密码错误');
   res.json({
-    token: signAdminToken(),
-    admin: { username: config.adminAccount.username }
+    token: signAdminToken({ type: 'counselor', id: counselor.id }),
+    admin: {
+      id: counselor.id,
+      username: counselor.username,
+      name: counselor.name,
+      role: 'counselor',
+      collegeId: counselor.collegeId,
+      college: counselor.college
+    }
   });
 }));
 
-router.get('/me', requireAdmin, asyncHandler(async (req, res) => {
+router.get('/me', requireAdminPrincipal, asyncHandler(async (req, res) => {
   res.json({ admin: req.admin });
 }));
 
@@ -195,6 +218,40 @@ router.patch('/users/:id/status', requireAdmin, asyncHandler(async (req, res) =>
     createdAt: now()
   });
   res.json({ user: sanitizeUser(updated) });
+}));
+
+router.get('/colleges', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ colleges: listColleges(req.store) });
+}));
+
+router.post('/colleges', requireAdmin, asyncHandler(async (req, res) => {
+  const college = await createCollege(req.store, req.body);
+  res.status(201).json({ college });
+}));
+
+router.patch('/colleges/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ college: await updateCollege(req.store, req.params.id, req.body) });
+}));
+
+router.delete('/colleges/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(await deleteCollege(req.store, req.params.id));
+}));
+
+router.get('/counselors', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ counselors: listCounselors(req.store) });
+}));
+
+router.post('/counselors', requireAdmin, asyncHandler(async (req, res) => {
+  const counselor = await createCounselor(req.store, req.body);
+  res.status(201).json({ counselor });
+}));
+
+router.patch('/counselors/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json({ counselor: await updateCounselor(req.store, req.params.id, req.body) });
+}));
+
+router.delete('/counselors/:id', requireAdmin, asyncHandler(async (req, res) => {
+  res.json(await deleteCounselor(req.store, req.params.id));
 }));
 
 router.patch('/settings/mock', requireAdmin, asyncHandler(async (req, res) => {

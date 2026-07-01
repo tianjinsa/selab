@@ -25,9 +25,10 @@ export function signUserToken(user) {
   );
 }
 
-export function signAdminToken() {
+export function signAdminToken(principal = {}) {
+  const type = principal.type === 'counselor' ? 'counselor' : 'admin';
   return jwt.sign(
-    { sub: 'admin', type: 'admin' },
+    { sub: principal.id || 'admin', type },
     config.adminJwtSecret,
     { expiresIn: '8h' }
   );
@@ -63,11 +64,56 @@ export function requireAdmin(req, _res, next) {
     const token = bearerToken(req);
     const payload = jwt.verify(token, config.adminJwtSecret);
     if (payload.type !== 'admin') throw new ApiError(401, '管理员 Token 无效');
-    req.admin = { username: config.adminAccount.username };
+    req.admin = { username: config.adminAccount.username, role: 'admin' };
     next();
   } catch (error) {
     if (error instanceof ApiError) return next(error);
     next(new ApiError(401, '管理员登录状态已失效'));
+  }
+}
+
+export function requireAdminPrincipal(req, _res, next) {
+  try {
+    const token = bearerToken(req);
+    const payload = jwt.verify(token, config.adminJwtSecret);
+    if (payload.type === 'admin') {
+      req.admin = { username: config.adminAccount.username, role: 'admin' };
+      return next();
+    }
+    if (payload.type === 'counselor') {
+      const counselor = req.store.collection('counselorAccounts')
+        .find((item) => item.id === payload.sub && !item.deletedAt && item.enabled !== false);
+      if (!counselor) throw new ApiError(401, '导员账号不存在或已停用');
+      req.admin = {
+        id: counselor.id,
+        username: counselor.username,
+        name: counselor.name,
+        role: 'counselor',
+        collegeId: counselor.collegeId
+      };
+      req.counselor = counselor;
+      return next();
+    }
+    throw new ApiError(401, '后台 Token 无效');
+  } catch (error) {
+    if (error instanceof ApiError) return next(error);
+    next(new ApiError(401, '后台登录状态已失效'));
+  }
+}
+
+export function requireCounselor(req, _res, next) {
+  try {
+    const token = bearerToken(req);
+    const payload = jwt.verify(token, config.adminJwtSecret);
+    if (payload.type !== 'counselor') throw new ApiError(401, '导员 Token 无效');
+    const counselor = req.store.collection('counselorAccounts')
+      .find((item) => item.id === payload.sub && !item.deletedAt && item.enabled !== false);
+    if (!counselor) throw new ApiError(401, '导员账号不存在或已停用');
+    req.counselor = counselor;
+    next();
+  } catch (error) {
+    if (error instanceof ApiError) return next(error);
+    next(new ApiError(401, '导员登录状态已失效'));
   }
 }
 

@@ -4,6 +4,7 @@ import { listTasks, getTaskDetail } from './tasks.js';
 import { listProducts, getProductDetail } from './market.js';
 import { listPosts, getPostDetail } from './forum.js';
 import { searchKnowledgeVectors } from './vectorAi.js';
+import { createCounselorAlertsForUser } from './counselor.js';
 
 const activeRuns = new Map();
 const categories = [
@@ -1118,7 +1119,7 @@ async function reportRisk(store, user, messageId, level = '中风险', reason = 
   const profile = publicUser(store, user.id);
   const message = store.collection('aiMessages').find((item) => item.id === messageId);
   const sessionId = message?.sessionId || '';
-  return store.insert('aiRiskAlerts', {
+  const alert = await store.insert('aiRiskAlerts', {
     messageId,
     sessionId,
     userId: user.id,
@@ -1128,6 +1129,15 @@ async function reportRisk(store, user, messageId, level = '中风险', reason = 
     reason,
     snapshot: sessionId ? buildAiConversationSnapshot(store, sessionId, { alertMessageId: messageId }) : null
   });
+  await createCounselorAlertsForUser(store, user.id, {
+    sourceType: 'ai_risk',
+    sourceId: alert.id,
+    title: '智能体对话风险',
+    reason,
+    riskLevel: level,
+    snapshot: alert.snapshot
+  });
+  return alert;
 }
 
 export function getAiRiskDetail(store, riskId) {

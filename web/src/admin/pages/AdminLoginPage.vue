@@ -7,8 +7,8 @@
       <section class="auth-copy">
         <div>
           <span class="auth-kicker">Admin Console</span>
-          <h1>管理员后台</h1>
-          <p>管理员入口与普通用户入口完全隔离，用户 Token 不能访问后台接口。</p>
+          <h1>后台入口</h1>
+          <p>管理员和学院导员共用入口，登录后按账号角色进入不同工作台。</p>
         </div>
         <div class="auth-proof-grid">
           <div class="auth-proof">
@@ -16,12 +16,12 @@
             <span>独立入口</span>
           </div>
           <div class="auth-proof">
-            <strong>日志</strong>
-            <span>操作可追踪</span>
+            <strong>角色</strong>
+            <span>自动分流</span>
           </div>
           <div class="auth-proof">
-            <strong>确认</strong>
-            <span>危险动作二次确认</span>
+            <strong>告警</strong>
+            <span>风险可追踪</span>
           </div>
         </div>
       </section>
@@ -59,7 +59,7 @@ async function login() {
   try {
     const data = await request('/api/admin/auth/login', { method: 'POST', body: form }, 'admin');
     setAdminSession(data.token, data.admin);
-    router.push('/');
+    router.push(data.admin?.role === 'counselor' ? '/counselor' : '/');
   } catch (error) {
     message.error(error.message || '登录失败');
   } finally {

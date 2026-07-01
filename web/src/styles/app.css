@@ -2417,6 +2417,24 @@ a:focus-visible,
   max-width: 560px;
 }
 
+.range-list-editor {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: minmax(86px, 140px) auto minmax(86px, 140px) auto;
+  gap: 8px;
+  align-items: center;
+  justify-content: start;
+}
+
+.counselor-alert-modal {
+  width: min(1180px, 94vw);
+}
+
 .snapshot-block {
   display: grid;
   gap: 8px;

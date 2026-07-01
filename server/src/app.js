@@ -6,6 +6,7 @@ import { config } from './config.js';
 import authRoutes from './routes/auth.js';
 import profileRoutes from './routes/profile.js';
 import adminRoutes from './routes/admin.js';
+import counselorRoutes from './routes/counselor.js';
 import chatRoutes from './routes/chat.js';
 import notificationRoutes from './routes/notifications.js';
 import fileRoutes, { serveUploadedFile } from './routes/files.js';
@@ -70,6 +71,9 @@ const AI_COLLECTIONS = [
   'aiToolCalls',
   'aiRiskAlerts',
   'aiConsultationStats',
+  'colleges',
+  'counselorAccounts',
+  'counselorAlerts',
   'knowledgeBases',
   'knowledgeEntries',
   'tasks',
@@ -78,12 +82,26 @@ const AI_COLLECTIONS = [
   'contentModerationItems',
   'notifications'
 ];
+const COUNSELOR_COLLECTIONS = [
+  'colleges',
+  'counselorAccounts',
+  'counselorAlerts',
+  'users',
+  'contentModerationItems',
+  'aiRiskAlerts',
+  'aiSessions',
+  'aiMessages',
+  'posts',
+  'tasks',
+  'products'
+];
 
 function collectionsForRequest(req) {
   const pathName = req.path;
   if (!pathName.startsWith('/api')) return [];
   if (pathName === '/api/health') return ['settings'];
   if (pathName.startsWith('/api/admin')) return ['settings', ...collectionNames];
+  if (pathName.startsWith('/api/counselor')) return ['settings', ...COUNSELOR_COLLECTIONS];
   if (pathName.startsWith('/api/auth') || pathName.startsWith('/api/profile')) return BASE_COLLECTIONS;
   if (pathName.startsWith('/api/notifications')) return [...BASE_COLLECTIONS, 'notifications'];
   if (pathName.startsWith('/api/files')) return [...BASE_COLLECTIONS, 'fileAssets'];
@@ -134,6 +152,7 @@ export function createApp(store, realtime) {
   app.use('/api/auth', authRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/counselor', counselorRoutes);
   app.use('/api', chatRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/files', fileRoutes);

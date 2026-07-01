@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createNotification } from './notifications.js';
 import { applyModerationRejectionEffects } from './moderationRefunds.js';
+import { createCounselorAlertsForUser } from './counselor.js';
 
 const PROCESSING_STATUSES = new Set(['pending', 'processing']);
 
@@ -133,6 +134,9 @@ export async function scanContentModerationQueue(store, realtime, options = {}) 
     'messages',
     'conversations',
     'notifications',
+    'colleges',
+    'counselorAccounts',
+    'counselorAlerts',
     'walletTransactions'
   ], { force: true });
   const limit = Number(options.limit || 20);
@@ -348,6 +352,16 @@ async function applyModerationResult(store, realtime, item, result) {
     link: userManageLinks[item.entityType] || '/',
     sourceId: item.id
   }, realtime);
+  await createCounselorAlertsForUser(store, item.userId, {
+    sourceType: 'content_moderation',
+    sourceId: item.id,
+    entityType: item.entityType,
+    entityId: item.entityId,
+    title: `${entityLabels[item.entityType]}内容风险`,
+    reason,
+    riskLevel: result.riskLevel || item.riskLevel || '',
+    snapshot: item.snapshot
+  });
 }
 
 function refundNotice(ownerId, refunds = []) {
