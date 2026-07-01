@@ -10,6 +10,7 @@ import {
   createTaskDraft,
   createTaskReport,
   createTaskReview,
+  deleteOwnTask,
   decorateTask,
   getTaskDetail,
   listTasks,
@@ -18,9 +19,11 @@ import {
   scanTaskTimeouts,
   submitDelivery,
   taskAreas,
+  taskModerationCenter,
   taskRanking,
   taskWorkbench,
   taskTendencies,
+  updateOwnTaskVisibility,
   updateTaskDraft
 } from '../services/tasks.js';
 import { badRequest } from '../utils/errors.js';
@@ -55,6 +58,10 @@ router.get('/workbench', requireUser, asyncHandler(async (req, res) => {
   res.json(taskWorkbench(req.store, req.user.id));
 }));
 
+router.get('/moderation', requireUser, asyncHandler(async (req, res) => {
+  res.json(await taskModerationCenter(req.store, req.user));
+}));
+
 router.get('/:id', requireUser, asyncHandler(async (req, res) => {
   res.json({ task: getTaskDetail(req.store, req.params.id, req.user.id) });
 }));
@@ -62,6 +69,15 @@ router.get('/:id', requireUser, asyncHandler(async (req, res) => {
 router.patch('/:id', requireUser, asyncHandler(async (req, res) => {
   const task = await updateTaskDraft(req.store, req.user, req.params.id, req.body);
   res.json({ task });
+}));
+
+router.patch('/:id/visibility', requireUser, asyncHandler(async (req, res) => {
+  const task = await updateOwnTaskVisibility(req.store, req.user, req.params.id, Boolean(req.body.visible));
+  res.json({ task });
+}));
+
+router.delete('/:id', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteOwnTask(req.store, req.user, req.params.id));
 }));
 
 router.post('/:id/pay', requireUser, asyncHandler(async (req, res) => {

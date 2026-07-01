@@ -35,6 +35,30 @@ function assertCanPublish(user) {
   if (user.isPublishRestricted) throw forbidden('账号已被限制发布，不能发布任务');
 }
 
+function moderationActivityAt(entity) {
+  return entity.moderationCheckedAt || entity.moderationRejectedAt || entity.updatedAt || entity.createdAt || '';
+}
+
+function ownModerationTasks(store, userId) {
+  return store.collection('tasks')
+    .filter((task) => task.publisherId === userId && !task.deletedAt && task.moderationStatus);
+}
+
+function moderationUnreadCount(items, readAt = '') {
+  if (!readAt) return items.filter((item) => (item.moderationStatus || 'approved') !== 'approved').length;
+  return items.filter((item) => String(moderationActivityAt(item)).localeCompare(String(readAt)) > 0).length;
+}
+
+function hasSuccessfulTaskFlow(store, taskId, types) {
+  const typeSet = new Set(Array.isArray(types) ? types : [types]);
+  return store.collection('paymentFlows').some((flow) => (
+    flow.relatedType === 'task'
+    && flow.relatedId === taskId
+    && typeSet.has(flow.type)
+    && flow.status === 'success'
+  ));
+}
+
 function assertTaskPayload(store, body) {
   const settings = store.collection('settings');
   const title = String(body.title || '').trim();
@@ -82,13 +106,15 @@ export async function createTaskDraft(store, user, body) {
     publishedAt: '',
     paidAt: '',
     completedAt: '',
+    hiddenAt: '',
+    deletedAt: '',
     viewCount: 0
   });
   return decorateTask(store, task);
 }
 
 export async function updateTaskDraft(store, user, taskId, body) {
-  const task = store.collection('tasks').find((item) => item.id === taskId);
+  const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
   if (!task) throw notFound('任务不存在');
   if (task.publisherId !== user.id) throw forbidden('只能编辑自己创建的任务');
   if (task.status !== 'editing') throw badRequest('只有待支付草稿可以编辑');
@@ -97,7 +123,7 @@ export async function updateTaskDraft(store, user, taskId, body) {
 }
 
 export async function publishTaskAfterPayment(store, user, taskId) {
-  const task = store.collection('tasks').find((item) => item.id === taskId);
+  const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
   if (!task) throw notFound('任务不存在');
   if (task.publisherId !== user.id) throw forbidden('只能支付自己发布的任务');
   if (task.status !== 'editing') throw badRequest('任务当前状态不能支付发布');
@@ -125,6 +151,7 @@ export async function publishTaskAfterPayment(store, user, taskId) {
 
 export function listTasks(store, query = {}, viewerId = '') {
   let tasks = store.collection('tasks')
+    .filter((task) => !task.deletedAt && !task.hiddenAt)
     .filter((task) => ['open', 'accepted', 'submitted', 'timeout', 'completed'].includes(task.status))
     .filter((task) => isModerationApproved(task));
   if (query.status) tasks = tasks.filter((task) => task.status === query.status);
@@ -147,8 +174,9 @@ export function taskWorkbench(store, userId) {
   const applications = store.collection('taskApplications');
   const reviews = store.collection('taskReviews');
   const paymentFlows = store.collection('paymentFlows');
-  const publishedRaw = tasks.filter((task) => task.publisherId === userId);
-  const assignedRaw = tasks.filter((task) => task.assigneeId === userId);
+  const publishedRaw = tasks.filter((task) => task.publisherId === userId && !task.deletedAt);
+  const moderationRaw = ownModerationTasks(store, userId);
+  const assignedRaw = tasks.filter((task) => task.assigneeId === userId && !task.deletedAt);
   const relatedTaskIds = new Set([...publishedRaw, ...assignedRaw].map((task) => task.id));
   const myApplications = applications
     .filter((item) => item.applicantId === userId)
@@ -159,6 +187,7 @@ export function taskWorkbench(store, userId) {
     }))
     .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
   const published = publishedRaw
+    .filter((task) => isModerationApproved(task))
     .map((task) => decorateTask(store, task, userId))
     .map((task) => ({
       ...task,
@@ -182,7 +211,7 @@ export function taskWorkbench(store, userId) {
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const actionItems = buildTaskActionItems(published, assigned, myApplications);
   const income = flows
-    .filter((flow) => flow.userId === userId && ['task_finish_settlement', 'task_cancel_refund', 'task_timeout_refund', 'task_moderation_refund'].includes(flow.type))
+    .filter((flow) => flow.userId === userId && ['task_finish_settlement', 'task_cancel_refund', 'task_timeout_refund', 'task_moderation_refund', 'task_delete_refund'].includes(flow.type))
     .reduce((sum, flow) => sum + Number(flow.amount || 0), 0);
   const spending = flows
     .filter((flow) => flow.userId === userId && flow.type === 'task_publish_payment')
@@ -191,12 +220,16 @@ export function taskWorkbench(store, userId) {
   return {
     stats: {
       publishedTotal: published.length,
-      publishedActive: published.filter((task) => ['editing', 'open', 'accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)).length,
+      publishedActive: published.filter((task) => !task.hiddenAt && ['editing', 'open', 'accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)).length,
       publishedCompleted: published.filter((task) => task.status === 'completed').length,
       assignedActive: assigned.filter((task) => ['accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)).length,
       assignedCompleted: assigned.filter((task) => task.status === 'completed').length,
       pendingApplications: myApplications.filter((item) => item.status === 'pending').length,
       actionCount: actionItems.length,
+      moderationUnread: moderationUnreadCount(moderationRaw, store.collection('users').find((item) => item.id === userId)?.taskModerationReadAt || ''),
+      moderationTotal: moderationRaw.length,
+      moderationPending: moderationRaw.filter((task) => task.moderationStatus === 'pending').length,
+      moderationRejected: moderationRaw.filter((task) => task.moderationStatus === 'rejected').length,
       income,
       spending
     },
@@ -208,9 +241,80 @@ export function taskWorkbench(store, userId) {
   };
 }
 
+export async function taskModerationCenter(store, user) {
+  const itemsRaw = ownModerationTasks(store, user.id);
+  const readAt = user.taskModerationReadAt || '';
+  const unreadCount = moderationUnreadCount(itemsRaw, readAt);
+  const items = itemsRaw
+    .map((task) => decorateTask(store, task, user.id))
+    .sort((a, b) => String(moderationActivityAt(b)).localeCompare(String(moderationActivityAt(a))));
+  await store.update('users', user.id, { taskModerationReadAt: now() });
+  return {
+    unreadCount,
+    stats: {
+      total: items.length,
+      pending: items.filter((task) => task.moderationStatus === 'pending').length,
+      approved: items.filter((task) => (task.moderationStatus || 'approved') === 'approved').length,
+      rejected: items.filter((task) => task.moderationStatus === 'rejected').length,
+      hidden: items.filter((task) => task.hiddenAt).length
+    },
+    items
+  };
+}
+
+export async function updateOwnTaskVisibility(store, user, taskId, visible) {
+  const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
+  if (!task) throw notFound('任务不存在');
+  if (task.publisherId !== user.id) throw forbidden('只能管理自己发布的任务');
+  if (visible && task.moderationStatus === 'rejected') throw badRequest('审核未通过的任务不能恢复公开');
+  const updated = await store.update('tasks', task.id, {
+    hiddenAt: visible ? '' : now()
+  });
+  return decorateTask(store, updated, user.id, true);
+}
+
+export async function deleteOwnTask(store, user, taskId) {
+  const task = store.collection('tasks').find((item) => item.id === taskId && !item.deletedAt);
+  if (!task) throw notFound('任务不存在');
+  if (task.publisherId !== user.id) throw forbidden('只能删除自己发布的任务');
+  if (['accepted', 'submitted', 'timeout', 'dispute'].includes(task.status)) {
+    throw badRequest('任务已有接单或纠纷记录，请先完成取消或处理流程');
+  }
+  if (task.assigneeId && !['cancelled', 'closed'].includes(task.status)) {
+    throw badRequest('任务已有接单者，不能直接删除');
+  }
+  if (task.status === 'open' && task.paidAt && !hasSuccessfulTaskFlow(store, task.id, ['task_cancel_refund', 'task_timeout_refund', 'task_moderation_refund', 'task_delete_refund'])) {
+    await recordPaymentFlow(store, {
+      userId: task.publisherId,
+      relatedType: 'task',
+      relatedId: task.id,
+      type: 'task_delete_refund',
+      amount: task.reward,
+      status: 'success',
+      title: `任务删除退款：${task.title}`
+    });
+    await creditWallet(store, {
+      userId: task.publisherId,
+      relatedType: 'task',
+      relatedId: task.id,
+      amount: task.reward,
+      title: `任务删除退款：${task.title}`,
+      source: 'task_delete_refund'
+    });
+  }
+  await store.update('tasks', task.id, {
+    status: ['editing', 'open'].includes(task.status) ? 'cancelled' : task.status,
+    hiddenAt: now(),
+    deletedAt: now(),
+    cancelReason: task.cancelReason || '发布者删除任务'
+  });
+  return { ok: true };
+}
+
 export function getTaskDetail(store, taskId, viewerId = '') {
   const task = store.collection('tasks').find((item) => item.id === taskId);
-  if (!task) throw notFound('任务不存在');
+  if (!task || task.deletedAt) throw notFound('任务不存在');
+  if (task.hiddenAt && task.publisherId !== viewerId && task.assigneeId !== viewerId) throw notFound('任务不存在');
   if (task.publisherId !== viewerId && task.assigneeId !== viewerId && !isModerationApproved(task)) throw notFound('任务不存在');
   task.viewCount = Number(task.viewCount || 0) + 1;
   store.saveCollection('tasks').catch(() => {});
@@ -219,7 +323,7 @@ export function getTaskDetail(store, taskId, viewerId = '') {
 
 export async function applyTask(store, realtime, user, taskId) {
   const task = store.collection('tasks').find((item) => item.id === taskId);
-  if (!task) throw notFound('任务不存在');
+  if (!task || task.deletedAt || task.hiddenAt) throw notFound('任务不存在');
   if (task.status !== 'open') throw badRequest('任务当前不可申请');
   if (!isModerationApproved(task)) throw badRequest('任务正在审核，暂不能申请');
   if (task.publisherId === user.id) throw badRequest('不能申请自己发布的任务');
@@ -467,12 +571,13 @@ export async function createTaskReport(store, user, taskId, body) {
 }
 
 export function taskRanking(store, range = 'week') {
-  const tasks = store.collection('tasks').filter((task) => task.status === 'completed' && task.assigneeId);
+  const tasks = store.collection('tasks').filter((task) => !task.deletedAt && task.status === 'completed' && task.assigneeId);
   const since = new Date();
   since.setDate(since.getDate() - (range === 'month' ? 30 : 7));
   const reviews = store.collection('taskReviews');
   const stats = new Map();
   for (const task of tasks) {
+    if (task.deletedAt) continue;
     if (new Date(task.completedAt || task.updatedAt) < since) continue;
     const current = stats.get(task.assigneeId) || { userId: task.assigneeId, completed: 0, positive: 0, reviews: 0 };
     current.completed += 1;
@@ -510,6 +615,7 @@ export async function scanTaskTimeouts(store) {
   const tasks = store.collection('tasks');
   let changed = false;
   for (const task of tasks) {
+    if (task.deletedAt) continue;
     const deadline = task.deadlineAt ? new Date(task.deadlineAt).getTime() : 0;
     if (task.status === 'open' && deadline && deadline < Date.now()) {
       task.status = 'closed';

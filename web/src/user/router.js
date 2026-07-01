@@ -14,6 +14,7 @@ import TaskPaymentPage from './pages/tasks/TaskPaymentPage.vue';
 import TaskDetailPage from './pages/tasks/TaskDetailPage.vue';
 import TaskRankingPage from './pages/tasks/TaskRankingPage.vue';
 import TaskWorkbenchPage from './pages/tasks/TaskWorkbenchPage.vue';
+import TaskModerationPage from './pages/tasks/TaskModerationPage.vue';
 import ForumHomePage from './pages/forum/ForumHomePage.vue';
 import ForumCreatePage from './pages/forum/ForumCreatePage.vue';
 import ForumDetailPage from './pages/forum/ForumDetailPage.vue';
@@ -26,6 +27,7 @@ import MarketDetailPage from './pages/market/MarketDetailPage.vue';
 import MarketFavoritesPage from './pages/market/MarketFavoritesPage.vue';
 import MarketGradePage from './pages/market/MarketGradePage.vue';
 import MarketOrdersPage from './pages/market/MarketOrdersPage.vue';
+import MarketModerationPage from './pages/market/MarketModerationPage.vue';
 import AiChatPage from './pages/ai/AiChatPage.vue';
 
 export const userRouter = createRouter({
@@ -42,6 +44,7 @@ export const userRouter = createRouter({
     { path: '/tasks/new', component: TaskFormPage },
     { path: '/tasks/ranking', component: TaskRankingPage },
     { path: '/tasks/workbench', component: TaskWorkbenchPage },
+    { path: '/tasks/moderation', component: TaskModerationPage },
     { path: '/tasks/:id/edit', component: TaskFormPage },
     { path: '/tasks/:id/payment', component: TaskPaymentPage },
     { path: '/tasks/:id', component: TaskDetailPage },
@@ -56,6 +59,7 @@ export const userRouter = createRouter({
     { path: '/market/favorites', component: MarketFavoritesPage },
     { path: '/market/grade', component: MarketGradePage },
     { path: '/market/orders', component: MarketOrdersPage },
+    { path: '/market/moderation', component: MarketModerationPage },
     { path: '/market/:id', component: MarketDetailPage },
     { path: '/ai', component: AiChatPage }
   ]

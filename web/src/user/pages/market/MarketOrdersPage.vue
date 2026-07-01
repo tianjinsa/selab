@@ -7,6 +7,12 @@
         <p class="muted">集中管理买到的、卖出的、我发布的商品、待处理动作和资金流水。</p>
       </div>
       <n-space>
+        <n-badge :value="stats.moderationUnread" :max="99" :show="stats.moderationUnread > 0">
+          <n-button secondary @click="$router.push('/market/moderation')">
+            <template #icon><ShieldCheck :size="16" /></template>
+            审核情况
+          </n-button>
+        </n-badge>
         <n-button secondary @click="$router.push('/market')">
           <template #icon><Store :size="16" /></template>
           返回市场
@@ -150,6 +156,7 @@
                 <n-tag size="small" :type="moderationType(product.moderationStatus)" :bordered="false">
                   {{ moderationText(product.moderationStatus) }}
                 </n-tag>
+                <n-tag v-if="product.hiddenAt" size="small" :bordered="false">已隐藏</n-tag>
                 <n-tag v-if="product.activeOrder" size="small" type="warning" :bordered="false">交易锁定中</n-tag>
               </div>
               <n-alert v-if="product.moderationStatus === 'pending'" type="warning" :show-icon="false" class="workbench-inline-alert">
@@ -160,6 +167,22 @@
               </n-alert>
               <n-space>
                 <n-button size="small" secondary @click="$router.push(`/market/${product.id}`)">查看商品</n-button>
+                <n-button
+                  size="small"
+                  secondary
+                  :type="product.hiddenAt ? 'success' : 'warning'"
+                  @click="toggleProductVisibility(product)"
+                >
+                  <template #icon>
+                    <Eye v-if="product.hiddenAt" :size="15" />
+                    <EyeOff v-else :size="15" />
+                  </template>
+                  {{ product.hiddenAt ? '恢复公开' : '隐藏' }}
+                </n-button>
+                <n-button size="small" tertiary type="error" @click="confirmDeleteProduct(product)">
+                  <template #icon><Trash2 :size="15" /></template>
+                  删除
+                </n-button>
               </n-space>
             </article>
           </div>
@@ -192,12 +215,16 @@ import {
   ArrowRight,
   ClipboardCheck,
   CreditCard,
+  Eye,
+  EyeOff,
   PackageCheck,
   Plus,
   RefreshCcw,
+  ShieldCheck,
   ShoppingBag,
   Star,
   Store,
+  Trash2,
   Truck,
   WalletCards
 } from '@lucide/vue';
@@ -218,6 +245,10 @@ const emptyStats = {
   sellingCompleted: 0,
   revenue: 0,
   refunds: 0,
+  moderationUnread: 0,
+  moderationTotal: 0,
+  moderationPending: 0,
+  moderationRejected: 0,
   spending: 0
 };
 
@@ -232,6 +263,38 @@ onMounted(load);
 
 async function load() {
   data.value = await request('/api/market/orders/workbench');
+}
+
+async function toggleProductVisibility(product) {
+  const visible = Boolean(product.hiddenAt);
+  try {
+    await request(`/api/market/products/${product.id}/visibility`, {
+      method: 'PATCH',
+      body: { visible }
+    });
+    message.success(visible ? '商品已恢复公开' : '商品已隐藏');
+    await load();
+  } catch (error) {
+    message.error(error.message || '操作失败');
+  }
+}
+
+function confirmDeleteProduct(product) {
+  dialog.warning({
+    title: '删除商品',
+    content: `确认删除「${product.title || '未命名商品'}」？删除后不会在二手市场和订单后台展示。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await request(`/api/market/products/${product.id}`, { method: 'DELETE' });
+        message.success('商品已删除');
+        await load();
+      } catch (error) {
+        message.error(error.message || '删除失败');
+      }
+    }
+  });
 }
 
 async function accept(order) {

@@ -81,12 +81,14 @@ const routeTitle = computed(() => {
     '/wallet': '主系统钱包',
     '/tasks': '校园任务互助',
     '/tasks/workbench': '任务工作台',
+    '/tasks/moderation': '任务审核情况',
     '/forum': '校园社区论坛',
     '/forum/studio': '创作中心',
     '/forum/collections': '社区收藏与关注',
     '/market': '校园二手市场',
     '/market/favorites': '市场收藏',
     '/market/orders': '我的交易',
+    '/market/moderation': '商品审核情况',
     '/ai': '校园信息智能体'
   };
   return map[route.path] || map[`/${route.path.split('/')[1]}`] || '校园首页';

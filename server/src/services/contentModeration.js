@@ -32,8 +32,8 @@ const publicLinks = {
 
 const userManageLinks = {
   post: '/forum/studio',
-  task: '/tasks/workbench',
-  product: '/market/orders'
+  task: '/tasks/moderation',
+  product: '/market/moderation'
 };
 
 const riskRules = [

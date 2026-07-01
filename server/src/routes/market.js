@@ -9,6 +9,7 @@ import {
   createOrderReview,
   createProduct,
   createProductReport,
+  deleteOwnProduct,
   deliverOrder,
   getProductDetail,
   gradeRecommendations,
@@ -16,6 +17,7 @@ import {
   listMarketAdmin,
   listMyOrders,
   listProducts,
+  marketModerationCenter,
   marketWorkbench,
   marketMeta,
   payOrder,
@@ -25,7 +27,8 @@ import {
   resolveCategoryRequest,
   scanOrderTimeouts,
   takeDownProduct,
-  toggleProductFavorite
+  toggleProductFavorite,
+  updateOwnProductVisibility
 } from '../services/market.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
 
@@ -57,6 +60,10 @@ router.get('/orders/workbench', requireUser, asyncHandler(async (req, res) => {
   res.json(marketWorkbench(req.store, req.user.id));
 }));
 
+router.get('/moderation', requireUser, asyncHandler(async (req, res) => {
+  res.json(await marketModerationCenter(req.store, req.user));
+}));
+
 router.get('/favorites', requireUser, asyncHandler(async (req, res) => {
   res.json({ products: listFavoriteProducts(req.store, req.user.id) });
 }));
@@ -72,6 +79,15 @@ router.get('/products/:id', requireUser, asyncHandler(async (req, res) => {
 
 router.post('/products/:id/favorite', requireUser, asyncHandler(async (req, res) => {
   res.json(await toggleProductFavorite(req.store, req.user, req.params.id));
+}));
+
+router.patch('/products/:id/visibility', requireUser, asyncHandler(async (req, res) => {
+  const product = await updateOwnProductVisibility(req.store, req.user, req.params.id, Boolean(req.body.visible));
+  res.json({ product });
+}));
+
+router.delete('/products/:id', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteOwnProduct(req.store, req.user, req.params.id));
 }));
 
 router.post('/products/:id/apply', requireUser, asyncHandler(async (req, res) => {
