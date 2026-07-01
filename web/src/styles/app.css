@@ -2431,6 +2431,13 @@ a:focus-visible,
   justify-content: start;
 }
 
+.range-error-text {
+  grid-column: 1 / -1;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .counselor-alert-modal {
   width: min(1180px, 94vw);
 }

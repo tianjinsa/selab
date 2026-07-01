@@ -4,16 +4,17 @@
       <div class="panel-heading">
         <div>
           <h2>导员负责范围</h2>
-          <p class="muted">{{ counselor?.college?.name || '未绑定学院' }}，学院范围 {{ counselor?.college?.startCode || '-' }}-{{ counselor?.college?.endCode || '-' }}</p>
+          <p class="muted">{{ counselor?.college?.name || '未绑定学院' }}，学院范围 {{ counselor?.college?.startCode || '-' }}00000-{{ counselor?.college?.endCode || '-' }}99999。请填写学号后 8 位。</p>
         </div>
         <n-button type="primary" @click="saveRanges">保存范围</n-button>
       </div>
       <div class="range-list-editor">
         <div v-for="(range, index) in rangeForm" :key="index" class="range-row">
-          <n-input v-model:value="range.startCode" maxlength="3" placeholder="起始段" />
+          <n-input v-model:value="range.startCode" maxlength="8" placeholder="例如 31204000" />
           <span>-</span>
-          <n-input v-model:value="range.endCode" maxlength="3" placeholder="结束段" />
+          <n-input v-model:value="range.endCode" maxlength="8" placeholder="例如 31204999" />
           <n-button quaternary type="error" @click="removeRange(index)">删除</n-button>
+          <small v-if="rangeError(range)" class="range-error-text">{{ rangeError(range) }}</small>
         </div>
         <n-button secondary @click="addRange">添加负责范围</n-button>
       </div>
@@ -145,17 +146,23 @@ async function load() {
 }
 
 async function saveRanges() {
-  const data = await request('/api/counselor/ranges', { method: 'PATCH', body: { ranges: rangeForm.value } }, 'admin');
-  counselor.value = data.counselor;
-  rangeForm.value = cloneRanges(data.counselor?.ranges || []);
-  message.success('负责范围已保存');
+  const error = rangeFormError();
+  if (error) {
+    message.error(error);
+    return;
+  }
+  try {
+    const data = await request('/api/counselor/ranges', { method: 'PATCH', body: { ranges: rangeForm.value } }, 'admin');
+    counselor.value = data.counselor;
+    rangeForm.value = cloneRanges(data.counselor?.ranges || []);
+    message.success('负责范围已保存');
+  } catch (error) {
+    message.error(error.message || '保存负责范围失败');
+  }
 }
 
 function addRange() {
-  rangeForm.value.push({
-    startCode: counselor.value?.college?.startCode || '',
-    endCode: counselor.value?.college?.endCode || ''
-  });
+  rangeForm.value.push(fullCollegeTailRange());
 }
 
 function removeRange(index) {
@@ -179,6 +186,27 @@ async function openDetail(row) {
 
 function cloneRanges(ranges = []) {
   return (Array.isArray(ranges) ? ranges : []).map((item) => ({ startCode: item.startCode || '', endCode: item.endCode || '' }));
+}
+
+function fullCollegeTailRange() {
+  const college = counselor.value?.college;
+  return college ? { startCode: `${college.startCode}00000`, endCode: `${college.endCode}99999` } : { startCode: '', endCode: '' };
+}
+
+function rangeError(range) {
+  if (!range.startCode && !range.endCode) return '';
+  if (!/^\d{8}$/.test(range.startCode || '') || !/^\d{8}$/.test(range.endCode || '')) return '负责范围必须填写学号后 8 位，例如 31204000-31204999';
+  if (range.startCode > range.endCode) return '起始范围不能大于结束范围';
+  const college = counselor.value?.college;
+  if (college && (range.startCode.slice(0, 3) < college.startCode || range.endCode.slice(0, 3) > college.endCode)) {
+    return `必须在学院范围 ${college.startCode}00000-${college.endCode}99999 内`;
+  }
+  return '';
+}
+
+function rangeFormError() {
+  if (!rangeForm.value.length) return '请至少添加一个负责范围';
+  return rangeForm.value.map(rangeError).find(Boolean) || '';
 }
 
 function sourceText(row = {}) {

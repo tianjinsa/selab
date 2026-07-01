@@ -11,25 +11,50 @@ function codePart(studentId = '') {
   return /^\d{12}$/.test(text) ? text.slice(4, 7) : '';
 }
 
-function normalizeCode(value, label) {
+function tailPart(studentId = '') {
+  const text = String(studentId || '');
+  return /^\d{12}$/.test(text) ? text.slice(4) : '';
+}
+
+function normalizeCollegeCode(value, label) {
   const text = String(value ?? '').trim();
   if (!/^\d{3}$/.test(text)) throw badRequest(`${label}必须是 3 位数字`);
   return text;
 }
 
-function normalizeRange(body = {}, college = null) {
-  const startCode = normalizeCode(body.startCode ?? body.start ?? body.from, '起始学号段');
-  const endCode = normalizeCode(body.endCode ?? body.end ?? body.to, '结束学号段');
+function normalizeCollegeRange(body = {}) {
+  const startCode = normalizeCollegeCode(body.startCode ?? body.start ?? body.from, '起始学号段');
+  const endCode = normalizeCollegeCode(body.endCode ?? body.end ?? body.to, '结束学号段');
   if (startCode > endCode) throw badRequest('起始学号段不能大于结束学号段');
-  if (college && (startCode < college.startCode || endCode > college.endCode)) {
-    throw badRequest(`负责范围必须在学院范围 ${college.startCode}-${college.endCode} 内`);
+  return { startCode, endCode };
+}
+
+function fullCollegeTailRange(college) {
+  return { startCode: `${college.startCode}00000`, endCode: `${college.endCode}99999` };
+}
+
+function normalizeCounselorCode(value, label, boundary = 'start') {
+  const text = String(value ?? '').trim();
+  if (/^\d{8}$/.test(text)) return text;
+  if (/^\d{3}$/.test(text)) return boundary === 'end' ? `${text}99999` : `${text}00000`;
+  throw badRequest(`${label}必须是学号后 8 位数字，例如 31204099`);
+}
+
+function normalizeCounselorRange(body = {}, college) {
+  const startCode = normalizeCounselorCode(body.startCode ?? body.start ?? body.from, '起始负责范围', 'start');
+  const endCode = normalizeCounselorCode(body.endCode ?? body.end ?? body.to, '结束负责范围', 'end');
+  if (startCode > endCode) throw badRequest('起始负责范围不能大于结束负责范围');
+  const startCollegeCode = startCode.slice(0, 3);
+  const endCollegeCode = endCode.slice(0, 3);
+  if (college && (startCollegeCode < college.startCode || endCollegeCode > college.endCode)) {
+    throw badRequest(`负责范围必须在学院范围 ${college.startCode}00000-${college.endCode}99999 内`);
   }
   return { startCode, endCode };
 }
 
 function normalizeRanges(ranges = [], college) {
-  const source = Array.isArray(ranges) && ranges.length ? ranges : [{ startCode: college.startCode, endCode: college.endCode }];
-  return source.map((range) => normalizeRange(range, college));
+  const source = Array.isArray(ranges) && ranges.length ? ranges : [fullCollegeTailRange(college)];
+  return source.map((range) => normalizeCounselorRange(range, college));
 }
 
 function sanitizeCounselor(counselor, college = null) {
@@ -37,6 +62,7 @@ function sanitizeCounselor(counselor, college = null) {
   const { passwordHash, ...safe } = counselor;
   return {
     ...safe,
+    ranges: college ? normalizeRanges(safe.ranges, college) : safe.ranges,
     college: college || null
   };
 }
@@ -58,15 +84,16 @@ export function findCollegeForStudent(store, studentId = '') {
 }
 
 export function counselorsForStudent(store, studentId = '') {
-  const code = codePart(studentId);
-  if (!code) return [];
+  const tail = tailPart(studentId);
+  if (!tail) return [];
   const college = findCollegeForStudent(store, studentId);
   if (!college) return [];
   return store.collection('counselorAccounts')
     .filter((item) => !item.deletedAt && item.enabled !== false && item.collegeId === college.id)
-    .filter((item) => (Array.isArray(item.ranges) ? item.ranges : []).some((range) => (
-      code >= range.startCode && code <= range.endCode
-    )))
+    .filter((item) => (Array.isArray(item.ranges) ? item.ranges : []).some((range) => {
+      const normalized = normalizeCounselorRange(range, college);
+      return tail >= normalized.startCode && tail <= normalized.endCode;
+    }))
     .map((item) => sanitizeCounselor(item, college));
 }
 
@@ -86,7 +113,7 @@ export function listColleges(store) {
 export async function createCollege(store, body = {}) {
   const name = String(body.name || '').trim();
   if (!name) throw badRequest('学院名称不能为空');
-  const range = normalizeRange(body);
+  const range = normalizeCollegeRange(body);
   const conflict = listColleges(store).find((item) => (
     range.startCode <= item.endCode && range.endCode >= item.startCode
   ));
@@ -104,7 +131,7 @@ export async function updateCollege(store, collegeId, body = {}) {
   if (!college) throw notFound('学院不存在');
   const name = String(body.name ?? college.name ?? '').trim();
   if (!name) throw badRequest('学院名称不能为空');
-  const range = normalizeRange({
+  const range = normalizeCollegeRange({
     startCode: body.startCode ?? college.startCode,
     endCode: body.endCode ?? college.endCode
   });
@@ -309,13 +336,14 @@ async function clampCounselorRanges(store, college) {
   const counselors = store.collection('counselorAccounts').filter((item) => !item.deletedAt && item.collegeId === college.id);
   for (const counselor of counselors) {
     const ranges = (counselor.ranges || [])
+      .map((range) => normalizeCounselorRange(range, college))
       .map((range) => ({
-        startCode: range.startCode < college.startCode ? college.startCode : range.startCode,
-        endCode: range.endCode > college.endCode ? college.endCode : range.endCode
+        startCode: range.startCode < `${college.startCode}00000` ? `${college.startCode}00000` : range.startCode,
+        endCode: range.endCode > `${college.endCode}99999` ? `${college.endCode}99999` : range.endCode
       }))
       .filter((range) => range.startCode <= range.endCode);
     await store.update('counselorAccounts', counselor.id, {
-      ranges: ranges.length ? ranges : [{ startCode: college.startCode, endCode: college.endCode }]
+      ranges: ranges.length ? ranges : [fullCollegeTailRange(college)]
     });
   }
 }
