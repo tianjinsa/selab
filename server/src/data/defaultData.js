@@ -34,6 +34,8 @@ export function createEmptyData() {
         baseUrl: '',
         apiKey: '',
         model: '',
+        embeddingBaseUrl: '',
+        embeddingApiKey: '',
         embeddingModel: 'text-embedding-3-small',
         includeReasoning: false,
         enableThinking: false,
@@ -100,5 +102,9 @@ export function normalizeData(raw) {
     data.settings = createEmptyData().settings;
   }
   data.settings = { ...createEmptyData().settings, ...data.settings };
+  data.settings.aiConfig = {
+    ...createEmptyData().settings.aiConfig,
+    ...(data.settings.aiConfig || {})
+  };
   return data;
 }

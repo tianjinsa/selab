@@ -5,11 +5,15 @@
         <h2>模型接口配置</h2>
       </div>
       <n-form :model="configForm" label-placement="top">
-        <n-grid :cols="4" :x-gap="12" responsive="screen">
-          <n-form-item-gi label="API Base URL"><n-input v-model:value="configForm.baseUrl" placeholder="https://api.openai.com/v1" /></n-form-item-gi>
-          <n-form-item-gi label="API Key"><n-input v-model:value="configForm.apiKey" type="password" show-password-on="click" placeholder="留空表示不修改" /></n-form-item-gi>
-          <n-form-item-gi label="Model"><n-input v-model:value="configForm.model" placeholder="gpt-4.1-mini 或兼容模型名" /></n-form-item-gi>
-          <n-form-item-gi label="Embedding Model"><n-input v-model:value="configForm.embeddingModel" placeholder="text-embedding-3-small" /></n-form-item-gi>
+        <n-grid :cols="3" :x-gap="12" responsive="screen">
+          <n-form-item-gi label="对话 Base URL"><n-input v-model:value="configForm.baseUrl" placeholder="https://api.openai.com/v1" /></n-form-item-gi>
+          <n-form-item-gi label="对话 API Key"><n-input v-model:value="configForm.apiKey" type="password" show-password-on="click" placeholder="留空表示不修改" /></n-form-item-gi>
+          <n-form-item-gi label="对话 Model"><n-input v-model:value="configForm.model" placeholder="gpt-4.1-mini 或兼容模型名" /></n-form-item-gi>
+        </n-grid>
+        <n-grid :cols="3" :x-gap="12" responsive="screen">
+          <n-form-item-gi label="嵌入 Base URL"><n-input v-model:value="configForm.embeddingBaseUrl" placeholder="留空则使用对话 Base URL" /></n-form-item-gi>
+          <n-form-item-gi label="嵌入 API Key"><n-input v-model:value="configForm.embeddingApiKey" type="password" show-password-on="click" placeholder="留空表示不修改" /></n-form-item-gi>
+          <n-form-item-gi label="嵌入 Model"><n-input v-model:value="configForm.embeddingModel" placeholder="text-embedding-3-small" /></n-form-item-gi>
         </n-grid>
         <n-grid :cols="4" :x-gap="12" responsive="screen">
           <n-form-item-gi label="Include Reasoning">
@@ -28,7 +32,7 @@
         <n-button type="primary" @click="saveConfig">保存配置</n-button>
       </n-form>
       <n-alert class="panel-content-offset" type="info" :show-icon="false">
-        当前状态：Base URL {{ adminData?.config?.baseUrl || '未配置' }}，Model {{ adminData?.config?.model || '未配置' }}，Embedding {{ adminData?.config?.embeddingModel || 'text-embedding-3-small' }}，API Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}，思考 {{ adminData?.config?.enableThinking || adminData?.config?.includeReasoning ? '已开启' : '未开启' }}。
+        当前状态：对话 {{ adminData?.config?.baseUrl || '未配置' }} / {{ adminData?.config?.model || '未配置' }}，对话 Key {{ adminData?.config?.hasApiKey ? '已保存' : '未保存' }}；嵌入 {{ adminData?.config?.embeddingBaseUrl || '使用对话 Base URL' }} / {{ adminData?.config?.embeddingModel || 'text-embedding-3-small' }}，嵌入 Key {{ adminData?.config?.hasEmbeddingApiKey ? '已保存' : '未保存' }}{{ adminData?.config?.embeddingUsesChatProvider ? '（当前复用对话供应商）' : '' }}；思考 {{ adminData?.config?.enableThinking || adminData?.config?.includeReasoning ? '已开启' : '未开启' }}。
       </n-alert>
     </section>
 
@@ -213,6 +217,8 @@ const configForm = reactive({
   baseUrl: '',
   apiKey: '',
   model: '',
+  embeddingBaseUrl: '',
+  embeddingApiKey: '',
   embeddingModel: 'text-embedding-3-small',
   includeReasoning: false,
   enableThinking: false,
@@ -274,8 +280,10 @@ async function load() {
   }
   configForm.baseUrl = adminData.value.config.baseUrl;
   configForm.model = adminData.value.config.model;
+  configForm.embeddingBaseUrl = adminData.value.config.embeddingBaseUrl || '';
   configForm.embeddingModel = adminData.value.config.embeddingModel || 'text-embedding-3-small';
   configForm.apiKey = '';
+  configForm.embeddingApiKey = '';
   configForm.includeReasoning = adminData.value.config.includeReasoning;
   configForm.enableThinking = adminData.value.config.enableThinking;
   configForm.thinkingType = adminData.value.config.thinkingType;

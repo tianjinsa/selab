@@ -118,6 +118,16 @@ function aiConfig(store) {
   return store.collection('settings').aiConfig || {};
 }
 
+function embeddingConfig(store) {
+  const settings = aiConfig(store);
+  const usesDedicatedProvider = Boolean(settings.embeddingBaseUrl);
+  return {
+    baseUrl: settings.embeddingBaseUrl || settings.baseUrl || '',
+    apiKey: usesDedicatedProvider ? settings.embeddingApiKey || '' : settings.embeddingApiKey || settings.apiKey || '',
+    model: settings.embeddingModel || 'text-embedding-3-small'
+  };
+}
+
 function openAiBaseUrl(value = '') {
   return String(value || '').replace(/\/$/, '');
 }
@@ -142,7 +152,7 @@ export async function closeSemanticVectorStorage() {
 export async function embedText(store, text) {
   const input = String(text || '').trim();
   if (!input) throw badRequest('向量化文本不能为空');
-  const settings = aiConfig(store);
+  const settings = embeddingConfig(store);
   if (settings.baseUrl && settings.apiKey) {
     const vector = await requestEmbedding(settings, input).catch(() => null);
     if (Array.isArray(vector?.data?.[0]?.embedding)) {
@@ -160,7 +170,7 @@ async function requestEmbedding(settings, input) {
       Authorization: `Bearer ${settings.apiKey}`
     },
     body: JSON.stringify({
-      model: settings.embeddingModel || 'text-embedding-3-small',
+      model: settings.model || 'text-embedding-3-small',
       input,
       dimensions: VECTOR_DIMENSIONS
     })
