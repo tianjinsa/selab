@@ -139,6 +139,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
   const user = store.collection('users').find((item) => item.id === userId);
   if (!user) throw forbidden('用户不存在');
   const content = String(payload.content || '').trim();
+  const clientMessageId = String(payload.clientMessageId || '').trim();
   if (!content) throw badRequest('请输入咨询内容');
   const session = payload.sessionId
     ? getAiSession(store, userId, payload.sessionId).session
@@ -146,7 +147,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
   if (session.status === 'running') throw badRequest('当前会话已有回答在生成');
 
   const runId = randomUUID();
-  await store.insert('aiMessages', {
+  const userMessage = await store.insert('aiMessages', {
     sessionId: session.id,
     role: 'user',
     content,
@@ -165,8 +166,16 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     reasoningContent: '',
     runId
   });
-  await markSessionRunning(store, session, runId, content);
-  realtime.sendToUser(userId, 'ai.run.started', { sessionId: session.id, runId, assistantMessageId: assistant.id });
+  const runningSession = await markSessionRunning(store, session, runId, content);
+  realtime.sendToUser(userId, 'ai.run.started', {
+    sessionId: session.id,
+    runId,
+    assistantMessageId: assistant.id,
+    userMessageId: userMessage.id,
+    userMessage,
+    clientMessageId,
+    session: runningSession
+  });
 
   const controller = new AbortController();
   activeRuns.set(runId, { controller, userId, sessionId: session.id, assistantMessageId: assistant.id, userContent: content });
@@ -178,7 +187,7 @@ export async function startAiRun(store, realtime, userId, payload = {}) {
     })
     .finally(() => activeRuns.delete(runId));
 
-  return { sessionId: session.id, runId, assistantMessageId: assistant.id };
+  return { sessionId: session.id, runId, assistantMessageId: assistant.id, userMessageId: userMessage.id, userMessage, clientMessageId, session: runningSession };
 }
 
 export async function updateAiUserMessage(store, userId, sessionId, messageId, body = {}) {

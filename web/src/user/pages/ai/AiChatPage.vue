@@ -179,7 +179,7 @@
           placeholder="向校园智能体提问，Shift + Enter 换行"
           @keyup.enter.exact.prevent="send"
         />
-        <n-button v-if="running" secondary type="warning" @click="stop">停止</n-button>
+        <n-button v-if="running" secondary type="warning" :disabled="!sessionId" @click="stop">停止</n-button>
         <n-button v-else type="primary" :disabled="!draft.trim()" @click="send">
           <template #icon><Send :size="16" /></template>
           发送
@@ -350,9 +350,10 @@ function connectSocket() {
 async function handleSocketMessage(event) {
   const packet = JSON.parse(event.data);
   if (packet.event === 'ai.message.accepted') {
-    sessionId.value = packet.payload.sessionId;
+    reconcileAcceptedUserMessage(packet.payload);
+    if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
+    if (packet.payload.session) mergeSession(packet.payload.session);
     await loadSessions();
-    await selectSession(sessionId.value);
   }
   if (packet.event === 'ai.session.updated') {
     mergeSession(packet.payload.session);
@@ -360,8 +361,11 @@ async function handleSocketMessage(event) {
   if (packet.event === 'ai.run.started') {
     running.value = true;
     if (packet.payload.sessionId) sessionId.value = packet.payload.sessionId;
+    reconcileAcceptedUserMessage(packet.payload);
+    if (packet.payload.session) mergeSession(packet.payload.session);
     const target = ensureAssistantMessage(packet.payload);
     if (target) target.runState = 'requesting';
+    scrollBottom();
   }
   if (packet.event === 'ai.token') {
     if (packet.payload.sessionId && packet.payload.sessionId !== sessionId.value) return;
@@ -411,7 +415,10 @@ async function handleSocketMessage(event) {
     await loadSessions();
     if (sessionId.value) await selectSession(sessionId.value);
   }
-  if (packet.event === 'error') notice.error(packet.payload.message);
+  if (packet.event === 'error') {
+    markOptimisticMessageError(packet.payload);
+    notice.error(packet.payload.message);
+  }
 }
 
 async function refreshCurrentSession() {
@@ -434,12 +441,16 @@ async function send() {
   const content = draft.value.trim();
   if (!content) return;
   if (!socket) connectSocket();
-  const result = socket?.send({ event: 'ai.message.send', payload: { sessionId: sessionId.value, content } }, { queue: true });
+  const clientMessageId = createClientMessageId();
+  const result = socket?.send({ event: 'ai.message.send', payload: { sessionId: sessionId.value, content, clientMessageId } }, { queue: true });
   if (!result?.sent && !result?.queued) {
     notice.error('实时连接暂不可用，请稍后重试');
     return;
   }
+  appendOptimisticUserMessage(content, clientMessageId, result.queued);
   draft.value = '';
+  running.value = true;
+  scrollBottom();
   if (result.queued) notice.warning('实时连接正在恢复，消息会在重连后自动发送');
 }
 
@@ -543,12 +554,72 @@ function normalizeMessage(item) {
     toolEvents: Array.isArray(item.toolEvents) ? item.toolEvents : [],
     streamParts: Array.isArray(item.streamParts) ? item.streamParts : [],
     reasoningContent: item.reasoningContent || '',
-    runState: item.runState || item.status || ''
+    runState: item.runState || item.status || '',
+    clientMessageId: item.clientMessageId || '',
+    localOnly: Boolean(item.localOnly),
+    error: item.error || ''
   };
   if (!normalized.streamParts.length) {
     normalized.streamParts = legacyStreamParts(normalized);
   }
   return normalized;
+}
+
+function createClientMessageId() {
+  return globalThis.crypto?.randomUUID?.() || `local_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function appendOptimisticUserMessage(content, clientMessageId, queued = false) {
+  messages.value.push(normalizeMessage({
+    id: clientMessageId,
+    clientMessageId,
+    sessionId: sessionId.value,
+    role: 'user',
+    content,
+    status: queued ? 'queued' : 'sending',
+    cards: [],
+    streamParts: [],
+    localOnly: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }));
+}
+
+function reconcileAcceptedUserMessage(payload = {}) {
+  const clientMessageId = payload.clientMessageId || '';
+  const userMessage = payload.userMessage || null;
+  const userMessageId = payload.userMessageId || userMessage?.id || '';
+  const index = messages.value.findIndex((item) => (
+    (clientMessageId && item.clientMessageId === clientMessageId)
+    || (userMessageId && item.id === userMessageId)
+  ));
+  if (index >= 0) {
+    messages.value.splice(index, 1, normalizeMessage({
+      ...messages.value[index],
+      ...(userMessage || {}),
+      id: userMessageId || messages.value[index].id,
+      sessionId: payload.sessionId || userMessage?.sessionId || messages.value[index].sessionId,
+      status: userMessage?.status || 'done',
+      clientMessageId,
+      localOnly: false,
+      error: ''
+    }));
+    return;
+  }
+  if (userMessage && (!payload.sessionId || payload.sessionId === sessionId.value) && !messages.value.some((item) => item.id === userMessage.id)) {
+    messages.value.push(normalizeMessage({ ...userMessage, clientMessageId }));
+  }
+}
+
+function markOptimisticMessageError(payload = {}) {
+  const clientMessageId = payload.clientMessageId || '';
+  if (!clientMessageId) return;
+  const target = messages.value.find((item) => item.clientMessageId === clientMessageId);
+  if (!target) return;
+  target.status = 'error';
+  target.localOnly = true;
+  target.error = payload.message || '发送失败';
+  running.value = false;
 }
 
 function legacyStreamParts(item) {
@@ -729,10 +800,12 @@ function sessionStatusText(status) {
 
 function messageStatusText(status) {
   return {
+    queued: '等待连接',
+    sending: '发送中',
     running: '生成中',
     done: '完成',
     stopped: '已停止',
-    error: '出错'
+    error: '发送失败'
   }[status] || status || '';
 }
 
@@ -744,6 +817,7 @@ function messageMetaText(message) {
   } else {
     const status = messageStatusText(message.status);
     if (status && message.status !== 'done') parts.push(status);
+    if (message.error && message.status === 'error') parts.push(message.error);
   }
   if (message.editedAt) parts.push('已编辑');
   return parts.join(' · ');

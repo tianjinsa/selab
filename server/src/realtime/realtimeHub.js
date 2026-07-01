@@ -92,7 +92,13 @@ export class RealtimeHub {
       }
       ws.send(JSON.stringify({ event: 'error', payload: { message: '未知 WebSocket 事件' } }));
     } catch (error) {
-      ws.send(JSON.stringify({ event: 'error', payload: { message: error.message || 'WebSocket 操作失败' } }));
+      ws.send(JSON.stringify({
+        event: 'error',
+        payload: {
+          message: error.message || 'WebSocket 操作失败',
+          clientMessageId: packet.payload?.clientMessageId || ''
+        }
+      }));
     }
   }
 
