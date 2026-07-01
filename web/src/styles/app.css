@@ -3393,7 +3393,7 @@ a:focus-visible,
 
 .ai-layout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 280px;
   height: calc(100vh - 128px);
   min-height: 640px;
   overflow: hidden;
@@ -3401,7 +3401,7 @@ a:focus-visible,
 
 .conversation-list {
   min-height: 0;
-  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   background: rgba(255, 253, 248, 0.72);
 }
 
@@ -3413,6 +3413,35 @@ a:focus-visible,
 .conversation-toolbar {
   padding: 14px;
   border-bottom: 1px solid var(--line);
+}
+
+.new-session-button {
+  position: relative;
+}
+
+.new-session-button .realtime-dot {
+  position: absolute;
+  top: 7px;
+  left: 9px;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(255, 255, 252, 0.86), 0 0 0 5px rgba(34, 197, 94, 0.16);
+}
+
+.new-session-button .realtime-dot.is-connecting,
+.new-session-button .realtime-dot.is-reconnecting,
+.new-session-button .realtime-dot.is-idle {
+  background: var(--warning);
+  box-shadow: 0 0 0 2px rgba(255, 255, 252, 0.86), 0 0 0 5px rgba(183, 121, 31, 0.16);
+}
+
+.new-session-button .realtime-dot.is-error,
+.new-session-button .realtime-dot.is-closed {
+  background: var(--danger);
+  box-shadow: 0 0 0 2px rgba(255, 255, 252, 0.86), 0 0 0 5px rgba(180, 35, 24, 0.16);
 }
 
 .conversation-scroll {
@@ -3585,11 +3614,12 @@ a:focus-visible,
 
 .reasoning-panel {
   margin-bottom: 10px;
-  padding: 10px;
+  padding: 0;
   border: 1px dashed rgba(46, 95, 168, 0.28);
   border-radius: var(--radius);
   color: #40506b;
   background: rgba(46, 95, 168, 0.06);
+  overflow: hidden;
 }
 
 .reasoning-heading,
@@ -3600,18 +3630,34 @@ a:focus-visible,
 }
 
 .reasoning-heading {
-  margin-bottom: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 9px 10px;
+  border: 0;
+  background: transparent;
   font-size: 12px;
   font-weight: 800;
   color: var(--blue);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+
+.reasoning-heading:hover {
+  background: rgba(46, 95, 168, 0.08);
 }
 
 .reasoning-content {
-  max-height: 180px;
-  overflow: auto;
+  overflow: visible;
+  padding: 0 10px 10px;
   white-space: pre-wrap;
   font-size: 12px;
   line-height: 1.65;
+}
+
+.reasoning-content .markdown-body pre {
+  overflow: visible;
+  white-space: pre-wrap;
 }
 
 .tool-timeline {
@@ -4137,6 +4183,21 @@ a:focus-visible,
   background: rgba(134, 170, 240, 0.08);
 }
 
+:root[data-theme="dark"] .new-session-button .realtime-dot {
+  box-shadow: 0 0 0 2px rgba(19, 27, 32, 0.9), 0 0 0 5px rgba(34, 197, 94, 0.2);
+}
+
+:root[data-theme="dark"] .new-session-button .realtime-dot.is-connecting,
+:root[data-theme="dark"] .new-session-button .realtime-dot.is-reconnecting,
+:root[data-theme="dark"] .new-session-button .realtime-dot.is-idle {
+  box-shadow: 0 0 0 2px rgba(19, 27, 32, 0.9), 0 0 0 5px rgba(242, 189, 99, 0.2);
+}
+
+:root[data-theme="dark"] .new-session-button .realtime-dot.is-error,
+:root[data-theme="dark"] .new-session-button .realtime-dot.is-closed {
+  box-shadow: 0 0 0 2px rgba(19, 27, 32, 0.9), 0 0 0 5px rgba(255, 131, 122, 0.2);
+}
+
 :root[data-theme="dark"] .markdown-body code {
   color: #baf4eb;
   background: var(--brand-tint);
@@ -4540,7 +4601,7 @@ a:focus-visible,
 
   .conversation-list {
     max-height: 260px;
-    border-right: 0;
+    border-left: 0;
     border-bottom: 1px solid var(--line);
   }
 

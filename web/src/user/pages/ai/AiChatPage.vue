@@ -1,61 +1,5 @@
 <template>
   <section class="surface ai-layout">
-    <aside class="conversation-list ai-conversation-list">
-      <div class="conversation-toolbar">
-        <n-button type="primary" block @click="newSession">
-          <template #icon><Plus :size="16" /></template>
-          新咨询
-        </n-button>
-        <div class="realtime-status" :class="realtimeStatusClass">
-          <span class="realtime-dot"></span>
-          <small>{{ realtimeStatusText }}</small>
-        </div>
-      </div>
-
-      <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
-        <article
-          v-for="item in sessions"
-          :key="item.id"
-          class="conversation-item"
-          :class="{ active: item.id === sessionId }"
-          @click="selectSession(item.id)"
-        >
-          <template v-if="renamingSessionId === item.id">
-            <n-input
-              v-model:value="renameTitle"
-              size="small"
-              maxlength="40"
-              @click.stop
-              @keyup.enter.stop="saveRename(item)"
-            />
-            <div class="conversation-actions">
-              <n-button quaternary circle size="small" @click.stop="saveRename(item)">
-                <template #icon><Check :size="15" /></template>
-              </n-button>
-              <n-button quaternary circle size="small" @click.stop="cancelRename">
-                <template #icon><X :size="15" /></template>
-              </n-button>
-            </div>
-          </template>
-          <template v-else>
-            <div class="conversation-main">
-              <strong>{{ item.title || '新的咨询' }}</strong>
-              <div class="muted">{{ sessionStatusText(item.status) }}</div>
-            </div>
-            <div class="conversation-actions">
-              <n-button quaternary circle size="small" title="重命名" @click.stop="beginRename(item)">
-                <template #icon><Edit3 :size="15" /></template>
-              </n-button>
-              <n-button quaternary circle size="small" type="error" title="删除" @click.stop="confirmDeleteSession(item)">
-                <template #icon><Trash2 :size="15" /></template>
-              </n-button>
-            </div>
-          </template>
-        </article>
-        <div v-if="!sessions.length" key="empty" class="empty-state compact">还没有 AI 会话</div>
-      </transition-group>
-    </aside>
-
     <main class="message-board ai-message-board">
       <div class="message-stream ai-message-stream" ref="streamRef">
         <transition-group name="message-flow" tag="div" class="message-flow-list" appear>
@@ -90,12 +34,12 @@
           </template>
 
           <template v-else>
-            <div v-if="item.role === 'assistant' && reasoningBlocks(item).length" class="reasoning-panel">
-              <div class="reasoning-heading">
+            <div v-if="item.role === 'assistant' && reasoningBlocks(item).length" class="reasoning-panel" :class="{ expanded: isReasoningExpanded(item.id) }">
+              <button type="button" class="reasoning-heading" @click="toggleReasoning(item.id)">
                 <Brain :size="15" />
-                <span>思考过程</span>
-              </div>
-              <div class="reasoning-content">
+                <span>{{ reasoningSummaryText(item) }}</span>
+              </button>
+              <div v-if="isReasoningExpanded(item.id)" class="reasoning-content">
                 <template v-for="block in reasoningBlocks(item)" :key="block.id">
                   <div v-if="block.type === 'text'" class="reasoning-text markdown-body" v-html="renderMarkdown(block.text)" />
                   <div v-else-if="block.tool" class="tool-event inline-tool-event" :class="block.tool.status">
@@ -187,6 +131,59 @@
       </div>
     </main>
 
+    <aside class="conversation-list ai-conversation-list">
+      <div class="conversation-toolbar">
+        <n-button class="new-session-button" type="primary" block @click="newSession">
+          <span class="realtime-dot" :class="realtimeStatusClass"></span>
+          <template #icon><Plus :size="16" /></template>
+          新咨询
+        </n-button>
+      </div>
+
+      <transition-group name="list-flow" tag="div" class="conversation-scroll" appear>
+        <article
+          v-for="item in sessions"
+          :key="item.id"
+          class="conversation-item"
+          :class="{ active: item.id === sessionId }"
+          @click="selectSession(item.id)"
+        >
+          <template v-if="renamingSessionId === item.id">
+            <n-input
+              v-model:value="renameTitle"
+              size="small"
+              maxlength="40"
+              @click.stop
+              @keyup.enter.stop="saveRename(item)"
+            />
+            <div class="conversation-actions">
+              <n-button quaternary circle size="small" @click.stop="saveRename(item)">
+                <template #icon><Check :size="15" /></template>
+              </n-button>
+              <n-button quaternary circle size="small" @click.stop="cancelRename">
+                <template #icon><X :size="15" /></template>
+              </n-button>
+            </div>
+          </template>
+          <template v-else>
+            <div class="conversation-main">
+              <strong>{{ item.title || '新的咨询' }}</strong>
+              <div class="muted">{{ sessionStatusText(item.status) }}</div>
+            </div>
+            <div class="conversation-actions">
+              <n-button quaternary circle size="small" title="重命名" @click.stop="beginRename(item)">
+                <template #icon><Edit3 :size="15" /></template>
+              </n-button>
+              <n-button quaternary circle size="small" type="error" title="删除" @click.stop="confirmDeleteSession(item)">
+                <template #icon><Trash2 :size="15" /></template>
+              </n-button>
+            </div>
+          </template>
+        </article>
+        <div v-if="!sessions.length" key="empty" class="empty-state compact">还没有 AI 会话</div>
+      </transition-group>
+    </aside>
+
     <n-modal v-model:show="taskDraftVisible" preset="card" class="task-draft-modal" title="发布 AI 生成任务" :bordered="false">
       <template v-if="publishedTask">
         <div class="task-publish-result">
@@ -258,6 +255,7 @@ const running = ref(false);
 const streamRef = ref(null);
 const realtimeStatus = ref('idle');
 const realtimeQueued = ref(0);
+const expandedReasoningIds = ref(new Set());
 const renamingSessionId = ref('');
 const renameTitle = ref('');
 const editingMessageId = ref('');
@@ -283,18 +281,6 @@ let reconnectNoticeShown = false;
 const taskCategoryOptions = computed(() => taskMeta.value.categories.map((item) => ({ label: item, value: item })));
 const taskAreaOptions = computed(() => taskMeta.value.areas.map((item) => ({ label: item, value: item })));
 const realtimeStatusClass = computed(() => `is-${realtimeStatus.value}`);
-const realtimeStatusText = computed(() => {
-  if (realtimeStatus.value === 'connected') return '实时连接正常';
-  if (realtimeStatus.value === 'connecting') return '正在连接实时服务';
-  if (realtimeStatus.value === 'reconnecting') {
-    return realtimeQueued.value
-      ? `实时连接恢复中，${realtimeQueued.value} 条消息待发送`
-      : '实时连接断开，正在自动重连';
-  }
-  if (realtimeStatus.value === 'closed') return '实时连接已关闭';
-  if (realtimeStatus.value === 'error') return '实时连接异常';
-  return '实时连接准备中';
-});
 
 onMounted(async () => {
   await loadSessions();
@@ -320,6 +306,7 @@ async function selectSession(id) {
   sessionId.value = id;
   const data = await request(`/api/ai/sessions/${id}`);
   messages.value = data.messages.map(normalizeMessage);
+  expandedReasoningIds.value = new Set();
   running.value = data.session.status === 'running';
   cancelEdit();
   scrollBottom();
@@ -696,6 +683,32 @@ function messageBlocks(message, channel) {
 
 function reasoningBlocks(message) {
   return messageBlocks(message, 'reasoning');
+}
+
+function isReasoningExpanded(messageId) {
+  return expandedReasoningIds.value.has(messageId);
+}
+
+function toggleReasoning(messageId) {
+  const next = new Set(expandedReasoningIds.value);
+  if (next.has(messageId)) next.delete(messageId);
+  else next.add(messageId);
+  expandedReasoningIds.value = next;
+}
+
+function reasoningSummaryText(message) {
+  if (message.status === 'running' || ['requesting', 'responding', 'waiting_tool'].includes(message.runState)) {
+    return '正在思考';
+  }
+  return `已完成思考，调用了${toolUseCount(message)}个工具`;
+}
+
+function toolUseCount(message) {
+  const ids = new Set();
+  for (const event of visibleToolEvents(message)) {
+    if (event?.id) ids.add(event.id);
+  }
+  return ids.size;
 }
 
 function contentBlocks(message) {
