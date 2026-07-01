@@ -5,6 +5,7 @@ import {
   createComment,
   createForumReport,
   createPost,
+  deleteOwnPost,
   forumStudio,
   forumRankings,
   generateForumSummary,
@@ -20,6 +21,7 @@ import {
   toggleFollow,
   togglePostFavorite,
   togglePostLike,
+  updateOwnPostVisibility,
   wordCloud
 } from '../services/forum.js';
 import { enqueueContentModeration } from '../services/contentModeration.js';
@@ -74,6 +76,15 @@ router.patch('/posts/:id/resubmit', requireUser, asyncHandler(async (req, res) =
   const post = await resubmitRejectedPost(req.store, req.user, req.params.id, req.body);
   await enqueueContentModeration(req.store, req.realtime, 'post', post.id);
   res.json({ post });
+}));
+
+router.patch('/posts/:id/visibility', requireUser, asyncHandler(async (req, res) => {
+  const post = await updateOwnPostVisibility(req.store, req.user, req.params.id, Boolean(req.body.visible));
+  res.json({ post });
+}));
+
+router.delete('/posts/:id', requireUser, asyncHandler(async (req, res) => {
+  res.json(await deleteOwnPost(req.store, req.user, req.params.id));
 }));
 
 router.get('/posts/:id', requireUser, asyncHandler(async (req, res) => {

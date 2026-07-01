@@ -1472,6 +1472,14 @@ a {
   transition: transform var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease), background var(--motion-fast) var(--motion-ease);
 }
 
+.creator-post-card.no-cover {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.creator-post-card.is-hidden {
+  border-style: dashed;
+}
+
 .creator-post-card:hover {
   transform: translateY(-2px);
   border-color: var(--brand);
@@ -1501,6 +1509,13 @@ a {
 
 .creator-post-head p {
   margin: 8px 0 0;
+}
+
+.creator-post-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .creator-reason {
@@ -3325,6 +3340,10 @@ a {
 
   .creator-post-card {
     grid-template-columns: 1fr;
+  }
+
+  .creator-post-actions {
+    justify-content: flex-start;
   }
 
   .creator-post-cover {

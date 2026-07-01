@@ -58,7 +58,12 @@
       </n-tabs>
 
       <transition-group v-if="filteredPosts.length" name="card-flow" tag="div" class="creator-post-list" appear>
-        <article v-for="post in filteredPosts" :key="post.id" class="creator-post-card">
+        <article
+          v-for="post in filteredPosts"
+          :key="post.id"
+          class="creator-post-card"
+          :class="{ 'no-cover': !post.imageUrls?.[0], 'is-hidden': post.visibility !== 'public' }"
+        >
           <img v-if="post.imageUrls?.[0]" class="creator-post-cover" :src="assetUrl(post.imageUrls[0])" alt="帖子封面" />
           <div class="creator-post-main">
             <div class="creator-post-head">
@@ -69,16 +74,44 @@
                   <n-tag size="small" :type="moderationType(post.moderationStatus)">
                     {{ moderationText(post.moderationStatus) }}
                   </n-tag>
+                  <n-tag v-if="post.visibility !== 'public'" size="small" :bordered="false">已隐藏</n-tag>
                 </n-space>
-                <p class="muted">{{ post.content.slice(0, 96) }}</p>
+                <p class="muted">{{ (post.content || '').slice(0, 96) }}</p>
               </div>
-              <n-space>
-                <n-button size="small" secondary @click="$router.push(`/forum/${post.id}`)">查看</n-button>
+              <div class="creator-post-actions">
+                <n-button size="small" secondary @click="$router.push(`/forum/${post.id}`)">
+                  <template #icon><Eye :size="15" /></template>
+                  查看
+                </n-button>
                 <n-button v-if="post.moderationStatus === 'rejected'" size="small" type="primary" @click="openEditor(post)">
                   <template #icon><RefreshCcw :size="15" /></template>
                   修改重发
                 </n-button>
-              </n-space>
+                <n-button
+                  v-else
+                  size="small"
+                  secondary
+                  :type="post.visibility === 'public' ? 'warning' : 'success'"
+                  :loading="visibilityLoadingId === post.id"
+                  @click="toggleVisibility(post)"
+                >
+                  <template #icon>
+                    <EyeOff v-if="post.visibility === 'public'" :size="15" />
+                    <Eye v-else :size="15" />
+                  </template>
+                  {{ post.visibility === 'public' ? '隐藏' : '恢复公开' }}
+                </n-button>
+                <n-button
+                  size="small"
+                  tertiary
+                  type="error"
+                  :loading="deletingPostId === post.id"
+                  @click="confirmDelete(post)"
+                >
+                  <template #icon><Trash2 :size="15" /></template>
+                  删除
+                </n-button>
+              </div>
             </div>
             <n-alert v-if="post.moderationStatus === 'rejected'" type="error" :show-icon="false" class="creator-reason">
               {{ post.moderationReason || '内容审核未通过，请修改后重新提交。' }}
@@ -150,25 +183,30 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useMessage } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui';
 import {
   ArrowLeft,
   BarChart3,
   Eye,
+  EyeOff,
   Heart,
   MessageCircle,
   Plus,
   RefreshCcw,
   Share2,
   Star,
+  Trash2,
   X
 } from '@lucide/vue';
 import { assetUrl, request } from '../../../shared/http.js';
 
 const message = useMessage();
+const dialog = useDialog();
 const loading = ref(false);
 const saving = ref(false);
 const uploading = ref(false);
+const visibilityLoadingId = ref('');
+const deletingPostId = ref('');
 const editorVisible = ref(false);
 const activeStatus = ref('all');
 const posts = ref([]);
@@ -238,6 +276,44 @@ async function submitResubmit() {
   } finally {
     saving.value = false;
   }
+}
+
+async function toggleVisibility(post) {
+  const visible = post.visibility !== 'public';
+  visibilityLoadingId.value = post.id;
+  try {
+    await request(`/api/forum/posts/${post.id}/visibility`, {
+      method: 'PATCH',
+      body: { visible }
+    });
+    message.success(visible ? '帖子已恢复公开' : '帖子已隐藏');
+    await load();
+  } catch (error) {
+    message.error(error.message || '操作失败');
+  } finally {
+    visibilityLoadingId.value = '';
+  }
+}
+
+function confirmDelete(post) {
+  dialog.warning({
+    title: '删除帖子',
+    content: `确认删除「${post.title || '未命名帖子'}」？删除后不会在社区和创作中心显示。`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      deletingPostId.value = post.id;
+      try {
+        await request(`/api/forum/posts/${post.id}`, { method: 'DELETE' });
+        message.success('帖子已删除');
+        await load();
+      } catch (error) {
+        message.error(error.message || '删除失败');
+      } finally {
+        deletingPostId.value = '';
+      }
+    }
+  });
 }
 
 async function uploadImage({ file, onFinish, onError }) {
